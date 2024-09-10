@@ -70,8 +70,12 @@ export default function Header({initialUser}) {
 		<header>
 			<Link href="/" className="logo">
 				<img src="/friendly-eats.svg" alt="FriendlyEats" />
-				Friendly Eats
+				Analyst Server
 			</Link>
+			<Link href="/" className="logo">
+				<img src="/friendly-eats.svg" alt="Analyst Server" />
+				Do thing
+			</Link>			
 			{user ? (
 				<>
 					<div className="profile">

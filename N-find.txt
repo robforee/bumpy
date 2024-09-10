@@ -1,0 +1,1 @@
+find . -path './node_modules' -prune -o -path './.next' -prune -o -name \*.js -exec grep fetchWith {} /dev/null \;

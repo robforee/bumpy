@@ -3,3 +3,5 @@ lib/firebase/config.js
 .firebase/
 node_modules/
 spool
+database-debug.log
+firebasee-debug.log

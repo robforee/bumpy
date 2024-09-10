@@ -1,3 +1,4 @@
+// src/lib/firebase/fakeResturants.js
 import {
 	randomNumberBetween,
 	getRandomDateAfter,

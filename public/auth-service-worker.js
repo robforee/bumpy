@@ -1,3 +1,4 @@
+// public/auth-service-worker.js
 import { initializeApp } from "firebase/app";
 import { getAuth, getIdToken } from "firebase/auth";
 import { getInstallations, getToken } from "firebase/installations";

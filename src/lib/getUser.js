@@ -1,3 +1,4 @@
+// src/lib/getUser.js
 "use client";
 
 import { onAuthStateChanged } from "firebase/auth";

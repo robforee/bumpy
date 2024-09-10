@@ -1,3 +1,4 @@
+// src/lib/firebase/firestore.js
 import { generateFakeRestaurantsAndReviews } from "@/src/lib/fakeRestaurants.js";
 
 import {

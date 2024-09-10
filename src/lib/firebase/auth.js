@@ -1,3 +1,4 @@
+// src/lib/firebase/auth.js
 import {
   GoogleAuthProvider,
   signInWithPopup,

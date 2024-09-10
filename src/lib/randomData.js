@@ -1,3 +1,4 @@
+// src/lib/randomData.js
 // Random restaurant data that is added to Firestore
 // After you've signed into Friendly Eats, click the dropdown
 // menu in the top right corner and select "Add random data"

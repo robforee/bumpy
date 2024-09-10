@@ -1,3 +1,4 @@
+// src/lib/firebase/clientApp.js
 'use client';
 
 import { initializeApp, getApps } from "firebase/app";

@@ -1,119 +1,116 @@
-// src/components/Header.jsx
-'use client'
-import React, { useState, useEffect } from "react";
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import Link from "next/link";
-import {
-	signInWithGoogle,
-	signOut,
-	onAuthStateChanged
-} from "@/src/lib/firebase/auth.js";
+import { useRouter } from 'next/navigation';
+import { signInWithGoogle, signOut, onAuthStateChanged } from "@/src/lib/firebase/auth.js";
+import { db } from "@/src/lib/firebase/clientApp.js";
+import { doc, setDoc } from "firebase/firestore";
 import { addFakeRestaurantsAndReviews } from "@/src/lib/firebase/firestore.js";
-import { useRouter } from "next/navigation";
-import { firebaseConfig } from "@/src/lib/firebase/config";
 
-function useUserSession(initialUser) {
-	// The initialUser comes from the server via a server component
-	const [user, setUser] = useState(initialUser);
-	const router = useRouter();
+const Header = ({ initialUser }) => {
+  const [user, setUser] = useState(initialUser);
+  const router = useRouter();
 
-	// Register the service worker that sends auth state back to server
-	// The service worker is built with npm run build-service-worker
-	useEffect(() => {
-		if ("serviceWorker" in navigator) {
-			const serializedFirebaseConfig = encodeURIComponent(JSON.stringify(firebaseConfig));
-			const serviceWorkerUrl = `/auth-service-worker.js?firebaseConfig=${serializedFirebaseConfig}`
-		
-		  navigator.serviceWorker
-			.register(serviceWorkerUrl)
-			.then((registration) => console.log("scope is: ", registration.scope));
-		}
-	  }, []);
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged((authUser) => {
+      setUser(authUser);
+      if (user === undefined) return;
+      // refresh when user changed to ease testing
+      if (user?.email !== authUser?.email) {
+        router.refresh();
+      }
+    });
 
-	useEffect(() => {
-		const unsubscribe = onAuthStateChanged((authUser) => {
-			setUser(authUser)
-		})
+    return () => unsubscribe();
+  }, [user, router]);
 
-		return () => unsubscribe()
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []);
+  const handleSignOut = async (event) => {
+    event.preventDefault();
+    try {
+      await signOut();
+      setUser(null);
+      router.push('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
-	useEffect(() => {
-		onAuthStateChanged((authUser) => {
-			if (user === undefined) return
+  const handleSignIn = async (event) => {
+    event.preventDefault();
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      console.error('Error signing in:', error);
+    }
+  };
 
-			// refresh when user changed to ease testing
-			if (user?.email !== authUser?.email) {
-				router.refresh()
-			}
-		})
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [user])
+  const handleWriteToFirestore = async () => {
+    if (!user) {
+      console.log('User not logged in');
+      return;
+    }
 
-	return user;
-}
+    try {
+      const docRef = doc(db, 'users', user.uid);
+	  console.log(user.uid,user.email)
+      await setDoc(docRef, {
+        lastClick: new Date().toISOString(),
+        email: user.email
+      }, { merge: true });
+      console.log('Document written successfully');
+    } catch (error) {
+      console.error('Error writing document:', error);
+    }
+  };
 
-export default function Header({initialUser}) {
+  return (
+    <header>
+      <Link href="/" className="logo">
+        <img src="/friendly-eats.svg" alt="FriendlyEats" />
+        Analyst Server
+      </Link>
+      {user ? (
+        <>
+          <div className="profile">
+            <p>
+              <img className="profileImage" src={user.photoURL || "/profile.svg"} alt={user.email} />
+              {user.displayName}
+            </p>
 
-	const user = useUserSession(initialUser) ;
+            <div className="menu">
+              ...
+              <ul>
+                <li>{user.displayName}</li>
+                <li>
+                  <a href="#" onClick={addFakeRestaurantsAndReviews}>
+                    Add sample restaurants
+                  </a>
+                </li>
+                <li>
+                  <a href="#" onClick={handleWriteToFirestore}>
+                    Write to Firestore
+                  </a>
+                </li>
+                <li>
+                  <a href="#" onClick={handleSignOut}>
+                    Sign Out
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="profile">
+          <a href="#" onClick={handleSignIn}>
+            <img src="/profile.svg" alt="A placeholder user image" />
+            Sign In with Google
+          </a>
+        </div>
+      )}
+    </header>
+  );
+};
 
-	const handleSignOut = event => {
-		event.preventDefault();
-		signOut();
-	};
-
-	const handleSignIn = event => {
-		event.preventDefault();
-		signInWithGoogle();
-	};
-
-	return (
-		<header>
-			<Link href="/" className="logo">
-				<img src="/friendly-eats.svg" alt="FriendlyEats" />
-				Analyst Server
-			</Link>
-			<Link href="/" className="logo">
-				<img src="/friendly-eats.svg" alt="Analyst Server" />
-				Do thing
-			</Link>			
-			{user ? (
-				<>
-					<div className="profile">
-						<p>
-							<img className="profileImage" src={user.photoURL || "/profile.svg"} alt={user.email} />
-							{user.displayName}
-						</p>
-
-						<div className="menu">
-							...
-							<ul>
-								<li>{user.displayName}</li>
-
-								<li>
-									<a
-										href="#"
-										onClick={addFakeRestaurantsAndReviews}
-									>
-										Add sample restaurants
-									</a>
-								</li>
-
-								<li>
-									<a href="#" onClick={handleSignOut}>
-										Sign Out
-									</a>
-								</li>
-							</ul>
-						</div>
-					</div>
-				</>
-			) : (
-				<div className="profile"><a href="#" onClick={handleSignIn}>
-					<img src="/profile.svg" alt="A placeholder user image" />
-					Sign In with Google
-				</a></div>
-			)}
-		</header>
-	);
-}
+export default Header;

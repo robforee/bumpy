@@ -61,5 +61,8 @@
         ]
       }
     ]
+  },
+  "env": {
+    "ENCRYPTION_KEY": "${ENCRYPTION_KEY}"
   }
 }

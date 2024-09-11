@@ -1,5 +1,5 @@
+// src/components/Header.jsx
 'use client';
-
 import React, { useState, useEffect } from 'react';
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
@@ -40,11 +40,13 @@ const Header = ({ initialUser }) => {
     event.preventDefault();
     try {
       await signInWithGoogle();
+      // Handle successful sign-in (e.g., update UI, redirect)
     } catch (error) {
-      console.error('Error signing in:', error);
+      // Handle sign-in error (e.g., show error message)
+      console.error("Sign-in error:", error);
     }
   };
-
+  
   const handleWriteToFirestore = async () => {
     if (!user) {
       console.log('User not logged in');

@@ -40,7 +40,7 @@ self.addEventListener("fetch", (event) => {
 
 async function fetchWithFirebaseHeaders(request) {
   if (!firebaseApp) {
-    console.error('Firebase app not initialized. Proceeding with original request.');
+    console.warn('Firebase app not initialized. Proceeding with original request.');
     return fetch(request);
   }
 

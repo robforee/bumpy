@@ -1,11 +1,15 @@
 // src/lib/firebase/auth.js
+// src/lib/firebase/auth.js
+
+
 import {
   GoogleAuthProvider,
   signInWithPopup,
   onAuthStateChanged as _onAuthStateChanged,
 } from "firebase/auth";
+import { auth } from "./clientApp";
 
-import { auth } from "@/src/lib/firebase/clientApp";
+//import { auth } from "@/src/lib/firebase/clientApp";
 
 export function onAuthStateChanged(cb) {
 	return _onAuthStateChanged(auth, cb);
@@ -13,13 +17,43 @@ export function onAuthStateChanged(cb) {
 
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
+  
+  // Add the required scopes
+  provider.addScope('https://www.googleapis.com/auth/gmail.modify');
+  provider.addScope('https://www.googleapis.com/auth/drive.file');
+  provider.addScope('https://www.googleapis.com/auth/userinfo.email');
 
   try {
-    await signInWithPopup(auth, provider);
+    const result = await signInWithPopup(auth, provider);
+    
+    // The signed-in user info.
+    const user = result.user;
+    
+    // This gives you a Google Access Token.
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    const token = credential.accessToken;
+
+    // Send the token to your backend
+    await sendTokenToBackend(token, user.uid);
+
+    return user;
   } catch (error) {
     console.error("Error signing in with Google", error);
+    throw error;
   }
 }
+
+async function sendTokenToBackend(token, userId) {
+  // Implement this function to securely send the token to your backend
+  // You'll need to create a Firebase Cloud Function to handle this
+  // For example:
+  // await fetch('https://your-cloud-function-url.com/storeToken', {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify({ token, userId })
+  // });
+}
+
 
 export async function signOut() {
   try {
@@ -28,3 +62,5 @@ export async function signOut() {
     console.error("Error signing out with Google", error);
   }
 }
+
+

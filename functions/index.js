@@ -12,6 +12,7 @@ const logger = require("firebase-functions/logger");
 const functions = require('firebase-functions');
 
 exports.getServerTime = functions.https.onCall((data, context) => {
+  console.log('ping server')
   return {
     serverTime: new Date().toISOString()
   };

@@ -8,6 +8,8 @@ let firebaseConfig;
 self.addEventListener('install', event => {
   // extract firebase config from query string
   const serializedFirebaseConfig = new URL(location).searchParams.get('firebaseConfig');
+  console.log('create event listener install')
+  console.log('extracting firebase config from query string')
   
   if (!serializedFirebaseConfig) {
     throw new Error('Firebase Config object not found in service worker query string.');
@@ -24,6 +26,7 @@ self.addEventListener("fetch", (event) => {
 });
 
 async function fetchWithFirebaseHeaders(request) {
+  console.log('impact?')
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const installations = getInstallations(app);

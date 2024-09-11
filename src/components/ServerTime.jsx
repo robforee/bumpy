@@ -8,6 +8,7 @@ const ServerTime = () => {
   const [serverTime, setServerTime] = useState(null);
 
   useEffect(() => {
+    //console.log('useEffect here')
     const functions = getFunctions();
     const getServerTime = httpsCallable(functions, 'getServerTime');
 

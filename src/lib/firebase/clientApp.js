@@ -16,13 +16,6 @@ export const db = getFirestore(firebaseApp);
 export const storage = getStorage(firebaseApp);
 export const functions = getFunctions(firebaseApp);
 
-if (process.env.NODE_ENV === 'development') {
-  connectAuthEmulator(auth, "http://localhost:9099");
-  connectFirestoreEmulator(db, 'localhost', 8080);
-  connectStorageEmulator(storage, "localhost", 9199);
-  connectFunctionsEmulator(functions, "localhost", 5001);
-}
-
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
   window.addEventListener('load', function() {
     const swUrl = `/auth-service-worker.js?firebaseConfig=${encodeURIComponent(JSON.stringify(firebaseConfig))}`;

@@ -7983,13 +7983,26 @@
 
   // auth-service-worker.js
   var firebaseConfig;
+  var firebaseApp;
   self.addEventListener("install", (event) => {
-    const serializedFirebaseConfig = new URL(location).searchParams.get("firebaseConfig");
-    if (!serializedFirebaseConfig) {
-      throw new Error("Firebase Config object not found in service worker query string.");
-    }
-    firebaseConfig = JSON.parse(serializedFirebaseConfig);
-    console.log("Service worker installed with Firebase config", firebaseConfig);
+    console.log("Service Worker: Install event");
+    event.waitUntil(
+      (async () => {
+        try {
+          const serializedFirebaseConfig = new URL(self.location).searchParams.get("firebaseConfig");
+          console.log("Extracting Firebase config from query string");
+          if (!serializedFirebaseConfig) {
+            throw new Error("Firebase Config object not found in service worker query string.");
+          }
+          firebaseConfig = JSON.parse(serializedFirebaseConfig);
+          console.log("Service worker installed with Firebase config", firebaseConfig);
+          firebaseApp = initializeApp(firebaseConfig);
+          console.log("Firebase app initialized in service worker");
+        } catch (error) {
+          console.error("Error during service worker installation:", error);
+        }
+      })()
+    );
   });
   self.addEventListener("fetch", (event) => {
     const { origin } = new URL(event.request.url);
@@ -7998,26 +8011,42 @@
     event.respondWith(fetchWithFirebaseHeaders(event.request));
   });
   async function fetchWithFirebaseHeaders(request) {
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const installations = getInstallations(app);
-    const headers = new Headers(request.headers);
-    const [authIdToken, installationToken] = await Promise.all([
-      getAuthIdToken(auth),
-      getToken(installations)
-    ]);
-    headers.append("Firebase-Instance-ID-Token", installationToken);
-    if (authIdToken)
-      headers.append("Authorization", `Bearer ${authIdToken}`);
-    const newRequest = new Request(request, { headers });
-    return await fetch(newRequest);
+    if (!firebaseApp) {
+      console.warn("Firebase app not initialized. Proceeding with original request.");
+      return fetch(request);
+    }
+    try {
+      const auth = getAuth(firebaseApp);
+      const installations = getInstallations(firebaseApp);
+      const headers = new Headers(request.headers);
+      const [authIdToken, installationToken] = await Promise.all([
+        getAuthIdToken(auth),
+        getToken(installations)
+      ]);
+      headers.append("Firebase-Instance-ID-Token", installationToken);
+      if (authIdToken)
+        headers.append("Authorization", `Bearer ${authIdToken}`);
+      const newRequest = new Request(request, { headers });
+      return await fetch(newRequest);
+    } catch (error) {
+      console.error("Error in fetchWithFirebaseHeaders:", error);
+      return fetch(request);
+    }
   }
   async function getAuthIdToken(auth) {
-    await auth.authStateReady();
-    if (!auth.currentUser)
-      return;
-    return await getIdToken(auth.currentUser);
+    try {
+      await auth.authStateReady();
+      if (!auth.currentUser)
+        return null;
+      return await getIdToken(auth.currentUser);
+    } catch (error) {
+      console.error("Error getting auth token:", error);
+      return null;
+    }
   }
+  self.addEventListener("activate", (event) => {
+    console.log("Service Worker: Activate event");
+  });
 })();
 /*! Bundled license information:
 

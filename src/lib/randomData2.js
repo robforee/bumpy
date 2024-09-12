@@ -4,6 +4,35 @@
 // menu in the top right corner and select "Add random data"
 
 export const randomData = {
+	restaurantInfo: [
+		
+		{key: "Wholesome Kitchen", name: '', desc: '3x7 meals in a thoughtful and respectful dining room'},
+
+		{key: "Wholesome Handymen", name: '', desc: 'Special projects hired labor'},
+
+		{key: "Station Motorista", name: '', desc: 'Expert auto repair and maintenance services'},
+
+		{key: "Community Liaison", name: '', desc: 'Bridging the gap between local community and organizations'},
+
+		{key: "Park Liaison", name: '', desc: 'Facilitating permitting and  communications between park visitors and management'},
+
+		{key: "Visiting Scientist", name: '', desc: 'Data collection specialists and their teams'},
+		
+		{key: "Environmental Education", name: '', desc: 'Promoting awareness and understanding of environmental issues with bi-monthly community visit hosting'},
+		
+		{key: "Station Operations", name: '', desc: 'Covers maintenance and manages contractors'},
+
+		{key: "Station Scientist", name: '', desc: 'Managing visiting scientists and ongoing data collection'},
+
+		{key: "Reagional Administrative", name: '', desc: 'Executing daily activities from Cusco'},
+
+		{key: "Reagional Operations", name: '', desc: 'Overseeing daily operations and ensuring smooth workflow from Cusco'},
+
+		{key: "Regional Communications", name: '', desc: 'Overseeing daily communications from Cusco'},
+
+		{key: "Director", name: '', desc: 'Overall leadership and strategic planning for the organization'}
+
+	],
 	restaurantNames: [
 		"Wholesome Kitchen",
 		"Wholesome Handymen",

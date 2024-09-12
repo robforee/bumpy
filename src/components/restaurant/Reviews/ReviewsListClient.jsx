@@ -29,6 +29,7 @@ export default function ReviewsListClient({
                 key={review.id}
                 rating={review.rating}
                 text={review.text}
+                userName={review.userName}
                 timestamp={review.timestamp}
               />
             ))}

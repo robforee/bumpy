@@ -1,4 +1,5 @@
 // src/app/page.js
+// a server render
 import RestaurantListings from "@/src/components/restaurant/RestaurantListings.jsx";
 import { getRestaurants } from "@/src/lib/firebase/firestore.js";
 import { getAuthenticatedAppForUser } from "@/src/lib/firebase/serverApp.js";
@@ -18,7 +19,7 @@ export default async function Home({ searchParams }) {
 	const {firebaseServerApp} = await getAuthenticatedAppForUser();
 	const restaurants = await getRestaurants(getFirestore(firebaseServerApp), searchParams);
 	
-	const isUnderConstruction = true; // Set this based on your app's state
+	const isUnderConstruction = false; // Set this based on your app's state
 
 	if (isUnderConstruction) {
 	  return <UnderConstruction />;

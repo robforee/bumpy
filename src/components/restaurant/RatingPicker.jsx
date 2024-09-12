@@ -1,3 +1,5 @@
+// src/components/restaurant/RatingPicker.jsx
+
 import React from "react";
 
 // A HTML and CSS only rating picker thanks to: https://codepen.io/chris22smith/pen/MJzLJN

@@ -1,4 +1,5 @@
 // src/lib/firebase/firestore.js
+
 import { generateFakeRestaurantsAndReviews } from "@/src/lib/fakeRestaurants.js";
 
 import {
@@ -28,7 +29,7 @@ export async function updateRestaurantImageReference(
 		await updateDoc(restaurantRef, { photo: publicImageUrl });
 	}
 }
-
+// structure of 
 const updateWithRating = async (
 	transaction,
 	docRef,
@@ -54,6 +55,8 @@ const updateWithRating = async (
 };
 
 export async function addReviewToRestaurant(db, restaurantId, review) {
+	console.log('@@@ SERVER? addReviewToRestaurant',review);
+
 	if (!restaurantId) {
 		throw new Error("No restaurant ID has been provided.");
 	}

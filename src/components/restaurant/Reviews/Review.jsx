@@ -1,16 +1,22 @@
 import renderStars from "@/src/components/restaurant/Stars.jsx";
+import { userAgentFromString } from "next/server";
 
 
-export function Review({ rating, text, timestamp }) {
+export function Review({ rating, text, userName, timestamp }) {
   return (<li className="review__item">
-    <ul className="restaurant__rating">{renderStars(rating)}</ul>
-    <p>{text}</p>
-
+    {/* <ul className="restaurant__rating">{renderStars(rating)}</ul> */}
     <time>
-      {new Intl.DateTimeFormat("en-GB", {
-        dateStyle: "medium",
+    {userName || 'anon'} &nbsp;~&nbsp;  
+    {new Intl.DateTimeFormat("en-US", {
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true,
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric'
       }).format(timestamp)}
     </time>
+    <p>{text}</p>
   </li>);
 }
 

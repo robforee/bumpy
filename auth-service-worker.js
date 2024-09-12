@@ -13,18 +13,18 @@ self.addEventListener('install', event => {
       try {
         // extract firebase config from query string
         const serializedFirebaseConfig = new URL(self.location).searchParams.get('firebaseConfig');
-        console.log('Extracting Firebase config from query string');
+        console.log('@@@ Extracting Firebase config from query string');
         
         if (!serializedFirebaseConfig) {
           throw new Error('Firebase Config object not found in service worker query string.');
         }
         
         firebaseConfig = JSON.parse(serializedFirebaseConfig);
-        console.log("Service worker installed with Firebase config", firebaseConfig);
+        console.log("@@@ Service worker installed with Firebase config", firebaseConfig);
         
         // Initialize Firebase app here
         firebaseApp = initializeApp(firebaseConfig);
-        console.log("Firebase app initialized in service worker");
+        console.log("@@@ Firebase app initialized in service worker");
       } catch (error) {
         console.error("Error during service worker installation:", error);
       }
@@ -40,7 +40,7 @@ self.addEventListener("fetch", (event) => {
 
 async function fetchWithFirebaseHeaders(request) {
   if (!firebaseApp) {
-    console.warn('Firebase app not initialized. Proceeding with original request.');
+    console.warn('Firebase app not initialized. Proceeding with original request from root.');
     return fetch(request);
   }
 

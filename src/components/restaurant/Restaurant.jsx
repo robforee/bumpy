@@ -1,3 +1,4 @@
+// src/components/resturant/Restaurant.jsx
 "use client";
 
 // This components shows one individual restaurant
@@ -25,10 +26,13 @@ export default function Restaurant({
 
   // The only reason this component needs to know the user ID is to associate a review with the user, and to know whether to show the review dialog
   const userId = useUser()?.uid || initialUserId;
+  const userName = useUser()?.displayName || 'Explorer'
+  console.log(userName);
   const [review, setReview] = useState({
     rating: 0,
     text: "",
   });
+  console.log('@@@',userId,review);
 
   const onChange = (value, name) => {
     setReview({ ...review, [name]: value });
@@ -45,11 +49,13 @@ export default function Restaurant({
   }
 
   const handleClose = () => {
+    console.log('@@@ Restaurant.handleClose.setReview')
     setIsOpen(false);
-    setReview({ rating: 0, text: "" });
+    setReview({ rating: 2, text: "CATS" });
   };
 
   useEffect(() => {
+    console.log('@@@ Restaurant useEffect')
     const unsubscribeFromRestaurant = getRestaurantSnapshotById(id, (data) => {
       setRestaurantDetails(data);
     });
@@ -59,6 +65,7 @@ export default function Restaurant({
     };
   }, []);
 
+  console.log('@@@ Restaurant => restaurantDetails')
   return (
     <>
       <RestaurantDetails
@@ -74,6 +81,7 @@ export default function Restaurant({
         review={review}
         onChange={onChange}
         userId={userId}
+        userName={userName}
         id={id}
       /></Suspense>}
     </>

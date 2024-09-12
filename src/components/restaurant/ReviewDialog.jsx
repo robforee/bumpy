@@ -1,3 +1,6 @@
+// src/components/restaurant/ReviewDialog.jsx
+// form action submit
+//
 'use client';
 
 // This components handles the review dialog and uses a next.js feature known as Server Actions to handle the form submission
@@ -12,12 +15,14 @@ const ReviewDialog = ({
 	review,
 	onChange,
 	userId,
+	userName,
 	id,
 }) => {
 	const dialog = useRef();
 
 	// dialogs only render their backdrop when called with `showModal`
 	useLayoutEffect(() => {
+		console.log('@@@ CLIENT: ReviewDialog.useLayoutEffect',{userId:userId,id:id,review:review})
 		if (isOpen) {
 			dialog.current.showModal();
 		} else {
@@ -61,6 +66,7 @@ const ReviewDialog = ({
 
 						<input type="hidden" name="restaurantId" value={id} />
 						<input type="hidden" name="userId" value={userId} />
+						<input type="hidden" name="userName" value={userName} />
 					</article>
 					<footer>
 						<menu>

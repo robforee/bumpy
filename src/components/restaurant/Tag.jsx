@@ -1,3 +1,5 @@
+// src/components/restaurant/Tag.jsx
+//
 // A tag is shown under the filter bar when a filter is selected.
 // Tags show what filters have been selected
 // On click, the tag is removed and the filter is reset

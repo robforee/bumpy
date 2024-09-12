@@ -10,6 +10,7 @@ import { getAuthenticatedAppForUser } from "@/src/lib/firebase/serverApp";
 export default async function ReviewsList({ restaurantId, userId }) {
   const {firebaseServerApp} = await getAuthenticatedAppForUser();
   const reviews = await getReviewsByRestaurantId(getFirestore(firebaseServerApp), restaurantId);
+  console.log('%%% Reviews',reviews.length)
   
   return (
     <ReviewsListClient

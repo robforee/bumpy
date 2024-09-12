@@ -1,3 +1,5 @@
+// src/components/restaurant/RestaurantDetails.jsx
+//
 // This component shows restaurant metadata, and offers some actions to the user like uploading a new restaurant image, and adding a review.
 
 import React from "react";

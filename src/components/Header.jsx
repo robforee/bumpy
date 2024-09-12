@@ -55,12 +55,12 @@ const Header = ({ initialUser }) => {
 
     try {
       const docRef = doc(db, 'users', user.uid);
-	  console.log(user.uid,user.email)
+	    console.log(user.uid,user.email)
       await setDoc(docRef, {
         lastClick: new Date().toISOString(),
         email: user.email
       }, { merge: true });
-      console.log('Document written successfully');
+      console.log('Document written successfully',user.email);
     } catch (error) {
       console.error('Error writing document:', error);
     }

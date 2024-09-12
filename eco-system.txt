@@ -1,0 +1,20 @@
+src/app/
+- actions.js
+
+src/components/restaurant/
+- ReviewDialog.jsx
+- RatingPicker.jsx
+- Restaurant.jsx
+- RestaurantDetails.jsx
+- Stars.jsx
+- Tag.jsx
+
+src/lib/
+- getUser.js
+
+src/lib/firebase/
+- storage.js
+- clientApp.js
+- config.js
+- firestore.js
+- serverApp.js

@@ -1,3 +1,5 @@
+// src/components/restaurant/Starts.jsx
+
 // This component displays star ratings
 
 export default function renderStars(avgRating) {

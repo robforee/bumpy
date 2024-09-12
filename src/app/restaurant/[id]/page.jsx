@@ -9,6 +9,7 @@ import {
   GeminiSummary,
   GeminiSummarySkeleton,
 } from "@/src/components/restaurant/Reviews/ReviewSummary";
+// console.log('GGG page import GeminiSummary, GeminiSummarySkeleton')
 import { getFirestore } from "firebase/firestore";
 
 export default async function Home({ params }) {
@@ -26,15 +27,16 @@ export default async function Home({ params }) {
         initialRestaurant={restaurant}
         initialUserId={currentUser?.uid || ""}
       >
-        <Suspense fallback={<GeminiSummarySkeleton />}>
+        {/* <Suspense fallback={<GeminiSummarySkeleton />}>
           <GeminiSummary restaurantId={params.id} />
-        </Suspense>
+        </Suspense> */}
       </Restaurant>
-      <Suspense
+      {/* <Suspense
         fallback={<ReviewsListSkeleton numReviews={restaurant.numRatings} />}
       >
-        <ReviewsList restaurantId={params.id} userId={currentUser?.uid || ""} />
-      </Suspense>
+        
+      </Suspense> */}
+      <ReviewsList restaurantId={params.id} userId={currentUser?.uid || ""} />
     </main>
   );
 }

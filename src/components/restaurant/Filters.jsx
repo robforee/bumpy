@@ -1,6 +1,6 @@
 // The filters shown on the restaurant listings page
 
-import Tag from "@/src/components/Tag.jsx";
+import Tag from "@/src/components/restaurant/Tag.jsx";
 
 function FilterSelect({ label, options, value, onChange, name, icon }) {
 	return (

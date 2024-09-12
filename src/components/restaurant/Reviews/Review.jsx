@@ -1,4 +1,4 @@
-import renderStars from "@/src/components/Stars.jsx";
+import renderStars from "@/src/components/restaurant/Stars.jsx";
 
 
 export function Review({ rating, text, timestamp }) {

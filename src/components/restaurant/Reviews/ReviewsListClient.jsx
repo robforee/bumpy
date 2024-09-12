@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { getReviewsSnapshotByRestaurantId } from "@/src/lib/firebase/firestore.js";
-import { Review } from "@/src/components/Reviews/Review";
+import { Review } from "@/src/components/restaurant/Reviews/Review";
 
 export default function ReviewsListClient({
   initialReviews,

@@ -85,6 +85,11 @@ const Header = ({ initialUser }) => {
               <ul>
                 <li>{user.displayName}</li>
                 <li>
+                  <Link href="/restaurants">
+                    Restaurant Listings
+                  </Link>
+                </li>                
+                <li>
                   <a href="#" onClick={addFakeRestaurantsAndReviews}>
                     Add sample restaurants
                   </a>

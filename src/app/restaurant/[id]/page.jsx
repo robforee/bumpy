@@ -1,14 +1,14 @@
-import Restaurant from "@/src/components/Restaurant.jsx";
+import Restaurant from "@/src/components/restaurant/Restaurant.jsx";
 import { Suspense } from "react";
 import { getRestaurantById } from "@/src/lib/firebase/firestore.js";
 import { getAuthenticatedAppForUser, getAuthenticatedAppForUser as getUser } from "@/src/lib/firebase/serverApp.js";
 import ReviewsList, {
   ReviewsListSkeleton,
-} from "@/src/components/Reviews/ReviewsList";
+} from "@/src/components/restaurant/Reviews/ReviewsList";
 import {
   GeminiSummary,
   GeminiSummarySkeleton,
-} from "@/src/components/Reviews/ReviewSummary";
+} from "@/src/components/restaurant/Reviews/ReviewSummary";
 import { getFirestore } from "firebase/firestore";
 
 export default async function Home({ params }) {

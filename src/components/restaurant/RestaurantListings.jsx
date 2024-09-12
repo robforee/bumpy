@@ -6,9 +6,9 @@
 import Link from "next/link";
 import { React, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import renderStars from "@/src/components/Stars.jsx";
+import renderStars from "@/src/components/restaurant/Stars.jsx";
 import { getRestaurantsSnapshot } from "@/src/lib/firebase/firestore.js";
-import Filters from "@/src/components/Filters.jsx";
+import Filters from "@/src/components/restaurant/Filters.jsx";
 
 const RestaurantItem = ({ restaurant }) => (
 	<li key={restaurant.id}>

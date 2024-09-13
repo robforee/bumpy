@@ -34,7 +34,7 @@ const ImageCover = ({ photo, name }) => (
 const ResturantDetails = ({ restaurant }) => (
 	<div className="restaurant__details">
 		<h2>{restaurant.name}</h2>
-		<RestaurantRating restaurant={restaurant} />
+		{/* <RestaurantRating restaurant={restaurant} /> */}
 		<RestaurantMetadata restaurant={restaurant} />
 	</div>
 );
@@ -49,9 +49,10 @@ const RestaurantRating = ({ restaurant }) => (
 const RestaurantMetadata = ({ restaurant }) => (
 	<div className="restaurant__meta">
 		<p>
-			{restaurant.category} | {restaurant.city}
+			{restaurant.category} 
+			{/* | {restaurant.city} */}
 		</p>
-		<p>{"$".repeat(restaurant.price)}</p>
+		{/* <p>{"$".repeat(restaurant.price)}</p> */}
 	</div>
 );
 

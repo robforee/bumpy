@@ -47,16 +47,16 @@ const RestaurantDetails = ({
 				<div className="details">
 					<h2>{restaurant.name}</h2>
 
-					<div className="restaurant__rating">
+					{/* <div className="restaurant__rating">
 						<ul>{renderStars(restaurant.avgRating)}</ul>
 
 						<span>({restaurant.numRatings})</span>
-					</div>
+					</div> */}
 
 					<p>
 						{restaurant.category} | {restaurant.city}
 					</p>
-					<p>{"$".repeat(restaurant.price)}</p>
+					{/* <p>{"$".repeat(restaurant.price)}</p> */}
 					{children}
 				</div>
 			</div>

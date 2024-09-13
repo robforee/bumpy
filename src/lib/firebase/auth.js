@@ -1,8 +1,8 @@
 // src/lib/firebase/auth.js
-// src/lib/firebase/auth.js
 
 
 import {
+  getAuth,
   GoogleAuthProvider,
   signInWithPopup,
   onAuthStateChanged as _onAuthStateChanged,
@@ -54,7 +54,6 @@ async function sendTokenToBackend(token, userId) {
   // });
 }
 
-
 export async function signOut() {
   try {
     return auth.signOut();
@@ -63,4 +62,11 @@ export async function signOut() {
   }
 }
 
-
+export async function getUserIdToken() {
+  const auth = getAuth();
+  const user = auth.currentUser;
+  if (user) {
+    return user.getIdToken();
+  }
+  throw new Error('No user is signed in');
+}

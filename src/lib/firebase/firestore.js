@@ -7,14 +7,12 @@ import {
 	onSnapshot,
 	query,
 	getDocs,
-	doc,
-	getDoc,
 	updateDoc,
 	orderBy,
 	Timestamp,
 	runTransaction,
 	where,
-	addDoc,
+	doc, addDoc, setDoc, getDoc,
 	getFirestore,
 } from "firebase/firestore";
 
@@ -72,6 +70,8 @@ export async function addReviewToRestaurant(db, restaurantId, review) {
 		);
 
 		// corrected line
+		//console.log('XXX',review);
+		console.log('@@@ runTransaction')
 		await runTransaction(db, transaction =>
 			updateWithRating(transaction, docRef, newRatingDocument, review)
 		);
@@ -243,3 +243,72 @@ export async function addFakeRestaurantsAndReviews() {
 		}
 	}
 }
+
+export async function addDocument(collectionName, data) {
+	const docRef = await addDoc(collection(db, collectionName), data);
+	return docRef.id;
+  }
+  
+  export async function getDocument(collectionName, docId) {
+	const docRef = doc(db, collectionName, docId);
+	const docSnap = await getDoc(docRef);
+	return docSnap.exists() ? docSnap.data() : null;
+  }
+  
+  export async function updateDocument(collectionName, docId, data) {
+	const docRef = doc(db, collectionName, docId);
+	await updateDoc(docRef, data);
+  }
+  
+  export async function deleteDocument(collectionName, docId) {
+	const docRef = doc(db, collectionName, docId);
+	await deleteDoc(docRef);
+  }
+
+  // Add these new functions to your src/lib/firebase/firestore.js file
+
+export async function addReviewDirectly(db, restaurantId, review) {
+	if (!restaurantId) {
+	  throw new Error("No restaurant ID has been provided.");
+	}
+  
+	if (!review) {
+	  throw new Error("A valid review has not been provided.");
+	}
+  
+	try {
+	  const newRatingDocument = doc(collection(db, `restaurants/${restaurantId}/ratings`));
+	  await setDoc(newRatingDocument, {
+		...review,
+		timestamp: Timestamp.fromDate(new Date()),
+	  });
+	  console.log('Review added successfully');
+	  return newRatingDocument.id;
+	} catch (error) {
+	  console.error("There was an error adding the review", error);
+	  throw error;
+	}
+  }
+  
+  export async function addMessageToRestaurant(db, restaurantId, message) {
+	if (!restaurantId) {
+	  throw new Error("No restaurant ID has been provided.");
+	}
+  
+	if (!message) {
+	  throw new Error("A valid message has not been provided.");
+	}
+  
+	try {
+	  const newMessageDocument = doc(collection(db, `restaurants/${restaurantId}/messages`));
+	  await setDoc(newMessageDocument, {
+		...message,
+		timestamp: Timestamp.fromDate(new Date()),
+	  });
+	  console.log('Message added successfully');
+	  return newMessageDocument.id;
+	} catch (error) {
+	  console.error("There was an error adding the message", error);
+	  throw error;
+	}
+  }

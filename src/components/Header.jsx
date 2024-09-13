@@ -1,12 +1,18 @@
 // src/components/Header.jsx
 'use client';
-import React, { useState, useEffect } from 'react';
-import Link from "next/link";
-import { useRouter } from 'next/navigation';
-import { signInWithGoogle, signOut, onAuthStateChanged } from "@/src/lib/firebase/auth.js";
-import { db } from "@/src/lib/firebase/clientApp.js";
-import { doc, setDoc } from "firebase/firestore";
-import { addFakeRestaurantsAndReviews } from "@/src/lib/firebase/firestore.js";
+import React, { useState, useEffect }          from 'react';
+import Link                                    from "next/link";
+import { useRouter }                           from 'next/navigation';
+import { signInWithGoogle, 
+                 signOut, onAuthStateChanged } from "@/src/lib/firebase/auth.js";
+import { db }                                  from "@/src/lib/firebase/clientApp.js";
+import { addFakeRestaurantsAndReviews,
+    addReviewDirectly, addMessageToRestaurant } from "@/src/lib/firebase/firestore.js";
+
+import { serverWriteAsImpersonatedUser, 
+             ServerWriteWithServiceAccount }  from "@/src/app/actions.js";
+import { writeToUserOwnedPath }                from "@/src/app/actions.js"; 
+
 
 const Header = ({ initialUser }) => {
   const [user, setUser] = useState(initialUser);
@@ -47,25 +53,101 @@ const Header = ({ initialUser }) => {
     }
   };
   
-  const handleWriteToFirestore = async () => {
+  const handleWriteToUserOwnedPath = async () => {
     if (!user) {
       console.log('User not logged in');
       return;
     }
 
     try {
-      const docRef = doc(db, 'users', user.uid);
-	    console.log(user.uid,user.email)
-      await setDoc(docRef, {
-        lastClick: new Date().toISOString(),
-        email: user.email
-      }, { merge: true });
-      console.log('Document written successfully',user.email);
+      const rating = {
+        text: "This is a test rating.",
+        rating: 4,
+        timestamp: new Date().toISOString()
+      };
+
+      await writeToUserOwnedPath(user.uid, rating);
+      console.log('Rating written successfully to user-owned path');
     } catch (error) {
-      console.error('Error writing document:', error);
+      console.error('Error writing to user-owned path:', error);
+    }
+  };
+  
+  // from "@/src/lib/firebase/clientApp  which uses /auth-service-worker
+
+  const handleWriteToReview = async () => {
+    if (!user) {
+      console.log('User not logged in');
+      return;
+    }
+  
+    const restaurantId = '6SMbb7lkNJDImOAXiegw';
+  
+    try {
+      // Write a review
+      const review = {
+        rating: 5,
+        text: "This is a test review from the client side.",
+        userId: user.uid,
+        userName: user.displayName || user.email
+      };
+      // 
+      await addReviewDirectly(db, restaurantId, review);
+      console.log('Review written successfully');
+  
+      // Write a message
+      const message = {
+        text: "This is a test message from the client side.",
+        userId: user.uid,
+        userName: user.displayName || user.email
+      };
+      await addMessageToRestaurant(db, restaurantId, message);
+      //console.log('Message written successfully');
+  
+    } catch (error) {
+      console.error('Error writing review and message:', error);
     }
   };
 
+  // from @/src/app/actions
+  const handleServerSideWrite = async () => {
+    if (!user) {
+      console.log('User not logged in');
+      return;
+    }
+
+    try {
+      const restaurantId = 'zN454oNk93bCGQgmY1gA';
+      const review = {
+        text: "Perfectly cooked.",
+        rating: 5,
+        userId: user.uid,
+        userName: user.displayName || user.email
+      };
+      
+      await ServerWriteWithServiceAccount();
+      console.log('Review written successfully from server-side');
+    } catch (error) {
+      console.error('Error writing review from server-side:', error);
+    }
+  };
+
+  // from @/src/app/actions
+  const handleServerSideUserWrite = async () => {
+    if (!user) {
+      console.log('User not logged in');
+      return;
+    }
+  
+    try {
+      const idToken = await user.getIdToken();
+      const result = await serverWriteAsImpersonatedUser(idToken);
+      console.log('Document written successfully from server-side as user');
+    } catch (error) {
+      console.error('Error writing document from server-side as user:', error);
+    }
+  };
+  
   return (
     <header>
       <Link href="/" className="logo">
@@ -95,10 +177,25 @@ const Header = ({ initialUser }) => {
                   </a>
                 </li>
                 <li>
-                  <a href="#" onClick={handleWriteToFirestore}>
-                    Write to Firestore
+                  <a href="#" onClick={handleWriteToReview}>
+                    Write RATINGS ETC
                   </a>
                 </li>
+                <li>
+                  <a href="#" onClick={handleWriteToUserOwnedPath}>
+                    handle Write To User Owned Path
+                  </a>
+                </li>           
+                <li>
+                  <a href="#" onClick={handleServerSideUserWrite}>
+                  handle ServerSide User Write
+                  </a>
+                </li>                           
+                <li>
+                  <a href="#" onClick={handleServerSideWrite}>
+                  handle ServerSide ServiceAccount Write
+                  </a>
+                </li>                   
                 <li>
                   <a href="#" onClick={handleSignOut}>
                     Sign Out

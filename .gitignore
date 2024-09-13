@@ -6,3 +6,4 @@ spool
 database-debug.log
 firebasee-debug.log
 functions/.runtimeconfig.json
+.ev.local

@@ -81,6 +81,7 @@ const Header = ({ initialUser }) => {
       return;
     }
   
+    return;
     const restaurantId = '6SMbb7lkNJDImOAXiegw';
   
     try {

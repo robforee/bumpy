@@ -17,9 +17,15 @@ export const dynamic = 'force-dynamic';
 
 export default async function Home({ searchParams }) {
 	const {firebaseServerApp} = await getAuthenticatedAppForUser();
-	const restaurants = await getRestaurants(getFirestore(firebaseServerApp), searchParams);
+    
+	const filters = {
+        category: searchParams.category || "",
+        sortDirection: searchParams.sortDirection || ""
+    };
+
+	const restaurants = await getRestaurants(getFirestore(firebaseServerApp), filters);
 	
-	const isUnderConstruction = false; // Set this based on your app's state
+	const isUnderConstruction = true; // Set this based on your app's state
 
 	if (isUnderConstruction) {
 	  return <UnderConstruction />;

@@ -49,10 +49,11 @@ const RestaurantRating = ({ restaurant }) => (
 const RestaurantMetadata = ({ restaurant }) => (
 	<div className="restaurant__meta">
 		<p>
-			{restaurant.category} 
+			{/* {restaurant.category}  */}
 			{/* | {restaurant.city} */}
+			 .. {"ok ".repeat(2)}
 		</p>
-		{/* <p>{"$".repeat(restaurant.price)}</p> */}
+		
 	</div>
 );
 
@@ -64,10 +65,8 @@ export default function RestaurantListings({
 
 	// The initial filters are the search params from the URL, useful for when the user refreshes the page
 	const initialFilters = {
-		city: searchParams.city || "",
 		category: searchParams.category || "",
-		price: searchParams.price || "",
-		sort: searchParams.sort || "",
+		sortDirection: searchParams.sortDirection || ""
 	};
 
 	const [restaurants, setRestaurants] = useState(initialRestaurants);

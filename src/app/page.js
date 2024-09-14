@@ -5,6 +5,7 @@ import { getRestaurants } from "@/src/lib/firebase/firestore.js";
 import { getAuthenticatedAppForUser } from "@/src/lib/firebase/serverApp.js";
 import { getFirestore } from "firebase/firestore";
 import { default as dynamicImport } from 'next/dynamic';
+import GmailDashboard from "../components/Dashboard";
 
 
 // Dynamically import ServerTime with no SSR
@@ -25,7 +26,7 @@ export default async function Home({ searchParams }) {
 
 	const restaurants = await getRestaurants(getFirestore(firebaseServerApp), filters);
 	
-	const isUnderConstruction = true; // Set this based on your app's state
+	const isUnderConstruction = false; // Set this based on your app's state
 
 	if (isUnderConstruction) {
 	  return <UnderConstruction />;
@@ -35,6 +36,8 @@ export default async function Home({ searchParams }) {
 		<main className="main__home">
 			<h1>Welcome to Analyst Server</h1>
 			<ServerTime />			
+			<GmailDashboard />
+			stuff
 			<RestaurantListings
 				initialRestaurants={restaurants}
 				searchParams={searchParams}

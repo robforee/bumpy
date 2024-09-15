@@ -50,9 +50,20 @@
 - Server-side functions verify ID tokens before performing privileged actions
 - Firestore rules provide an additional layer of security
 
+## OAuth Consent Screen and Test Mode
+
+- The application is currently in "Testing" mode in the Google Cloud Console
+- While in test mode, only manually added test users can access the app
+- There is a limit of 100 test users over the entire lifetime of the app
+- Test users must be manually added through the Google Cloud Console
+- The application cannot programmatically add test users
+- Once the app is verified and published, these restrictions will be lifted
+
 ## Areas for Potential Review
 
 1. Ensure proper error handling in authentication functions
 2. Verify that all sensitive operations check for user authentication
 3. Review the scope of permissions granted during Google sign-in
 4. Ensure secure storage and transmission of authentication tokens
+5. Implement a process for managing test users during development
+6. Plan for the transition from test mode to published mode, including the verification process

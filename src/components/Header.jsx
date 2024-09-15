@@ -13,6 +13,8 @@ import { serverWriteAsImpersonatedUser,
              ServerWriteWithServiceAccount }  from "@/src/app/actions.js";
 import { writeToUserOwnedPath }                from "@/src/app/actions.js"; 
 
+import { fetchEmailsFromServer } from "@/src/lib/gmail/clientOperations";
+
 
 const Header = ({ initialUser }) => {
   const [user, setUser] = useState(initialUser);
@@ -148,6 +150,21 @@ const Header = ({ initialUser }) => {
     }
   };
   
+  const handleFetchEmails = async () => {
+    if (!user) {
+      console.log('User not logged in');
+      return;
+    }
+
+    try {
+      const emails = await fetchEmailsFromServer();
+      console.log('Fetched emails:', emails);
+      // Update UI to display emails or navigate to an email view
+    } catch (error) {
+      console.error('Error fetching emails:', error);
+    }
+  };  
+
   return (
     <header>
       <Link href="/" className="logo">
@@ -172,34 +189,25 @@ const Header = ({ initialUser }) => {
                   </Link>
                 </li>                
                 <li>
-                  <a href="#" onClick={addFakeRestaurantsAndReviews}>
-                    Add sample restaurants
-                  </a>
+                  <a href="#" onClick={addFakeRestaurantsAndReviews}> Add sample restaurants </a>
                 </li>
                 <li>
-                  <a href="#" onClick={handleWriteToReview}>
-                    Write RATINGS ETC
-                  </a>
+                  <a href="#" onClick={handleWriteToReview}> Write RATINGS ETC </a>
                 </li>
                 <li>
-                  <a href="#" onClick={handleWriteToUserOwnedPath}>
-                    handle Write To User Owned Path
-                  </a>
+                  <a href="#" onClick={handleWriteToUserOwnedPath}> handle Write To User Owned Path </a>
                 </li>           
                 <li>
-                  <a href="#" onClick={handleServerSideUserWrite}>
-                  handle ServerSide User Write
-                  </a>
+                  <a href="#" onClick={handleServerSideUserWrite}> handle ServerSide User Write </a>
                 </li>                           
                 <li>
-                  <a href="#" onClick={handleServerSideWrite}>
-                  handle ServerSide ServiceAccount Write
-                  </a>
-                </li>                   
+                  <a href="#" onClick={handleServerSideWrite}> handle ServerSide ServiceAccount Write </a>
+                </li>
                 <li>
-                  <a href="#" onClick={handleSignOut}>
-                    Sign Out
-                  </a>
+                  <a href="#" onClick={handleFetchEmails}> Fetch Emails </a>
+                </li>                
+                <li>
+                  <a href="#" onClick={handleSignOut}> Sign Out </a>
                 </li>
               </ul>
             </div>

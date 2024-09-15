@@ -11,38 +11,8 @@
     
   // Sample reports data
   const [reports, setReports] = useState([
-    { reportId: 1, text: 
-        `
-- Self - depressed and anxious 
-- Finances - zero slack and underwater 
-- Mariya - working memory and intuition 
-- Julia - an island
-- Katie
-- John - infp
-- Julie - scientific proposals
-- EBCC - station prepare for event
-- Storage - stage 1 @ 80%, stage 2 $0
-- Assistant - ask questions after user input
-- Elantra - broken door lock and lapsed registration
-- Market - Buffet has gone to cash, invest in productivity
-- Security - drones
-- UI - shift left presentation style 
-- PEEPs - related to clarity of expectations, opportunities to learn and grow, feeling cared about, and a connection to the organization's mission or purpose
-- Future of work – manual labor last means service sector long term demand is management, seeking meaning, belonging, holistic care, and appreciation 
-- Substrate - learn it, use it
-
-
-        
-        `
-
-     },
-     { reportId: 2, text: `
-What does AI automation look like?
-
-        
-        `},
-
-    // Add more reports as needed
+    { reportId: 1, text:         ``     },
+     { reportId: 2, text: `        `},
   ]);
   
     const signInWithGoogle = async () => {
@@ -124,22 +94,6 @@ What does AI automation look like?
             </div>
           ))}
   
-          {[...Array(Math.max(0, 5 - reports.length))].map((_, index) => (
-            <div key={`empty-${index}`} style={{ flex: '1 1 300px', minWidth: '300px', border: '1px solid #ccc', borderRadius: '8px', padding: '20px' }}>
-              <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Box {index + reports.length + 2}</h2>
-              <ReactMarkdown components={{
-                ul: ({node, ...props}) => <ul style={markdownStyles.ul} {...props} />,
-                li: ({node, ...props}) => <li style={markdownStyles.li} {...props} />
-              }}>
-                {`This is an empty box. You can add Markdown content here.
-  
-  - Item 1 with round bullet
-  - Item 2 with round bullet
-  
-  **Bold text** and *italic text*.`}
-              </ReactMarkdown>
-            </div>
-          ))}
         </div>
       </div>
     );

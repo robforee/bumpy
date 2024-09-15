@@ -1,4 +1,8 @@
 // src/lib/firebase/auth.js
+// provider.addScope('https://www.googleapis.com/auth/gmail.modify');
+// provider.addScope('https://www.googleapis.com/auth/drive.file');
+// provider.addScope('https://www.googleapis.com/auth/userinfo.email');
+
 
 
 import {
@@ -20,8 +24,12 @@ export async function signInWithGoogle() {
   
   // Add the required scopes
   provider.addScope('https://www.googleapis.com/auth/gmail.modify');
-  provider.addScope('https://www.googleapis.com/auth/drive.file');
-  provider.addScope('https://www.googleapis.com/auth/userinfo.email');
+  provider.addScope('https://www.googleapis.com/auth/gmail.readonly');
+
+  // Add these parameters to force account selection
+  provider.setCustomParameters({
+    prompt: 'select_account'
+  });  
 
   try {
     const result = await signInWithPopup(auth, provider);
@@ -31,10 +39,13 @@ export async function signInWithGoogle() {
     
     // This gives you a Google Access Token.
     const credential = GoogleAuthProvider.credentialFromResult(result);
-    const token = credential.accessToken;
+    const accessToken = credential.accessToken;
 
-    // Send the token to your backend
-    await sendTokenToBackend(token, user.uid);
+    // Get the refresh token
+    const refreshToken = user.refreshToken;
+
+    // Send the tokens to your backend
+    await sendTokensToBackend(accessToken, refreshToken, user.uid);
 
     return user;
   } catch (error) {
@@ -43,15 +54,18 @@ export async function signInWithGoogle() {
   }
 }
 
-async function sendTokenToBackend(token, userId) {
-  // Implement this function to securely send the token to your backend
-  // You'll need to create a Firebase Cloud Function to handle this
-  // For example:
-  // await fetch('https://your-cloud-function-url.com/storeToken', {
-  //   method: 'POST',
-  //   headers: { 'Content-Type': 'application/json' },
-  //   body: JSON.stringify({ token, userId })
-  // });
+async function sendTokensToBackend(accessToken, refreshToken, userId) {
+  const response = await fetch('/api/storeTokens', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ accessToken, refreshToken, userId }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to store tokens');
+  }
 }
 
 export async function signOut() {

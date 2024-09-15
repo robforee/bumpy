@@ -1,30 +1,35 @@
-// src/lib/firebase/auth.js
-// provider.addScope('https://www.googleapis.com/auth/gmail.modify');
-// provider.addScope('https://www.googleapis.com/auth/drive.file');
-// provider.addScope('https://www.googleapis.com/auth/userinfo.email');
-
-
-
 import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
   onAuthStateChanged as _onAuthStateChanged,
 } from "firebase/auth";
-import { auth } from "./clientApp";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
+import { auth, db } from "./clientApp";
 
-//import { auth } from "@/src/lib/firebase/clientApp";
+// Initialize Firestore
+//const db = getFirestore();
 
 export function onAuthStateChanged(cb) {
-	return _onAuthStateChanged(auth, cb);
+  return _onAuthStateChanged(auth, cb);
 }
 
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
   
   // Add the required scopes
-  provider.addScope('https://www.googleapis.com/auth/gmail.modify');
-  provider.addScope('https://www.googleapis.com/auth/gmail.readonly');
+  const scopes = [
+    'https://www.googleapis.com/auth/gmail.modify',
+    'https://www.googleapis.com/auth/gmail.compose',
+    'https://www.googleapis.com/auth/drive.file',
+    'https://www.googleapis.com/auth/drive.appdata',
+    'https://www.googleapis.com/auth/calendar',
+    'https://www.googleapis.com/auth/chat.messages',
+    'https://www.googleapis.com/auth/chat.spaces',
+    'https://www.googleapis.com/auth/contacts'
+  ];
+
+  scopes.forEach(scope => provider.addScope(scope));
 
   // Add these parameters to force account selection
   provider.setCustomParameters({
@@ -47,10 +52,26 @@ export async function signInWithGoogle() {
     // Send the tokens to your backend
     await sendTokensToBackend(accessToken, refreshToken, user.uid);
 
+    // Store the scopes in Firestore
+    console.log('writing scopes',user.uid)
+    await storeUserScopes(user.uid, scopes);// write as user?
+    console.log('writing scopes',user.uid)
+
     return user;
   } catch (error) {
     console.error("Error signing in with Google", error);
     throw error;
+  }
+}
+
+async function storeUserScopes(userId, scopes) {
+  try {
+    const userRef = doc(db, "user_scopes", userId);
+    await setDoc(userRef, { scopes: scopes }, { merge: true });
+    console.log("User scopes stored successfully");
+  } catch (error) {
+    console.error("Error storing user scopes:", error);
+    // You might want to handle this error more gracefully
   }
 }
 

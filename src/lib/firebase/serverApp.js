@@ -31,6 +31,7 @@ export async function getAuthenticatedAppForUser() {
 
   return { firebaseServerApp, currentUser: auth.currentUser };
 }
+
 export function getAdminApp() {
   console.log(process.env)
   if (getApps().length === 0) {
@@ -49,15 +50,3 @@ export function getAdminApp() {
 export function getAdminFirestore() {
   return getFirestore(getAdminApp());
 }
-// export async function getAuthenticatedAppForUser() {
-//   const idToken = headers().get("Authorization")?.split("Bearer ")[1];
-
-//   const firebaseServerApp = initializeApp(firebaseConfig, 'SERVER');
-
-//   const auth = getAuth(firebaseServerApp);
-//   await auth.authStateReady();
-
-//   // You might want to verify the idToken here if needed
-
-//   return { firebaseServerApp, currentUser: auth.currentUser };
-// }

@@ -11,7 +11,7 @@ const oauth2Client = new google.auth.OAuth2(
 
 export async function refreshAccessToken(userId) {
   const db = getAdminFirestore();
-  const userTokensRef = db.collection('userTokens').doc(userId);
+  const userTokensRef = db.collection('user_tokens').doc(userId);
   
   const tokenDoc = await userTokensRef.get();
   if (!tokenDoc.exists) {

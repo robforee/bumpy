@@ -1,11 +1,10 @@
-// src/lib/firebase/adminApp.js
+// src/lib/firebase/adminAppCommon.js
 
-import { initializeApp, cert, getApps } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
-import { google } from 'googleapis';
+const { initializeApp, cert, getApps } = require('firebase-admin/app');
+const { getAuth } = require('firebase-admin/auth');
+const { getFirestore } = require('firebase-admin/firestore');
 
-export function getAdminApp() {
+function getAdminApp() {
     if (getApps().length === 0) {
       const serviceAccount = {
         type: "service_account",
@@ -27,16 +26,16 @@ export function getAdminApp() {
     return getApps()[0];
 }
 
-export function getAdminAuth() {
+function getAdminAuth() {
     return getAuth(getAdminApp());
 }
   
-export function getAdminFirestore() {
+function getAdminFirestore() {
     return getFirestore(getAdminApp());
 }
 
-export async function getGmailService(accessToken) {
-  const oauth2Client = new google.auth.OAuth2();
-  oauth2Client.setCredentials({ access_token: accessToken });
-  return google.gmail({ version: 'v1', auth: oauth2Client });
-}
+module.exports = {
+    getAdminApp,
+    getAdminAuth,
+    getAdminFirestore
+};

@@ -21,6 +21,7 @@ export async function signInWithGoogle() {
   const scopes = [
     'https://www.googleapis.com/auth/gmail.modify',
     'https://www.googleapis.com/auth/gmail.compose',
+    'https://www.googleapis.com/auth/drive',
     'https://www.googleapis.com/auth/drive.file',
     'https://www.googleapis.com/auth/drive.appdata',
     'https://www.googleapis.com/auth/calendar',

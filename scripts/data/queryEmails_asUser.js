@@ -43,11 +43,11 @@ async function main() {
       });
       let messages = emailResponse.data.messages || [];
 
-      // QUERY DRIVE driveResponse
+      // QUERY DRIVE driveResponse  "'root' in parents and trashed = false and mimeType != 'application/vnd.google-apps.folder'",
       const myDrive = google.drive({ version: 'v3', auth: oauth2Client });
 
       const driveResponse = await myDrive.files.list(
-        { q: "'root' in parents and trashed = false and mimeType != 'application/vnd.google-apps.folder'",
+        { q: "trashed = false",
           fields: 'files(id, name, mimeType, modifiedTime)',
           orderBy: 'modifiedTime desc',
           pageSize: 10

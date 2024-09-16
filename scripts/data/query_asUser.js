@@ -112,8 +112,10 @@ async function main() {
         }
       }
 
-      const marketingLabelId = await createLabel('redshirt.marketing');
-      const invoiceLabelId = await createLabel('redshirt.accounting.invoice');
+      // Create parent label
+      const redshirtLabelId = await createLabel('redshirt');
+      const marketingLabelId = await createLabel('redshirt/marketing');
+      const invoiceLabelId = await createLabel('redshirt/accounting/invoice');
 
       if (messages.length > 0) {
         try {

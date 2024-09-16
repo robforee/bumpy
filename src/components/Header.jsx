@@ -10,10 +10,10 @@ import { addFakeRestaurantsAndReviews,
     addReviewDirectly, addMessageToRestaurant } from "@/src/lib/firebase/firestore.js";
 
 import { serverWriteAsImpersonatedUser, 
-             ServerWriteWithServiceAccount }  from "@/src/app/actions.js";
+             ServerWriteWithServiceAccount }   from "@/src/app/actions.js";
 import { writeToUserOwnedPath }                from "@/src/app/actions.js"; 
 
-import { fetchEmailsFromServer } from "@/src/lib/gmail/clientOperations";
+import { fetchEmailsFromServer }               from "@/src/lib/gmail/clientOperations";
 
 
 const Header = ({ initialUser }) => {
@@ -170,6 +170,10 @@ const Header = ({ initialUser }) => {
       <Link href="/" className="logo">
         <img src="/friendly-eats.svg" alt="FriendlyEats" />
         Analyst Server
+      </Link>
+            
+      <Link href="/topics/PUqpeu0MzmTU58vhhQwy" style={{ color: 'red' }}>
+            Root Topic
       </Link>
       {user ? (
         <>

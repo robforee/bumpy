@@ -1,4 +1,4 @@
-// src/lib/firebase/firestore.js
+	// src/lib/firebase/firestore.js
 
 import { generateFakeRestaurantsAndReviews } from "@/src/lib/fakeRestaurants.js";
 
@@ -234,6 +234,7 @@ export async function addFakeRestaurantsAndReviews() {
 }
 
 export async function addDocument(collectionName, data) {
+	console.log(data)
 	const docRef = await addDoc(collection(db, collectionName), data);
 	return docRef.id;
   }
@@ -301,3 +302,24 @@ export async function addReviewDirectly(db, restaurantId, review) {
 	  throw error;
 	}
   }
+
+  export async function getTopicById(db, topicId) {
+	if (!topicId) {
+	  console.log("Error: Invalid ID received: ", topicId);
+	  return null;
+	}
+	console.log('FFF fetch topics/${topicId}')
+	const docRef = doc(db, "topics", topicId);
+	const docSnap = await getDoc(docRef);
+	if (docSnap.exists()) {
+	  return {
+		id: docSnap.id,
+		...docSnap.data(),
+		timestamp: docSnap.data().timestamp?.toDate(),
+	  };
+	} else {
+	  console.log("No such topic!");
+	  return null;
+	}
+  }
+  

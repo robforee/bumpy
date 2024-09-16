@@ -6,6 +6,8 @@ import { getAuthenticatedAppForUser } from "@/src/lib/firebase/serverApp.js";
 import { getFirestore } from "firebase/firestore";
 import { default as dynamicImport } from 'next/dynamic';
 import GmailDashboard from "../components/Dashboard";
+import TopicView from "../components/TopicView";
+import AdminPage from "./admin/page";
 
 
 // Dynamically import ServerTime with no SSR
@@ -29,7 +31,7 @@ export default async function Home({ searchParams }) {
 	const isUnderConstruction = false; // Set this based on your app's state
 
 	if (isUnderConstruction) {
-	  return <UnderConstruction />;
+	  return <AdminPage />
 	}	
 	
 	return (
@@ -37,7 +39,7 @@ export default async function Home({ searchParams }) {
 			<h1>Welcome to Analyst Server</h1>
 			<ServerTime />			
 			<GmailDashboard />
-			stuff
+			
 			<RestaurantListings
 				initialRestaurants={restaurants}
 				searchParams={searchParams}

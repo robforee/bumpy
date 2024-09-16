@@ -1,0 +1,51 @@
+// src/app/topics/[id]/page.jsx
+"use client";
+
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { getTopicById } from '../../../lib/firebase/firestore';
+import { getFirestore } from 'firebase/firestore';
+import { initializeApp, getApps } from 'firebase/app';
+import { firebaseConfig } from '../../../lib/firebase/clientApp';
+import TopicEditor from '../../../components/TopicEditor';
+
+// Initialize Firebase
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const db = getFirestore(app);
+
+export default function TopicPage() {
+  const [topic, setTopic] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const params = useParams();
+
+  useEffect(() => {
+    async function fetchTopic() {
+      try {
+        const topicData = await getTopicById(db, params.id);
+        setTopic(topicData);
+      } catch (error) {
+        console.error("Error fetching topic:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (params.id) {
+      fetchTopic();
+    }
+  }, [params.id]);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!topic) {
+    return <div>Topic not found</div>;
+  }
+
+  return (
+    <div className="container mx-auto p-4">
+      <TopicEditor topic={topic} />
+    </div>
+  );
+}

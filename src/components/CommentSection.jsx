@@ -1,4 +1,4 @@
-// /app/components/TopicView.js
+// /app/components/CommentSection.js
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import TopicModel from '../lib/TopicModel';

@@ -4,7 +4,8 @@
 import React, { useState } from 'react';
 import { createRootTopic } from '../lib/topicOperations';
 
-const CreateRootTopic = ({ user }) => {
+const CreateRootTopic = () => {
+  const { user } = useUser();
   const [title, setTitle] = useState("Root Topic");
   const [message, setMessage] = useState("");
 

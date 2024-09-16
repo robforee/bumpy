@@ -3,10 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import TopicModel from '../lib/TopicModel';
-import CommentSection from './CommentSection';
-import PromptSection from './PromptSection';
-import ArtifactSection from './ArtifactSection';
-import EventSection from './EventSection';
 
 const TopicView = () => {
   const [topic, setTopic] = useState(null);

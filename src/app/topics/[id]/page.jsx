@@ -7,10 +7,14 @@ import { getTopicById } from '../../../lib/firebase/firestore';
 import { db } from '../../../lib/firebase/clientApp';
 import TopicEditor from '../../../components/TopicEditor';
 import Link from 'next/link';
+import { useUser } from '@/src/contexts/UserContext';
 
 export default function TopicPage() {
+  const { user, loading } = useUser();
+  if (!user) { return <div>Please sign in for access</div>; }
+  if (loading) { return <div>Loading...</div>; }
+
   const [topic, setTopic] = useState(null);
-  const [loading, setLoading] = useState(true);
   const params = useParams();
 
   useEffect(() => {
@@ -21,7 +25,7 @@ export default function TopicPage() {
       } catch (error) {
         console.error("Error fetching topic:", error);
       } finally {
-        setLoading(false);
+        //setLoading(false);
       }
     }
 
@@ -43,7 +47,7 @@ export default function TopicPage() {
       <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
         <h2 className="text-2xl font-bold text-gray-800 mb-4">Topic not found</h2>
         <Link href="/admin" className="text-blue-500 hover:text-blue-600 transition duration-300">
-          ← Back to Admin Page
+          ← to Admin Page
         </Link>
       </div>
     );

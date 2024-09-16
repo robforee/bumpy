@@ -18,6 +18,53 @@ import {
 
 import { db } from "@/src/lib/firebase/clientApp";
 
+export async function getMembers(db, filters = {}) {
+    const collectionName = filters.category === 'Restaurant' ? 'restaurants' : 'members';
+    let q = query(collection(db, 'restaurants'));
+
+    if (filters.category) {
+        q = query(q, where("category", "==", filters.category));
+    }
+
+    // Add member-specific filters
+    if (filters.role) {
+        q = query(q, where("role", "==", filters.role));
+    }
+
+    if (filters.location) {
+        q = query(q, where("location", "==", filters.location));
+    }
+
+    // Apply other filters if needed
+    q = applyMemberQueryFilters(q, filters);
+
+    const results = await getDocs(q);
+    return results.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        timestamp: doc.data().timestamp?.toDate(),
+    }));
+}
+
+
+function applyMemberQueryFilters(q, filters) {
+    // Add any additional member-specific filter logic here
+    // For example, filtering by membership status, join date range, etc.
+    
+    if (filters.membershipStatus) {
+        q = query(q, where("membershipStatus", "==", filters.membershipStatus));
+    }
+
+    if (filters.joinDateStart && filters.joinDateEnd) {
+        q = query(q, 
+            where("joinDate", ">=", new Date(filters.joinDateStart)),
+            where("joinDate", "<=", new Date(filters.joinDateEnd))
+        );
+    }
+
+    return q;
+}
+
 export async function updateRestaurantImageReference(
 	restaurantId,
 	publicImageUrl
@@ -84,6 +131,7 @@ export async function addReviewToRestaurant(db, restaurantId, review) {
 	}
 }
 
+
 function applyQueryFilters(q, { category, sortDirection }) {
     if (category) {
         q = query(q, where("category", "==", category));
@@ -94,15 +142,21 @@ function applyQueryFilters(q, { category, sortDirection }) {
     return q;
 }
 
-export async function getRestaurants(db = db, filters = {}) {
+export async function getRestaurants(db, filters = {}) {
     let q = query(collection(db, "restaurants"));
 
+    if (filters.category) {
+        q = query(q, where("category", "==", filters.category));
+    }
+
+    // Apply other filters if needed
     q = applyQueryFilters(q, filters);
+
     const results = await getDocs(q);
     return results.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        timestamp: doc.data().timestamp.toDate(),
+        timestamp: doc.data().timestamp?.toDate(),
     }));
 }
 

@@ -38,12 +38,7 @@ export default async function Home({ searchParams }) {
 		<main className="main__home">
 			<h1>Welcome to Analyst Server</h1>
 			<ServerTime />			
-			<GmailDashboard />
-			
-			<RestaurantListings
-				initialRestaurants={restaurants}
-				searchParams={searchParams}
-			/>
+
 		</main>
 	);
 }

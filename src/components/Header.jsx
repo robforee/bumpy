@@ -57,6 +57,10 @@ const Header = () => {
         <Link href="/topics/PUqpeu0MzmTU58vhhQwy" className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
           Root Topic
         </Link>
+        <Link href="/topics/overview" className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+          Topic overview
+        </Link>
+
         <Link href="/admin" className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300">
           Admin
         </Link>

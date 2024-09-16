@@ -43,8 +43,6 @@ export default function MembersPage() {
     }
   }, [user, loading, searchParams]);
 
-  // ... rest of the component remains the same ...
-
   return (
     <main className="main__members">
       <h1>{searchParams.get('category') || 'unknown category'}s</h1>

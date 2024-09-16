@@ -7,7 +7,7 @@ import { addFakeRestaurantsAndReviews } from "@/src/lib/firebase/firestore.js";
 import { serverWriteAsImpersonatedUser, ServerWriteWithServiceAccount } from "@/src/app/actions.js";
 import { writeToUserOwnedPath } from "@/src/app/actions.js"; 
 import { fetchEmailsFromServer } from "@/src/lib/gmail/clientOperations";
-import { createRootTopic } from '@/src/lib/topicOperations'; 
+//import { createRootTopic } from '@/src/lib/topicOperations'; 
 import { useUser } from '@/src/contexts/UserContext';
 
 const AdminPage = () => {
@@ -82,7 +82,7 @@ const AdminPage = () => {
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
-      <createRootTopic />
+      {/* <createRootTopic /> */}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <button onClick={handleAddSampleRestaurants} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">

@@ -377,3 +377,25 @@ export async function addReviewDirectly(db, restaurantId, review) {
 	}
   }
   
+  export async function addTopic(db, parentId, topicData) {
+	const newTopic = {
+	  ...topicData,
+	  topic_type: topicData.topic_type || 'default',
+	  parents: [parentId],
+	  children: [],
+	  created_at: new Date(),
+	  updated_at: new Date()
+	};
+  
+	const docRef = await addDoc(collection(db, 'topics'), newTopic);
+  
+	// Update parent's children array
+	if (parentId) {
+	  const parentRef = doc(db, 'topics', parentId);
+	  await updateDoc(parentRef, {
+		children: arrayUnion(docRef.id)
+	  });
+	}
+  
+	return docRef.id;
+  }

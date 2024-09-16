@@ -5,8 +5,6 @@ import { getRestaurants } from "@/src/lib/firebase/firestore.js";
 import { getAuthenticatedAppForUser } from "@/src/lib/firebase/serverApp.js";
 import { getFirestore } from "firebase/firestore";
 import { default as dynamicImport } from 'next/dynamic';
-import GmailDashboard from "../components/Dashboard";
-import TopicView from "../components/TopicView";
 import AdminPage from "./admin/page";
 
 

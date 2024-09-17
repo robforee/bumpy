@@ -1,60 +1,114 @@
-// ./src/app/topics/overview/page.jsx
+// app/topics/[id]/page.jsx
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { getTopicById, addTopic } from '../../../lib/firebase/firestore';
+import { db } from '../../../lib/firebase/clientApp';
+import TopicEditor from '../../../components/TopicEditor';
+import TopicListContainer from '../../../components/TopicListContainer';
 import { useUser } from '@/src/contexts/UserContext';
-import TopicList from '@/src/components/TopicList';
-import TopicHierarchy from '@/src/components/TopicHierarchy';
-import { db } from '@/src/lib/firebase/clientApp';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 
-export default function TopicOverviewPage() {
+const topicConfig = {
+  "divForEach": [
+    "comment",
+    "artifact",
+    "prompt",
+    "prompt-response"
+  ],
+  "singleDivForGroup-A": {
+    "items": [
+      "procedure",
+      "preference"
+    ],
+    "defaultToggle": "closed"
+  },
+  "singleDivForGroup-B": [
+    "ideas",
+    "claims",
+    "arguments",
+    "values"
+  ],
+  "singleDivForGroup-C": [
+    "problems",
+    "solutions",
+    "outcomes",
+    "threats",
+    "experiments"
+  ],
+  "singleDivForGroup-D": [
+    "people-organizations",
+    "models-frames",
+    "projects"
+  ],
+  "singleDivForGroup-E": [
+    "funding-sources",
+    "regulation-sources",
+    "data-souces"
+  ]
+};
+
+export default function TopicPage() {
   const { user, loading } = useUser();
-  const [rootTopicId, setRootTopicId] = useState(null);
+  const [topic, setTopic] = useState(null);
+  const [error, setError] = useState(null);
+  const params = useParams();
+  const router = useRouter();
 
   useEffect(() => {
-    const fetchRootTopic = async () => {
-      if (user) {
+    async function fetchTopic() {
+      if (params.id) {
         try {
-          const q = query(
-            collection(db, 'topics'),
-            where('owner', '==', user.uid),
-            where('parents', '==', []),
-            limit(1)
-          );
-          const querySnapshot = await getDocs(q);
-          if (!querySnapshot.empty) {
-            setRootTopicId(querySnapshot.docs[0].id);
-          }
+          const topicData = await getTopicById(db, params.id);
+          setTopic(topicData);
         } catch (error) {
-          console.error("Error fetching root topic:", error);
+          console.error("Error fetching topic:", error);
+          setError("Failed to fetch topic. Please try again.");
         }
       }
-    };
+    }
+    fetchTopic();
+  }, [params.id]);
 
-    fetchRootTopic();
-  }, [user]);
+  const handleAddTopic = async () => {
+    if (!user) {
+      setError("You must be logged in to add a topic");
+      return;
+    }
+    console.log('TopicPage overview',user.uid)
+    try {
+      const newTopicId = await addTopic(db, params.id, { 
+        topic_type: 'topic', 
+        title: 'New Topic'
+      }, user.uid);
+      router.push(`/topics/${newTopicId}`);
+    } catch (error) {
+      console.error("Error adding new topic:", error);
+      setError("Failed to add new topic. Please try again.");
+    }
+  };
 
   if (!user) return <div>Please sign in for access</div>;
   if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+  if (!topic) return <div>Topic not found</div>;
 
   return (
     <div className="min-h-screen bg-gray-100 py-8">
-      <div className="max-w-6xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Topic Overview</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div>
-            <h2 className="text-2xl font-semibold mb-4">Topic Hierarchy</h2>
-            {rootTopicId ? (
-              <TopicHierarchy rootTopicId={rootTopicId} />
-            ) : (
-              <div>No root topic found. Create one to get started!</div>
-            )}
-          </div>
-          <div>
-            <h2 className="text-2xl font-semibold mb-4">Recent Topics</h2>
-            <TopicList />
-          </div>
+      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="px-6 py-4 bg-yellow-100 border-b border-yellow-200">
+          <p className="text-sm font-semibold text-yellow-800">Topic Type: {topic.topic_type}</p>
+        </div>
+        <div className="p-6">
+          DO NOT USE THIS PAGE
+          <TopicEditor topic={topic} />
+          <button 
+            onClick={handleAddTopic}
+            className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300"
+          >
+            + Add Sub-Topic
+          </button>
+          <TopicListContainer config={topicConfig} parentId={params.id} />
         </div>
       </div>
     </div>

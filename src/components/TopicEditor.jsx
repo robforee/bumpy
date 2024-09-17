@@ -7,11 +7,24 @@ import { updateDocument } from '../lib/firebase/firestore';
 
 const TopicEditor = ({ topic }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [editedTopic, setEditedTopic] = useState(topic);
+  const [editedTopic, setEditedTopic] = useState({
+    id: topic.id,
+    title: topic.title || '',
+    subtitle: topic.subtitle || '',
+    text: topic.text || ''
+  });
   
   const debouncedSave = useCallback(
     debounce((newTopic) => {
-      updateDocument('topics', newTopic.id, newTopic).catch(console.error);
+      if (newTopic.id) {
+        updateDocument('topics', newTopic.id, {
+          title: newTopic.title,
+          subtitle: newTopic.subtitle,
+          text: newTopic.text
+        }).catch(error => console.error("Error updating document:", error));
+      } else {
+        console.error("Cannot update topic: missing id");
+      }
     }, 1000),
     []
   );
@@ -50,13 +63,15 @@ const TopicEditor = ({ topic }) => {
           className="w-full text-xl text-gray-600 p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none transition duration-300"
           placeholder="Subtitle"
         />
-        <textarea
-          name="text"
-          value={editedTopic.text}
-          onChange={handleInputChange}
-          className="w-full h-64 p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none transition duration-300"
-          placeholder="Topic content (Markdown supported)"
-        />
+        <div className="border rounded p-2 bg-gray-50">
+          <textarea
+            name="text"
+            value={editedTopic.text}
+            onChange={handleInputChange}
+            className="w-full h-96 p-2 border rounded focus:ring-2 focus:ring-blue-500 outline-none transition duration-300 bg-white resize-none overflow-y-auto"
+            placeholder="Topic content (Markdown supported)"
+          />
+        </div>
         <button 
           onClick={toggleEditMode} 
           className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300"
@@ -69,10 +84,29 @@ const TopicEditor = ({ topic }) => {
 
   return (
     <div className="space-y-4 transition-all duration-300 ease-in-out">
-      <h1 className="text-3xl font-bold">{editedTopic.title}</h1>
-      <h2 className="text-xl text-gray-600">{editedTopic.subtitle}</h2>
-      <div className="prose max-w-none mt-4">
-        <ReactMarkdown>{editedTopic.text}</ReactMarkdown>
+      <h1 
+        className="text-3xl font-bold border-b pb-2 cursor-pointer hover:bg-gray-100 transition duration-300" 
+        onClick={toggleEditMode}
+      >
+        {editedTopic.title}
+      </h1>
+      <h2 
+        className="text-xl text-gray-600 italic cursor-pointer hover:bg-gray-100 transition duration-300" 
+        onClick={toggleEditMode}
+      >
+        {editedTopic.subtitle}
+      </h2>
+      <div 
+        className="border rounded p-4 bg-gray-50 h-96 overflow-y-auto cursor-pointer hover:bg-gray-100 transition duration-300" 
+        onClick={toggleEditMode}
+      >
+        {editedTopic.text ? (
+          <div className="prose max-w-none">
+            <ReactMarkdown>{editedTopic.text}</ReactMarkdown>
+          </div>
+        ) : (
+          <p className="text-gray-400 italic">No content available. Click here to add content.</p>
+        )}
       </div>
       <button 
         onClick={toggleEditMode} 

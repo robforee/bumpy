@@ -7,10 +7,11 @@ import {
 	onSnapshot,
 	query,
 	getDocs,
+	arrayUnion,
 	updateDoc,
 	orderBy,
 	Timestamp,
-	runTransaction,
+	runTransaction,serverTimestamp,
 	where,
 	doc, addDoc, setDoc, getDoc,
 	getFirestore,
@@ -300,8 +301,32 @@ export async function addDocument(collectionName, data) {
   }
   
   export async function updateDocument(collectionName, docId, data) {
+	if (!collectionName || !docId) {
+	  console.error("updateDocument called with invalid parameters", { collectionName, docId });
+	  throw new Error("Invalid parameters for updateDocument");
+	}
+  
 	const docRef = doc(db, collectionName, docId);
-	await updateDoc(docRef, data);
+	
+	// Remove any fields with undefined values
+	const cleanedData = Object.entries(data).reduce((acc, [key, value]) => {
+	  if (value !== undefined) {
+		acc[key] = value;
+	  }
+	  return acc;
+	}, {});
+  
+	if (Object.keys(cleanedData).length === 0) {
+	  console.warn("updateDocument called with no valid fields to update");
+	  return;
+	}
+  
+	try {
+	  await updateDoc(docRef, cleanedData);
+	} catch (error) {
+	  console.error("Error updating document:", error);
+	  throw error;
+	}
   }
   
   export async function deleteDocument(collectionName, docId) {
@@ -311,7 +336,7 @@ export async function addDocument(collectionName, data) {
 
   // Add these new functions to your src/lib/firebase/firestore.js file
 
-export async function addReviewDirectly(db, restaurantId, review) {
+  export async function addReviewDirectly(db, restaurantId, review) {
 	if (!restaurantId) {
 	  throw new Error("No restaurant ID has been provided.");
 	}
@@ -362,7 +387,7 @@ export async function addReviewDirectly(db, restaurantId, review) {
 	  console.log("Error: Invalid ID received: ", topicId);
 	  return null;
 	}
-	console.log('FFF fetch topics/${topicId}')
+	console.log('FFF fetch topics/${topicId}',topicId)
 	const docRef = doc(db, "topics", topicId);
 	const docSnap = await getDoc(docRef);
 	if (docSnap.exists()) {
@@ -377,25 +402,39 @@ export async function addReviewDirectly(db, restaurantId, review) {
 	}
   }
   
-  export async function addTopic(db, parentId, topicData) {
-	const newTopic = {
-	  ...topicData,
-	  topic_type: topicData.topic_type || 'default',
-	  parents: [parentId],
-	  children: [],
-	  created_at: new Date(),
-	  updated_at: new Date()
-	};
-  
-	const docRef = await addDoc(collection(db, 'topics'), newTopic);
-  
-	// Update parent's children array
-	if (parentId) {
-	  const parentRef = doc(db, 'topics', parentId);
-	  await updateDoc(parentRef, {
-		children: arrayUnion(docRef.id)
-	  });
+// ./src/app/firebase/firestore.js
+
+export async function addTopic(db, parentId, topicData, userId) {
+	if (!userId) {
+	  throw new Error("User ID is required to create a topic");
 	}
+
   
-	return docRef.id;
+	try {
+	  const newTopic = {
+		...topicData,
+		topic_type: topicData.topic_type || 'default',
+		owner: userId,
+		parents: parentId ? [parentId] : [],
+		children: [],
+		created_at: serverTimestamp(),
+		updated_at: serverTimestamp()
+	  };
+  
+	  const docRef = await addDoc(collection(db, 'topics'), newTopic);
+  
+	  // Update parent's children array
+	  if (parentId) {
+		const parentRef = doc(db, 'topics', parentId);
+		await updateDoc(parentRef, {
+		  children: arrayUnion(docRef.id)
+		});
+	  }
+  
+	  return docRef.id;
+	} catch (error) {
+	  console.error("Error adding new topic:", error);
+	  throw error;
+	}
   }
+

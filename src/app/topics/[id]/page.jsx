@@ -4,11 +4,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getTopicById, addTopic } from '../../../lib/firebase/firestore';
-import { db } from '../../../lib/firebase/clientApp';
-import TopicEditor from '../../../components/TopicEditor';
-import TopicListContainer from '../../../components/TopicListContainer';
-import { useUser } from '@/src/contexts/UserContext';
-import TopicHierarchy from '@/src/components/TopicHierarchy';
+import { db }                    from '../../../lib/firebase/clientApp';
+import TopicEditor               from '../../../components/TopicEditor';
+import TopicListContainer        from '../../../components/TopicListContainer';
+import { useUser }               from '@/src/contexts/UserContext';
+import TopicHierarchy            from '@/src/components/TopicHierarchy';
 
 const topicConfig = {
   "divForEach": [

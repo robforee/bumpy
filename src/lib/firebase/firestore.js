@@ -387,7 +387,7 @@ export async function addDocument(collectionName, data) {
 	  console.log("Error: Invalid ID received: ", topicId);
 	  return null;
 	}
-	console.log('FFF fetch topics/${topicId}',topicId)
+	//console.log('FFF fetch topics/${topicId}',topicId)
 	const docRef = doc(db, "topics", topicId);
 	const docSnap = await getDoc(docRef);
 	if (docSnap.exists()) {

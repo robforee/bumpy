@@ -18,7 +18,7 @@ if (result.error) {
 console.log('Loaded environment variables from:', envPath);
 
 const { queryEmails, getEmailContent } = require('../../src/lib/gmail/gmailOperationsCommon');
-const { getValidAccessToken } = require('../../src/lib/gmail/tokenManager');
+const { getValidAccessToken } = require('@/src/lib/tokenManager');
 const { getAdminFirestore } = require('../../src/lib/firebase/adminAppCommon');
 
 const serviceAccount_fromFile = require('/home/user/work/auth/analyst-server-firebase-adminsdk-bumpy-2.json');

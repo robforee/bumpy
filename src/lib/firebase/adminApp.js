@@ -30,13 +30,8 @@ export function getAdminApp() {
 export function getAdminAuth() {
     return getAuth(getAdminApp());
 }
-  
+
 export function getAdminFirestore() {
     return getFirestore(getAdminApp());
 }
 
-export async function getGmailService(accessToken) {
-  const oauth2Client = new google.auth.OAuth2();
-  oauth2Client.setCredentials({ access_token: accessToken });
-  return google.gmail({ version: 'v1', auth: oauth2Client });
-}

@@ -18,6 +18,9 @@ export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
   
   // Add the required scopes
+  // 'https://www.googleapis.com/auth/chat.spaces',
+  // 'https://www.googleapis.com/auth/contacts'
+
   const scopes = [
     'https://www.googleapis.com/auth/gmail.modify',
     'https://www.googleapis.com/auth/gmail.compose',
@@ -25,9 +28,7 @@ export async function signInWithGoogle() {
     'https://www.googleapis.com/auth/drive.file',
     'https://www.googleapis.com/auth/drive.appdata',
     'https://www.googleapis.com/auth/calendar',
-    'https://www.googleapis.com/auth/chat.messages',
-    'https://www.googleapis.com/auth/chat.spaces',
-    'https://www.googleapis.com/auth/contacts'
+    'https://www.googleapis.com/auth/chat.messages'
   ];
 
   scopes.forEach(scope => provider.addScope(scope));
@@ -54,9 +55,9 @@ export async function signInWithGoogle() {
     await sendTokensToBackend(accessToken, refreshToken, user.uid);
 
     // Store the scopes in Firestore
-    console.log('writing scopes',user.uid)
+    // console.log('writing scopes',user.uid)
     await storeUserScopes(user.uid, scopes);// write as user?
-    console.log('writing scopes',user.uid)
+    // console.log('writing scopes',user.uid)
 
     return user;
   } catch (error) {
@@ -69,7 +70,7 @@ async function storeUserScopes(userId, scopes) {
   try {
     const userRef = doc(db, "user_scopes", userId);
     await setDoc(userRef, { scopes: scopes }, { merge: true });
-    console.log("User scopes stored successfully");
+    //console.log("User scopes stored successfully");
   } catch (error) {
     console.error("Error storing user scopes:", error);
     // You might want to handle this error more gracefully
@@ -77,16 +78,25 @@ async function storeUserScopes(userId, scopes) {
 }
 
 async function sendTokensToBackend(accessToken, refreshToken, userId) {
-  const response = await fetch('/api/storeTokens', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ accessToken, refreshToken, userId }),
-  });
+  try {
+    const response = await fetch('/api/storeTokens', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ accessToken, refreshToken, userId }),
+    });
 
-  if (!response.ok) {
-    throw new Error('Failed to store tokens');
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Failed to store tokens:', errorData);
+      throw new Error(`Failed to store tokens: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error in sendTokensToBackend:', error);
+    throw error;
   }
 }
 

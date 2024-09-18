@@ -39,7 +39,7 @@ export async function fetchTopicsByCategory(categories, parentId) {
 }
 
 export async function fetchRelationshipTopics(topicId) {
-    console.log('Fetching relationship topics for topicId:', topicId);
+    //console.log('Fetching relationship topics for topicId:', topicId);
     const topicsRef = collection(db, 'topics');
     let relationshipTopics = [];
   
@@ -50,7 +50,7 @@ export async function fetchRelationshipTopics(topicId) {
       );
       const currentTopicSnapshot = await getDocs(currentTopicQuery);
       const currentTopic = currentTopicSnapshot.docs[0]?.data();
-      console.log('Current topic:', currentTopic);
+      //console.log('Current topic:', currentTopic);
   
       if (currentTopic) {
         // Fetch parents (topics that have our ID in their children array)

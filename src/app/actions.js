@@ -81,7 +81,7 @@ export async function ServerWriteWithServiceAccount() {
   return { success: true };
 }
 
-export async function serverWriteAsImpersonatedUser(idToken) {
+export async function ServerWriteAsImpersonatedUser(idToken) {
     console.log('@@@ SERVER ~ writeAsUser started', { idTokenLength: idToken?.length || 0 });
 
     try {

@@ -1,6 +1,6 @@
 // src/components/TopicListContainer.jsx
-import React from 'react';
-import TopicList from '@/src/components/TopicList';
+import React          from 'react';
+import TopicList      from '@/src/components/TopicList';
 
 const TopicListContainer = ({ config, parentId }) => {
   const renderDivs = () => {
@@ -18,7 +18,10 @@ const TopicListContainer = ({ config, parentId }) => {
     config.divForEach.forEach(category => {
       divs.push(
         <div key={category}>
-          <TopicList categories={[category]} parentId={parentId} parentType="divForEach"/>
+          <TopicList 
+            type="category" 
+            categories={[category]} 
+            parentId={parentId}/>
         </div>
       );
     });
@@ -31,9 +34,9 @@ const TopicListContainer = ({ config, parentId }) => {
         divs.push(
           <div key={key}>
             <TopicList 
+                type="category" 
                 categories={categories} 
                 parentId={parentId} 
-                parentType={categories[0]} 
               />
           </div>
         );

@@ -2,13 +2,17 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import Link                     from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { getTopicById, addTopic } from '../../../lib/firebase/firestore';
-import { db }                    from '../../../lib/firebase/clientApp';
-import TopicEditor               from '../../../components/TopicEditor';
-import TopicListContainer        from '../../../components/TopicListContainer';
-import { useUser }               from '@/src/contexts/UserContext';
+import { getTopicById, addTopic } from '@/src/lib/firebase/firestore';
+import { db }                    from '@/src/lib/firebase/clientApp';
+import TopicEditor               from '@/src/components/TopicEditor';
+import TopicListContainer        from '@/src/components/TopicListContainer';
 import TopicHierarchy            from '@/src/components/TopicHierarchy';
+import TopicList                 from '@/src/components/TopicList';
+import {getCategoryColor}        from '@/src/components/TopicList/utils';
+import { useUser }               from '@/src/contexts/UserContext';
+
 
 const topicConfig = {
   "divForEach": [
@@ -53,6 +57,7 @@ const topicConfig = {
 export default function TopicPage() {
   const { user, loading } = useUser();
   const [topic, setTopic] = useState(null);
+  const [topic_parent, setParentTopic] = useState(null);
   const [error, setError] = useState(null);
   const params = useParams();
   const router = useRouter();
@@ -62,7 +67,12 @@ export default function TopicPage() {
       if (params.id) {
         try {
           const topicData = await getTopicById(db, params.id);
+          console.log(topicData)
           setTopic(topicData);
+          if(topicData.parents.length){
+            const parentData = await getTopicById(db, topicData.parents[0]);
+            setParentTopic(parentData);  
+          }
         } catch (error) {
           console.error("Error fetching topic:", error);
           setError("Failed to fetch topic. Please try again.");
@@ -102,7 +112,46 @@ export default function TopicPage() {
           <p className="text-sm font-semibold text-yellow-800">Topic Type: {topic.topic_type}</p>
         </div>
         <div className="p-6">
-          <TopicHierarchy rootTopicId={topic.parents[0] ? topic.parents[0] : topic.id}/>
+          {/* <TopicHierarchy 
+            rootTopicId={topic.parents[0] ? topic.parents[0] : topic.id}/> */}
+          
+
+          {/* the topic sit rep */}
+          <p class="text-base">
+            <span class="text-1xl font-bold text-blue-500"> 
+              <Link href={`/topics/${topic_parent?.id}`} className="text-blue-600 hover:underline">
+                {topic_parent?.title  }
+              </Link>            
+              </span>
+            <span class="text-2xl font-bold text-blue-500">( {topic.title} )</span>
+            <span class="text-base"> {topic.subtitle} </span>
+            <span class="text-xxs text-green-500">{topic.id}</span>
+            <span class="text-tiny text-red-500">{topic.id}</span>
+            <span class="text-super-tiny text-blue-500">{topic.id}</span>
+          </p>  
+          <div className="flex flex-wrap gap-2 mb-4">
+              {/* the add button array? */}
+              {'topic,comment'.split(',').map(category => {
+                const buttonColor = getCategoryColor(category);
+                return (
+                  <button
+                    key={category}
+                    onClick={() => handleAddTopic(category)}
+                    className={`${buttonColor} text-white text-sm font-bold py-1 px-2 rounded transition duration-300`}
+                  >
+                    + {category}
+                  </button>
+                );
+              })}
+            </div>                  
+          <div >
+            <TopicList 
+                type="category" 
+                categories={['topic']} 
+                parentId={topic.id} 
+                showAddButtons={false}
+              />
+          </div>          
           <TopicEditor topic={topic} />
           <button 
             onClick={handleAddTopic}

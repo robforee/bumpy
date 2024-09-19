@@ -15,7 +15,8 @@ import { getCategoryColor } from './utils';
 import TopicRelationships from './TopicRelationships';
 import TopicTable from './TopicTable';
 
-const TopicList = ({ categories, type, parentId, parentType }) => {
+// type category 
+const TopicList = ({ categories, type, parentId, showAddButtons = true }) => {
   const { user } = useUser();
   const router = useRouter();
   const [topics, setTopics] = useState([]);
@@ -35,7 +36,9 @@ const TopicList = ({ categories, type, parentId, parentType }) => {
       
       if (type === 'relationships') {          
         topicsData = await fetchRelationshipTopics(parentId);
-      } else {
+      } 
+      if (type === 'category' ) {          
+        // if you pass multiple categories you will get multiple lists
         topicsData = await fetchTopicsByCategory(categories, parentId);
       }
       setTopics(topicsData);
@@ -89,8 +92,10 @@ const TopicList = ({ categories, type, parentId, parentType }) => {
 
   return (
     <div className="mb-4">
+      {/* 1 or more topic buttons for each categories */}
       <div className="flex flex-wrap gap-2 mb-4">
-        {categories && categories.map(category => {
+        {/* the add button array? */}
+        { showAddButtons && categories && categories.map(category => {
           const buttonColor = getCategoryColor(category);
           return (
             <button
@@ -103,6 +108,8 @@ const TopicList = ({ categories, type, parentId, parentType }) => {
           );
         })}
       </div>
+      {/* if type relationships show TopicRelationships
+          if type category */}
       <div className="max-h-[calc(20*${rowHeight})] overflow-y-auto">
         {type === 'relationships' 
           ? <TopicRelationships topics={topics} />

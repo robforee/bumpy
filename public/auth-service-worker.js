@@ -7990,7 +7990,6 @@
       (async () => {
         try {
           const serializedFirebaseConfig = new URL(self.location).searchParams.get("firebaseConfig");
-          //console.log("@@@ CLIENT Extracting Firebase config from query string");
           if (!serializedFirebaseConfig) {
             throw new Error("Firebase Config object not found in service worker query string.");
           }

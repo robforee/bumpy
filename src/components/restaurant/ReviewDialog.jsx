@@ -22,7 +22,6 @@ const ReviewDialog = ({
 
 	// dialogs only render their backdrop when called with `showModal`
 	useLayoutEffect(() => {
-		console.log('@@@ CLIENT: ReviewDialog.useLayoutEffect',{userId:userId,id:id,review:review})
 		if (isOpen) {
 			dialog.current.showModal();
 		} else {

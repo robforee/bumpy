@@ -16,6 +16,8 @@ export const updateTopicTitle = async (topicId, newTitle) => {
   }
 };
 
+// omit parentId get them all
+// fetchTopicsByCategory('comment', parentId)
 export async function fetchTopicsByCategory(categories, parentId) {
   const topicsRef = collection(db, 'topics');
   let q = query(topicsRef, orderBy('updated_at', 'desc'));
@@ -109,6 +111,6 @@ export async function fetchRelationshipTopics(topicId) {
       throw error;
     }
   
-    console.log('Total relationship topics found:', relationshipTopics.length);
+    //console.log('Total relationship topics found:', relationshipTopics.length);
     return relationshipTopics;
   }

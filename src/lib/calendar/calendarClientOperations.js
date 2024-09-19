@@ -1,4 +1,4 @@
-// src/lib/calendar/calendarClientOperations.js
+    // src/lib/calendar/calendarClientOperations.js
 
 export async function fetchCalendarEventsFromServer(userId = null) {
     if (!userId) {

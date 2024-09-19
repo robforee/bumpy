@@ -103,12 +103,9 @@ export async function getGmailService(userId) {
   try {
     console.log(`Initializing Gmail service for user: ${userId}`);
 
-    const accessToken = await getValidAccessToken(userId);
-    
+    const accessToken = await getValidAccessToken(userId);    
     const oauth2Client = new google.auth.OAuth2();
-
-    oauth2Client.setCredentials({ access_token: accessToken });
-    
+          oauth2Client.setCredentials({ access_token: accessToken });    
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
 
@@ -142,42 +139,29 @@ export async function getDriveService(userId) {
 export async function getCalendarService(userId) {
 
   const accessToken = await getValidAccessToken(userId);
-
   const oauth2Client = new google.auth.OAuth2();
+        oauth2Client.setCredentials({ access_token: accessToken });  
+  const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
-  oauth2Client.setCredentials({ access_token: accessToken });
   
-  const cal = google.calendar({ version: 'v3', oauth2Client });
-  
-  return cal;
+  return calendar;
 }
 
-export async function checkTokenValidity(accessToken) {
-  try {
-    const oauth2Client = new google.auth.OAuth2();
-    oauth2Client.setCredentials({ access_token: accessToken });
-    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
-    await gmail.users.getProfile({ userId: 'me' });
-    console.log('Access token is valid');
-    return true;
-  } catch (error) {
-    console.error('Access token is invalid:', error.message);
-    return false;
-  }
-}
 
+/*
+*   getTokens (decrpyt)
+*   checkTokenValidity ( try it vs gmail )
+*   refreshAccessToken
+*/
 export async function getValidAccessToken(userId) {
   try {
-    //console.log(`Retrieving valid access token for user: ${userId}`);
-    const { accessToken, expirationTime } = await getTokens(userId);
+    const { accessToken: accessToken, expirationTime } = await getTokens(userId);
     
     if (Date.now() >= expirationTime || !(await checkTokenValidity(accessToken))) {
-      //console.log('Access token expired or invalid, refreshing...');
       return await refreshAccessToken(userId);
     }
     
     const duration = (expirationTime - Date.now()) / 1000 / 60; // duration in minutes
-    //console.log(`Valid access token obtained. Expires on ${new Date(expirationTime).toLocaleString()} (in ${duration.toFixed(2)} minutes)`);
     
     return accessToken;
   } catch (error) {
@@ -217,4 +201,83 @@ export async function checkAuthorizedScopes(userId, requiredScopes) {
     console.error(`Error checking scopes for user ${userId}:`, error);
     return false;
   }
+}
+
+export async function checkTokenValidity(accessToken) {
+  const oauth2Client = new google.auth.OAuth2();
+        oauth2Client.setCredentials({ access_token: accessToken });
+
+  const checks = {
+    calendar: checkCalendarToken,
+    gmail: checkGmailToken,
+    drive: checkDriveToken,
+    contacts: checkContactsToken,
+    chat: checkChatToken
+  };
+
+  const results = {};
+
+  for (const [service, checkFunction] of Object.entries(checks)) {
+    try {
+      await checkFunction(oauth2Client);
+      results[service] = true;
+      //console.log(`\t${service} token is valid`);
+    } catch (error) {
+      results[service] = false;
+      console.error(`${service} token is invalid:`, error.message);
+    }
+  }
+
+  return results;
+}
+
+async function checkGmailToken(auth) {
+  const gmail = google.gmail({ version: 'v1', auth });
+  await gmail.users.getProfile({ userId: 'me' });
+}
+
+async function checkCalendarToken(oauth2Client) {
+  try {
+
+    const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+    const response2 = await calendar.events.list({ maxResults: 15,calendarId: 'primary' });
+
+    const response = await calendar.calendarList.list({ maxResults: 15 });
+
+    response2.data.items.forEach((c,i)=>{ console.log(c.id) })
+    
+
+    // console.log('\n\n~~~~~~~~~Calendar Response~~~~~~~~');
+    // console.log('Response status:', response.status);
+    // console.log('Number of calendars:', response.data.items.length);
+    // console.log('First calendar (if any):', response.data.items[0]?.summary || 'No calendars found');
+    // response.data.items.forEach((c,i)=>{
+    //   console.log('calendar:\n\t', response.data.items[i]?.id, '\n\t', response.data.items[i]?.summary || 'No calendars found');
+    // })
+    // console.log('~~~~~~~~~~~~~~~~~~~~~~~~\n\n');
+
+    return true; // Token is valid if we get here without throwing an error
+  } catch (error) {
+    console.error('Error checking Calendar token:', error.message);
+    return false; // Token is invalid or there's an issue with the Calendar API
+  }
+}
+
+async function checkDriveToken(auth) {
+  const drive = google.drive({ version: 'v3', auth });
+  await drive.files.list({ pageSize: 1 });
+}
+
+async function checkContactsToken(auth) {
+  const people = google.people({ version: 'v1', auth });
+  await people.people.connections.list({
+    resourceName: 'people/me',
+    pageSize: 1,
+    personFields: 'names,emailAddresses'
+  });
+}
+
+async function checkChatToken(auth) {
+  const chat = google.chat({ version: 'v1', auth });
+  await chat.spaces.list({ pageSize: 1 });
 }

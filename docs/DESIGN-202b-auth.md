@@ -137,8 +137,11 @@ The following files and functions are involved in security checks:
 - src/app/api/storeTokens/route.js       : POST()
 - src/lib/firebase/auth.js               : signInWithGoogle() calls sendTokensToBackend()
 - src/lib/firebase/tokenManager.js       : refreshAccessToken()
+
 - src/lib/gmail/gmailOperations.js       : getUserTokens()
 - src/lib/gmail/gmailOperationsCommon.js : getUserTokens()
+- src/lib/gmail/clientOperations.js      : fetchEmailsFromServer using api/gmail/fetchEmails
+- src/lib/gmail/serverOperations.js      : import { getGmailService } from '../firebase/adminApp';
 
 By adhering to these security practices and regularly reviewing this document, we can maintain a robust and secure authentication system. It's crucial to keep this overview updated as the system evolves or when new features are added.
 

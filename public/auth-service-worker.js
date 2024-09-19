@@ -7990,14 +7990,12 @@
       (async () => {
         try {
           const serializedFirebaseConfig = new URL(self.location).searchParams.get("firebaseConfig");
-          console.log("@@@ CLIENT Extracting Firebase config from query string");
+          //console.log("@@@ CLIENT Extracting Firebase config from query string");
           if (!serializedFirebaseConfig) {
             throw new Error("Firebase Config object not found in service worker query string.");
           }
           firebaseConfig = JSON.parse(serializedFirebaseConfig);
-          console.log("@@@ CLIENT Service worker installed with Firebase config", firebaseConfig);
           firebaseApp = initializeApp(firebaseConfig);
-          console.log("@@@ CLIENT Firebase app initialized in service worker");
         } catch (error) {
           console.error("Error during service worker installation:", error);
         }
@@ -8012,8 +8010,6 @@
   });
   async function fetchWithFirebaseHeaders(request) {
     if (!firebaseApp) {
-      console.warn("@@@ CLIENT Firebase app not initialized. Proceeding with original request from public (client?).");
-      //console.log(request)
       return fetch(request);
     }
     try {

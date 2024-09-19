@@ -13,7 +13,8 @@ export async function GET(request) {
     }
 
     const calendar = await getCalendarService(userId);
-    console.log('got calendar object')
+
+
     let req = {
         calendarId: 'primary',
         timeMin: new Date().toISOString(),
@@ -21,18 +22,19 @@ export async function GET(request) {
         singleEvents: true,
         orderBy: 'startTime',
       };
-    const response = await calendar.events.list(req);
+    
+    const response = await calendar.events.list({ maxResults: 15,calendarId: 'primary' });
 
     const events = response.data.items;
-    console.log('resp')
 
     return NextResponse.json(events);
   } catch (error) {
 
     
-    console.error('Error in Calendar API route:config', error?.config);
-    console.error('Error in Calendar API route:errors', error?.errors);
-    console.error('Error in Calendar API route:error', error?.error);
+    console.error('Error in Calendar API route:config');
+    // console.error('Error in Calendar API route:config', error?.config);
+    // console.error('Error in Calendar API route:errors', error?.errors);
+    //console.error('Error in Calendar API route:error', error);
 
 
 

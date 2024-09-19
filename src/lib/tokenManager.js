@@ -46,7 +46,7 @@ export async function storeTokens(userId, accessToken, refreshToken) {
     createdAt: new Date()
   }, { merge: true });
 
-  console.log(`Tokens stored for user ${userId}. Expires at ${new Date(expirationTime).toLocaleString()}`);
+  //console.log(`Tokens stored for user ${userId}. Expires at ${new Date(expirationTime).toLocaleString()}`);
 }
 
 export async function getTokens(userId) {
@@ -92,7 +92,9 @@ export async function refreshAccessToken(userId) {
     console.log(`Access token refreshed for user ${userId}. New expiration: ${new Date(expirationTime).toLocaleString()}`);
     return newAccessToken;
   } catch (error) {
-    console.error(`Error refreshing access token for user ${userId}:`, error);
+    delete error.config;
+    console.error(`Error refreshing access token for user ${userId}:`, error || 'barf') ;
+    console.error('\n\n');
     throw new Error(`Failed to refresh access token: ${error.message}`);
   }
 }
@@ -100,12 +102,16 @@ export async function refreshAccessToken(userId) {
 export async function getGmailService(userId) {
   try {
     console.log(`Initializing Gmail service for user: ${userId}`);
+
     const accessToken = await getValidAccessToken(userId);
     
     const oauth2Client = new google.auth.OAuth2();
+
     oauth2Client.setCredentials({ access_token: accessToken });
     
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+
+
     console.log(`Gmail service initialized successfully for user: ${userId}`);
     
     return gmail;
@@ -115,6 +121,36 @@ export async function getGmailService(userId) {
   }
 }
 
+export async function getDriveService(userId) {
+  try {
+    console.log(`Initializing Drive service for user: ${userId}`);
+    const accessToken = await getValidAccessToken(userId);
+    
+    const oauth2Client = new google.auth.OAuth2();
+    oauth2Client.setCredentials({ access_token: accessToken });
+    
+    const drive = google.drive({ version: 'v3', auth: oauth2Client });
+    console.log(`Drive service initialized successfully for user: ${userId}`);
+    
+    return drive;
+  } catch (error) {
+    console.error(`Error initializing Drive service for user ${userId}:`, error);
+    throw new Error(`Failed to initialize Drive service: ${error.message}`);
+  }
+}
+
+export async function getCalendarService(userId) {
+
+  const accessToken = await getValidAccessToken(userId);
+
+  const oauth2Client = new google.auth.OAuth2();
+
+  oauth2Client.setCredentials({ access_token: accessToken });
+  
+  const cal = google.calendar({ version: 'v3', oauth2Client });
+  
+  return cal;
+}
 
 export async function checkTokenValidity(accessToken) {
   try {
@@ -132,16 +168,16 @@ export async function checkTokenValidity(accessToken) {
 
 export async function getValidAccessToken(userId) {
   try {
-    console.log(`Retrieving valid access token for user: ${userId}`);
+    //console.log(`Retrieving valid access token for user: ${userId}`);
     const { accessToken, expirationTime } = await getTokens(userId);
     
     if (Date.now() >= expirationTime || !(await checkTokenValidity(accessToken))) {
-      console.log('Access token expired or invalid, refreshing...');
+      //console.log('Access token expired or invalid, refreshing...');
       return await refreshAccessToken(userId);
     }
     
     const duration = (expirationTime - Date.now()) / 1000 / 60; // duration in minutes
-    console.log(`Valid access token obtained. Expires on ${new Date(expirationTime).toLocaleString()} (in ${duration.toFixed(2)} minutes)`);
+    //console.log(`Valid access token obtained. Expires on ${new Date(expirationTime).toLocaleString()} (in ${duration.toFixed(2)} minutes)`);
     
     return accessToken;
   } catch (error) {

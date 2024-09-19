@@ -14,10 +14,8 @@ export async function GET(request) {
     const userId = searchParams.get('userId');
     const query = searchParams.get('query') || '';
     const maxResults = parseInt(searchParams.get('maxResults') || '10', 10);
-    console.log('GET 3',userId)
 
     const gmail = await getGmailService(userId);
-    console.log('got GmailService',userId)
     
     const response = await gmail.users.messages.list({
       userId: 'me',

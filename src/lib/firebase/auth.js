@@ -18,17 +18,18 @@ export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
   
   // Add the required scopes
-  // 'https://www.googleapis.com/auth/chat.spaces',
-  // 'https://www.googleapis.com/auth/contacts'
 
   const scopes = [
+    'https://www.googleapis.com/auth/calendar',
     'https://www.googleapis.com/auth/gmail.modify',
     'https://www.googleapis.com/auth/gmail.compose',
     'https://www.googleapis.com/auth/drive',
     'https://www.googleapis.com/auth/drive.file',
     'https://www.googleapis.com/auth/drive.appdata',
-    'https://www.googleapis.com/auth/calendar',
-    'https://www.googleapis.com/auth/chat.messages'
+    'https://www.googleapis.com/auth/chat.messages',
+    'https://www.googleapis.com/auth/chat.spaces',
+    'https://www.googleapis.com/auth/contacts'
+  
   ];
 
   scopes.forEach(scope => provider.addScope(scope));

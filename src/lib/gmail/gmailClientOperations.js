@@ -39,3 +39,4 @@ export async function fetchEmailsFromServer(query = '', userId = null) {
     throw new Error('Failed to fetch emails. Please try again later.');
   }
 }
+

@@ -1,99 +1,148 @@
 // functions/index.js
-const { onRequest } = require("firebase-functions/v2/https");
-const logger = require("firebase-functions/logger");
-const functions = require('firebase-functions');
-const admin = require('firebase-admin');
-const crypto = require('crypto');
 
-admin.initializeApp();
+const { OpenAI } = require('openai');
+const {logger} = require("firebase-functions");
+const {onRequest} = require("firebase-functions/v2/https");
+const {onDocumentCreated} = require("firebase-functions/v2/firestore");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { defineSecret } = require("firebase-functions/params");
 
-const db = admin.firestore();
+// The Firebase Admin SDK to access Firestore.
+const {initializeApp} = require("firebase-admin/app");
+const {getFirestore} = require("firebase-admin/firestore");
 
-// Use process.env to access environment variables
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || functions.config().encryption?.key;
+const { FieldValue } = require('firebase-admin/firestore');
 
-if (!ENCRYPTION_KEY) {
-  console.error('ENCRYPTION_KEY is not set. Please set it in your environment variables or Firebase config.');
-  // You might want to throw an error here or handle it appropriately
-}
+const openaiApiKey = defineSecret('OPENAI_API_KEY');
 
-exports.storeToken = functions.https.onCall(async (data, context) => {
-  // Ensure the user is authenticated
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
-  }
+initializeApp();
 
-  const { token } = data;
-  const userId = context.auth.uid;
 
-  // Encrypt the token
-  const encryptedToken = encryptToken(token);
-
-  try {
-    // Store the encrypted token in Firestore
-    await db.collection('user_tokens').doc(userId).set({
-      encryptedToken: encryptedToken,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error storing token:', error);
-    throw new functions.https.HttpsError('internal', 'Error storing token.');
-  }
+exports.addmessage = onRequest(async (req, res) => {
+  // Grab the text parameter.
+  const original = req.query.text;
+  // Push the new message into Firestore using the Firebase Admin SDK.
+  const writeResult = await getFirestore()
+      .collection("messages")
+      .add({original: original});
+  // Send back a message that we've successfully written the message
+  res.json({result: `Message with ID: ${writeResult.id} added.`});
 });
 
-function encryptToken(token) {
-  const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), iv);
-  let encrypted = cipher.update(token, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-  return iv.toString('hex') + ':' + encrypted;
-}
 
-exports.decryptToken = functions.https.onCall(async (data, context) => {
-  // Ensure the user is authenticated
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated.');
-  }
+exports.makeuppercase = onDocumentCreated("/messages/{documentId}", (event) => {
+  // Grab the current value of what was written to Firestore.
+  const original = event.data.data().original;
 
-  const userId = context.auth.uid;
+  // Access the parameter `{documentId}` with `event.params`
+  logger.log("Uppercasing", event.params.documentId, original);
 
-  try {
-    const doc = await db.collection('user_tokens').doc(userId).get();
-    if (!doc.exists) {
-      throw new functions.https.HttpsError('not-found', 'Token not found for user.');
-    }
+  const uppercase = original.toUpperCase();
 
-    const { encryptedToken } = doc.data();
-    const decryptedToken = decryptToken(encryptedToken);
-
-    // In a real-world scenario, you might want to use this token to make an API call
-    // rather than sending it back to the client
-    return { token: decryptedToken };
-  } catch (error) {
-    console.error('Error decrypting token:', error);
-    throw new functions.https.HttpsError('internal', 'Error decrypting token.');
-  }
+  // You must return a Promise when performing
+  // asynchronous tasks inside a function
+  // such as writing to Firestore.
+  // Setting an 'uppercase' field in Firestore document returns a Promise.
+  return event.data.ref.set({uppercase}, {merge: true});
 });
 
-function decryptToken(encryptedToken) {
-  const [iv, encrypted] = encryptedToken.split(':');
-  const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'hex'), Buffer.from(iv, 'hex'));
-  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  return decrypted;
-}
 
-exports.getServerTime = functions.https.onCall((data, context) => {
+exports.getServerTime = onCall((request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be authenticated.');
+  }  
   console.log('ping server');
+  
   return {
     serverTime: new Date().toISOString()
   };
 });
 
-// Uncomment if you want to use the v2 onRequest function
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+
+exports.addTopic = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be logged in');
+  }
+
+  const { parentId, topicData } = request.data;
+  const userId = request.auth.uid;
+
+  const db = getFirestore();
+
+  try {
+    const newTopic = {
+      ...topicData,
+      topic_type: topicData.topic_type || 'default',
+      owner: userId,
+      parents: parentId ? [parentId] : [],
+      children: [],
+      created_at: FieldValue.serverTimestamp(),
+      updated_at: FieldValue.serverTimestamp()
+    };
+
+    const docRef = await db.collection('topics').add(newTopic);
+
+    if (parentId) {
+      await db.doc(`topics/${parentId}`).update({
+        children: FieldValue.serverTimestamp()
+      });
+    }
+
+    return { id: docRef.id };
+  } catch (error) {
+    throw new functions.https.HttpsError('internal', 'Error adding new topic', error);
+  }
+}); 
+
+exports.runOpenAIAndAddTopic = onCall({ secrets: [openaiApiKey] }, async (request) => {
+    if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be logged in');
+  }
+
+  const { model, temp, response_format, messages, owner, parentId, title } = request.data;
+
+  // Initialize OpenAI
+  const openai = new OpenAI({ apiKey: openaiApiKey.value() });
+
+  try {
+    // Run OpenAI query
+    const request = {
+      model: model || "gpt-4o-mini",
+      temperature: temp || 0.1,
+      response_format: response_format || { type: "json_object" },
+      messages: messages,
+    };
+    const response = await openai.chat.completions.create(request);
+
+    const content = response.choices[0].message.content;
+
+    // Add topic
+    const db = getFirestore();
+    const newTopic = {
+      topic_type: 'prompt-response',
+      title: title,
+      content: content,
+      owner: owner || request.auth.uid,
+      parents: parentId ? [parentId] : [],
+      children: [],
+      created_at: new Date(),
+      updated_at: new Date()
+    };
+
+    const docRef = await db.collection('topics').add(newTopic);
+
+    if (parentId) {
+      await db.doc(`topics/${parentId}`).update({
+        children: FieldValue.arrayUnion(docRef.id)
+      });
+    }
+
+    return { 
+      id: docRef.id,
+      content: content
+    };
+  } catch (error) {
+    console.error("Error in runOpenAIAndAddTopic:", error);
+    throw new HttpsError('internal', 'Error processing request', error);
+  }
+});

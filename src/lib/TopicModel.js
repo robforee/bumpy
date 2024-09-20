@@ -25,7 +25,7 @@ class TopicModel {
       sharing: data.sharing || 'private',
       version: 1,
       seq: Date.now(),
-      topic_type: data.topic_type || 'Topic',
+      topic_type: data.topic_type || 'topic',
       output_type: data.output_type,
       versions: [],
       title: data.title,

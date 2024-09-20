@@ -1,39 +1,43 @@
 // src/components/ServerTime.jsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import React, { useState }  from 'react';
+import { httpsCallable }    from 'firebase/functions';
+import { functions }      from '../lib/firebase/clientApp.js'
 
-const ServerTime = () => {
+function ServerTime() {
   const [serverTime, setServerTime] = useState(null);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    //console.log('useEffect here')
-    const functions = getFunctions();
-    const getServerTime = httpsCallable(functions, 'getServerTime');
-
-    const fetchServerTime = async () => {
-      try {
-        const result = await getServerTime();
-        setServerTime(result.data.serverTime);
-      } catch (error) {
-        console.error('Error fetching server time:', error);
-      }
-    };
-
-    fetchServerTime();
-  }, []);
+  const fetchServerTime = async () => {
+    try {
+      // Get a reference to your Firebase app
+      
+      // Get a reference to the Functions service
+      const functions = functions();
+      
+      // Create a callable function
+      const getServerTime = httpsCallable(functions, 'getServerTime');
+      
+      // Call the function
+      const result = await getServerTime();
+      
+      // The result.data will contain the response from your Cloud Function
+      setServerTime(result.data.serverTime);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching server time:', err);
+      setError(err.message);
+    }
+  };
 
   return (
     <div>
-      <h2>Server Time</h2>
-      {serverTime ? (
-        <p>{new Date(serverTime).toLocaleString()}</p>
-      ) : (
-        <p>Loading server time...</p>
-      )}
+      <button onClick={fetchServerTime}>Get Server Time</button>
+      {serverTime && <p>Server Time: {serverTime}</p>}
+      {error && <p>Error: {error}</p>}
     </div>
   );
-};
+}
 
 export default ServerTime;

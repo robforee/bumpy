@@ -12,6 +12,7 @@ import TopicHierarchy            from '@/src/components/TopicHierarchy';
 import TopicList                 from '@/src/components/TopicList';
 import {getCategoryColor}        from '@/src/components/TopicList/utils';
 import { useUser }               from '@/src/contexts/UserContext';
+import PromptEditor from '@/src/components/PromptEditor';
 
 
 const topicConfig = {
@@ -117,17 +118,17 @@ export default function TopicPage() {
           
 
           {/* the topic sit rep */}
-          <p class="text-base">
-            <span class="text-1xl font-bold text-blue-500"> 
+          <p className="text-base">
+            <span className="text-1xl font-bold text-blue-500"> 
               <Link href={`/topics/${topic_parent?.id}`} className="text-blue-600 hover:underline">
                 {topic_parent?.title  }
               </Link>            
               </span>
-            <span class="text-2xl font-bold text-blue-500">( {topic.title} )</span>
-            <span class="text-base"> {topic.subtitle} </span>
-            <span class="text-xxs text-green-500">{topic.id}</span>
-            <span class="text-tiny text-red-500">{topic.id}</span>
-            <span class="text-super-tiny text-blue-500">{topic.id}</span>
+            <span className="text-2xl font-bold text-blue-500">( {topic.title} )</span>
+            <span className="text-base"> {topic.subtitle} </span>
+            <span className="text-xxs text-green-500">{topic.id}</span>
+            <span className="text-tiny text-red-500">{topic.id}</span>
+            <span className="text-super-tiny text-blue-500">{topic.id}</span>
           </p>  
           <div className="flex flex-wrap gap-2 mb-4">
               {/* the add button array? */}
@@ -151,8 +152,16 @@ export default function TopicPage() {
                 parentId={topic.id} 
                 showAddButtons={false}
               />
-          </div>          
-          <TopicEditor topic={topic} />
+          </div>
+          {/* TOPIC AND PROMPT EDITORS */}
+          <div className='border border-red-500'>
+            {topic.topic_type === 'prompt' ? (
+              <PromptEditor topic={topic} />
+            ) : (
+              <TopicEditor topic={topic} />
+            )}
+          </div>
+
           <button 
             onClick={handleAddTopic}
             className="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300"

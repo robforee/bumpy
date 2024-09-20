@@ -6,8 +6,11 @@ import { useRouter } from 'next/navigation';
 import { Dialog } from '@/src/components/ui/Dialog';
 import { Button } from '@/src/components/ui/Button';
 import { Input } from '@/src/components/ui/Input';
+
 import { addTopic } from '@/src/lib/firebase/firestore';
-import { db } from '@/src/lib/firebase/clientApp';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+
+import { db, functions } from '@/src/lib/firebase/clientApp';
 import { useUser } from '@/src/contexts/UserContext';
 
 const AddTopicModal = ({ isOpen, onClose, parentId, topicType, onTopicAdded }) => {
@@ -20,9 +23,13 @@ const AddTopicModal = ({ isOpen, onClose, parentId, topicType, onTopicAdded }) =
       console.error("User must be logged in to add a topic");
       return;
     }
+    const addTopicFunction = httpsCallable(functions, 'addTopic');
 
     try {
-      const newTopicId = await addTopic(db, parentId, { topic_type: topicType, title }, user.uid);
+      console.log('using cloud function')
+      //const newTopicId = await addTopic(db, parentId, { topic_type: topicType, title }, user.uid);
+      const result = await addTopicFunction({ parentId, topicData: { topic_type: topicType, title } });
+      const newTopicId = result.data.id;
       onClose();
       onTopicAdded(); // Call the callback to trigger a refresh
       if (openForEditing) {

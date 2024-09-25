@@ -7,17 +7,17 @@ import {
 	onSnapshot,
 	query,
 	getDocs,
+	getDoc, doc, addDoc, setDoc, 
 	arrayUnion,
 	updateDoc,
 	orderBy,
 	Timestamp,
 	runTransaction,serverTimestamp,
-	where,
-	doc, addDoc, setDoc, getDoc,
+	where,	
 	getFirestore,
 } from "firebase/firestore";
 
-import { db } from "@/src/lib/firebase/clientApp";
+import { db_viaClient } from "@/src/lib/firebase/clientApp";
 
 export async function getMembers(db, filters = {}) {
     const collectionName = filters.category === 'Restaurant' ? 'restaurants' : 'members';
@@ -70,7 +70,7 @@ export async function updateRestaurantImageReference(
 	restaurantId,
 	publicImageUrl
 ) {
-	const restaurantRef = doc(collection(db, "restaurants"), restaurantId);
+	const restaurantRef = doc(collection(db_viaClient, "restaurants"), restaurantId);
 	if (restaurantRef) {
 		await updateDoc(restaurantRef, { photo: publicImageUrl });
 	}
@@ -167,7 +167,7 @@ export function getRestaurantsSnapshot(cb, filters = {}) {
 		return;
 	}
 
-	let q = query(collection(db, "restaurants"));
+	let q = query(collection(db_viaClient, "restaurants"));
 	q = applyQueryFilters(q, filters);
 
 	const unsubscribe = onSnapshot(q, querySnapshot => {
@@ -210,7 +210,7 @@ export function getRestaurantSnapshotById(restaurantId, cb) {
 		return;
 	}
 
-	const docRef = doc(db, "restaurants", restaurantId);
+	const docRef = doc(db_viaClient, "restaurants", restaurantId);
 	const unsubscribe = onSnapshot(docRef, docSnap => {
 		cb({
 			...docSnap.data(),
@@ -249,7 +249,7 @@ export function getReviewsSnapshotByRestaurantId(restaurantId, cb) {
 	}
 
 	const q = query(
-		collection(db, "restaurants", restaurantId, "ratings"),
+		collection(db_viaClient, "restaurants", restaurantId, "ratings"),
 		orderBy("timestamp", "desc")
 	);
 	const unsubscribe = onSnapshot(q, querySnapshot => {
@@ -271,13 +271,13 @@ export async function addFakeRestaurantsAndReviews() {
 	for (const { restaurantData, ratingsData } of data) {
 		try {
 			const docRef = await addDoc(
-				collection(db, "restaurants"),
+				collection(db_viaClient, "restaurants"),
 				restaurantData
 			);
 
 			for (const ratingData of ratingsData) {
 				await addDoc(
-					collection(db, "restaurants", docRef.id, "ratings"),
+					collection(db_viaClient, "restaurants", docRef.id, "ratings"),
 					ratingData
 				);
 			}
@@ -290,12 +290,12 @@ export async function addFakeRestaurantsAndReviews() {
 
 export async function addDocument(collectionName, data) {
 	console.log(data)
-	const docRef = await addDoc(collection(db, collectionName), data);
+	const docRef = await addDoc(collection(db_viaClient, collectionName), data);
 	return docRef.id;
   }
   
   export async function getDocument(collectionName, docId) {
-	const docRef = doc(db, collectionName, docId);
+	const docRef = doc(db_viaClient, collectionName, docId);
 	const docSnap = await getDoc(docRef);
 	return docSnap.exists() ? docSnap.data() : null;
   }
@@ -306,7 +306,7 @@ export async function addDocument(collectionName, data) {
 	  throw new Error("Invalid parameters for updateDocument");
 	}
   
-	const docRef = doc(db, collectionName, docId);
+	const docRef = doc(db_viaClient, collectionName, docId);
 	
 	// Remove any fields with undefined values
 	const cleanedData = Object.entries(data).reduce((acc, [key, value]) => {
@@ -330,11 +330,9 @@ export async function addDocument(collectionName, data) {
   }
   
   export async function deleteDocument(collectionName, docId) {
-	const docRef = doc(db, collectionName, docId);
+	const docRef = doc(db_viaClient, collectionName, docId);
 	await deleteDoc(docRef);
   }
-
-  // Add these new functions to your src/lib/firebase/firestore.js file
 
   export async function addReviewDirectly(db, restaurantId, review) {
 	if (!restaurantId) {
@@ -402,8 +400,6 @@ export async function addDocument(collectionName, data) {
 	}
   }
   
-// ./src/app/firebase/firestore.js
-
 export async function addTopic(db, parentId, topicData, userId) {
 	if (!userId) {
 	  throw new Error("User ID is required to create a topic");

@@ -1,17 +1,19 @@
 // src/components/Header.jsx
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { signInWithGoogle, signOut } from "@/src/lib/firebase/auth.js";
 import { useUser } from '@/src/contexts/UserContext';
+import { userService } from '@/src/services/userService'
 
 const Header = () => {
-  const { user, loading } = useUser();
+  const { user, loading, userProfile } = useUser();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   const handleSignOut = async (event) => {
     event.preventDefault();
@@ -27,10 +29,26 @@ const Header = () => {
     event.preventDefault();
     try {
       await signInWithGoogle();
+      setIsSigningIn(true);
     } catch (error) {
       console.error("Sign-in error:", error);
+      setIsSigningIn(false);
     }
   };
+
+  useEffect(() => {
+    if (isSigningIn && user) {
+      userService.initializeNewUserIfNeeded(user)
+        .then(() => {
+          setIsSigningIn(false);
+          console.log('User initialized:', user);
+        })
+        .catch((error) => {
+          console.error("Error initializing user:", error);
+          setIsSigningIn(false);
+        });
+    }
+  }, [isSigningIn, user]);
 
   const toggleCategory = () => {
     const params = new URLSearchParams(searchParams);
@@ -43,7 +61,8 @@ const Header = () => {
   const showToggleButton = pathname.startsWith('/members');
   let isAuthorizedUser = user && user.uid === 'e660ZS3gfxTXZR06kqn5M23VCzl2';
   
-  isAuthorizedUser = true;
+  isAuthorizedUser = true; // Note: This line overrides the previous check. Consider removing if not needed.
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -60,9 +79,9 @@ const Header = () => {
           About Us
         </Link>
 
-        {isAuthorizedUser && (
+        {isAuthorizedUser && userProfile?.topicRootId &&  (
           <>
-            <Link href="/topics/PUqpeu0MzmTU58vhhQwy" className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+          <Link href={`/topics/${userProfile.topicRootId}`} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
               Root Topic
             </Link>
             <Link href="/admin" className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300">
@@ -74,7 +93,12 @@ const Header = () => {
             <Link href="/members" className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">
               Members
             </Link>
-            
+            <Link href="/activity-feed" className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+              Activity Feed
+            </Link>
+            <Link href="/config" className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+              Config
+            </Link>
             {showToggleButton && (
               <button 
                 onClick={toggleCategory} 

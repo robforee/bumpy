@@ -1,5 +1,5 @@
 // /app/lib/TopicModel.js
-import { db } from './firebase/clientApp';
+import { db_viaClient } from './firebase/clientApp';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 class TopicModel {
@@ -9,7 +9,7 @@ class TopicModel {
   }
 
   static async getTopic(id) {
-    const docRef = doc(db, 'topics', id);
+    const docRef = doc(db_viaClient, 'topics', id);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       return new TopicModel(id, docSnap.data());
@@ -19,7 +19,7 @@ class TopicModel {
   }
 
   static async addTopic(parentId, data) {
-    const newTopicRef = doc(db, 'topics');
+    const newTopicRef = doc(db_viaClient, 'topics');
     const newTopic = {
       owner: data.owner,
       sharing: data.sharing || 'private',
@@ -38,7 +38,7 @@ class TopicModel {
     await setDoc(newTopicRef, newTopic);
     
     // Update parent's children array
-    const parentRef = doc(db, 'topics', parentId);
+    const parentRef = doc(db_viaClient, 'topics', parentId);
     await updateDoc(parentRef, {
       children: arrayUnion(newTopicRef.id)
     });
@@ -50,19 +50,19 @@ class TopicModel {
     const oldParentId = this.data.parents[0];
     
     // Remove from old parent
-    const oldParentRef = doc(db, 'topics', oldParentId);
+    const oldParentRef = doc(db_viaClient, 'topics', oldParentId);
     await updateDoc(oldParentRef, {
       children: arrayRemove(this.id)
     });
 
     // Add to new parent
-    const newParentRef = doc(db, 'topics', newParentId);
+    const newParentRef = doc(db_viaClient, 'topics', newParentId);
     await updateDoc(newParentRef, {
       children: arrayUnion(this.id)
     });
 
     // Update this topic's parent
-    const topicRef = doc(db, 'topics', this.id);
+    const topicRef = doc(db_viaClient, 'topics', this.id);
     await updateDoc(topicRef, {
       parents: [newParentId]
     });
@@ -71,7 +71,7 @@ class TopicModel {
   }
 
   async updatePhoto(newPhotoUrl) {
-    const topicRef = doc(db, 'topics', this.id);
+    const topicRef = doc(db_viaClient, 'topics', this.id);
     await updateDoc(topicRef, {
       photo_url: newPhotoUrl,
       version: this.data.version + 1,

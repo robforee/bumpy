@@ -5,7 +5,7 @@ import {
   onAuthStateChanged as _onAuthStateChanged,
 } from "firebase/auth";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
-import { auth, db } from "./clientApp";
+import { auth, db_viaClient } from "./clientApp";
 
 // Initialize Firestore
 //const db = getFirestore();
@@ -53,10 +53,12 @@ export async function signInWithGoogle() {
     const refreshToken = user.refreshToken;
 
     // Send the tokens to your backend
+    console.log('sendTokensToBackend')
     await sendTokensToBackend(accessToken, refreshToken, user.uid);
 
     // Store the scopes in Firestore
     // console.log('writing scopes',user.uid)
+    console.log('storeUserScopes')
     await storeUserScopes(user.uid, scopes);// write as user?
     // console.log('writing scopes',user.uid)
 
@@ -69,7 +71,7 @@ export async function signInWithGoogle() {
 
 async function storeUserScopes(userId, scopes) {
   try {
-    const userRef = doc(db, "user_scopes", userId);
+    const userRef = doc(db_viaClient, "user_scopes", userId);
     await setDoc(userRef, { scopes: scopes }, { merge: true });
     //console.log("User scopes stored successfully");
   } catch (error) {
@@ -90,7 +92,8 @@ async function sendTokensToBackend(accessToken, refreshToken, userId) {
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error('Failed to store tokens:', errorData);
+      // console.error('Failed to store tokens:', { accessToken, refreshToken, userId });
+      // console.error('Failed to store tokens:', errorData);
       throw new Error(`Failed to store tokens: ${response.status} ${response.statusText}`);
     }
 

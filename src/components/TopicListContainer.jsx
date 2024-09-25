@@ -1,19 +1,16 @@
 // src/components/TopicListContainer.jsx
-import React          from 'react';
-import TopicList      from '@/src/components/TopicList';
+import React from 'react';
+import TopicList from '@/src/components/TopicList';
 
-const TopicListContainer = ({ config, parentId }) => {
+const TopicListContainer = ({ config, parentId, refreshTrigger, refreshTopics }) => {
   const renderDivs = () => {
     const divs = [];
 
-    // Render divs for each individual category
-
-    // Render special div for parent/sibling/children relationships
     divs.push(
-        <div key="relationships">
-          <TopicList type="relationships" parentId={parentId} />
-        </div>
-      );
+      <div key="relationships">
+        <TopicList type="relationships" parentId={parentId} refreshTrigger={refreshTrigger} refreshTopics={refreshTopics} />
+      </div>
+    );
     
     config.divForEach.forEach(category => {
       divs.push(
@@ -21,12 +18,14 @@ const TopicListContainer = ({ config, parentId }) => {
           <TopicList 
             type="category" 
             categories={[category]} 
-            parentId={parentId}/>
+            parentId={parentId}
+            refreshTrigger={refreshTrigger}
+            refreshTopics={refreshTopics}
+          />
         </div>
       );
     });
 
-    // Render divs for grouped categories
     Object.entries(config).forEach(([key, value]) => {
       if (key.startsWith('singleDivForGroup')) {
         const categories = Array.isArray(value) ? value : value.items;
@@ -34,15 +33,16 @@ const TopicListContainer = ({ config, parentId }) => {
         divs.push(
           <div key={key}>
             <TopicList 
-                type="category" 
-                categories={categories} 
-                parentId={parentId} 
-              />
+              type="category" 
+              categories={categories} 
+              parentId={parentId} 
+              refreshTrigger={refreshTrigger}
+              refreshTopics={refreshTopics}
+            />
           </div>
         );
       }
     });
-
 
     return divs;
   };

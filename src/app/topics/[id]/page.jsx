@@ -1,11 +1,11 @@
 // src/app/topics[id]/page.jsx
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link                     from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getTopicById, addTopic } from '@/src/lib/firebase/firestore';
-import { db }                    from '@/src/lib/firebase/clientApp';
+import { db_viaClient }                    from '@/src/lib/firebase/clientApp';
 import TopicEditor               from '@/src/components/TopicEditor';
 import TopicListContainer        from '@/src/components/TopicListContainer';
 import TopicHierarchy            from '@/src/components/TopicHierarchy';
@@ -62,16 +62,20 @@ export default function TopicPage() {
   const [error, setError] = useState(null);
   const params = useParams();
   const router = useRouter();
+  const [refreshTrigger, setRefreshTrigger] = useState(0);  
+
+  const refreshTopics = useCallback(() => {
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
 
   useEffect(() => {
     async function fetchTopic() {
       if (params.id) {
         try {
-          const topicData = await getTopicById(db, params.id);
-          console.log(topicData)
+          const topicData = await getTopicById(db_viaClient, params.id);
           setTopic(topicData);
           if(topicData.parents.length){
-            const parentData = await getTopicById(db, topicData.parents[0]);
+            const parentData = await getTopicById(db_viaClient, topicData.parents[0]);
             setParentTopic(parentData);  
           }
         } catch (error) {
@@ -83,6 +87,7 @@ export default function TopicPage() {
     fetchTopic();
   }, [params.id]);
 
+
   const handleAddTopic = async () => {
     if (!user) {
       setError("You must be logged in to add a topic");
@@ -90,7 +95,7 @@ export default function TopicPage() {
     }
     console.log('TopicPage app/topic/[]',user.uid,params.id)
     try {
-      const newTopicId = await addTopic(db, params.id, { 
+      const newTopicId = await addTopic(db_viaClient, params.id, { 
         topic_type: 'topic', 
         title: 'New Topic'
       }, user.uid);
@@ -168,7 +173,8 @@ export default function TopicPage() {
           >
             + Add Sub-Topic
           </button>
-          <TopicListContainer config={topicConfig} parentId={params.id} />
+          <TopicListContainer config={topicConfig} parentId={params.id} refreshTrigger={refreshTrigger} refreshTopics={refreshTopics} />          
+
         </div>
       </div>
     </div>

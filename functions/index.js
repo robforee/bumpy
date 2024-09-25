@@ -84,7 +84,7 @@ exports.addTopic = onCall(async (request) => {
 
     if (parentId) {
       await db.doc(`topics/${parentId}`).update({
-        children: FieldValue.serverTimestamp()
+        children: FieldValue.arrayUnion(docRef.id)
       });
     }
 
@@ -93,6 +93,70 @@ exports.addTopic = onCall(async (request) => {
     throw new functions.https.HttpsError('internal', 'Error adding new topic', error);
   }
 }); 
+
+exports.updateTopic = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be logged in');
+  }
+
+  const { topicId, updateData } = request.data;
+  const userId = request.auth.uid;
+
+  const db = getFirestore();
+
+  try {
+    const topicRef = db.collection('topics').doc(topicId);
+    const topicDoc = await topicRef.get();
+
+    if (!topicDoc.exists) {
+      throw new HttpsError('not-found', 'Topic not found');
+    }
+
+    if (topicDoc.data().owner !== userId) {
+      throw new HttpsError('permission-denied', 'User does not have permission to update this topic');
+    }
+
+    await topicRef.update({
+      ...updateData,
+      updated_at: FieldValue.serverTimestamp()
+    });
+
+    return { message: 'Topic updated successfully' };
+  } catch (error) {
+    console.error('Error updating topic:', error);
+    throw new HttpsError('internal', 'Error updating topic', error);
+  }
+});
+
+exports.updateUser = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be logged in');
+  }
+
+  const { updateData } = request.data;
+  const userId = request.auth.uid;
+
+  const db = getFirestore();
+
+  try {
+    const userRef = db.collection('users').doc(userId);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      throw new HttpsError('not-found', 'User not found');
+    }
+
+    await userRef.update({
+      ...updateData,
+      updated_at: FieldValue.serverTimestamp()
+    });
+
+    return { message: 'User updated successfully' };
+  } catch (error) {
+    console.error('Error updating user:', error);
+    throw new HttpsError('internal', 'Error updating user', error);
+  }
+});
 
 exports.runOpenAIAndAddTopic = onCall({ secrets: [openaiApiKey] }, async (request) => {
     if (!request.auth) {

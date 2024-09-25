@@ -1,5 +1,5 @@
 // ./src/app/api/topics/route.js
-import { db } from '@/src/lib/firebase/clientApp';
+import { db_viaClient } from '@/src/lib/firebase/clientApp';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 
 export async function getTopicsByParentAndType(db, parentId, type = 'all') {

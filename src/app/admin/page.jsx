@@ -11,6 +11,7 @@ import { fetchCalendarEventsFromServer } from "@/src/lib/calendar/calendarClient
 
 import { useUser } from '@/src/contexts/UserContext';
 import GmailInbox from '@/src/components/GmailInbox';
+import Link from 'next/link';
 
 const AdminPage = () => {
   const router = useRouter();
@@ -155,7 +156,10 @@ const AdminPage = () => {
           disabled={calendarLoading}
         >
           {calendarLoading ? 'Fetching Events...' : 'Fetch Calendar Events'}
-        </button>        
+        </button>       
+
+
+ 
       </div>
 
       <div className="mt-8">

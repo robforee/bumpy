@@ -1,10 +1,12 @@
 // src/lib/topicFirebaseOperations.js
 import { doc, updateDoc, collection, query, getDocs, where, orderBy } from 'firebase/firestore';
-import { db } from './firebase/clientApp';
+import { onSnapshot } from 'firebase/firestore';
+import { db_viaClient } from './firebase/clientApp';
+
 
 export const updateTopicTitle = async (topicId, newTitle) => {
   try {
-    const topicRef = doc(db, 'topics', topicId);
+    const topicRef = doc(db_viaClient, 'topics', topicId);
     await updateDoc(topicRef, {
       title: newTitle,
       updated_at: new Date()
@@ -19,7 +21,7 @@ export const updateTopicTitle = async (topicId, newTitle) => {
 // omit parentId get them all
 // fetchTopicsByCategory('comment', parentId)
 export async function fetchTopicsByCategory(categories, parentId) {
-  const topicsRef = collection(db, 'topics');
+  const topicsRef = collection(db_viaClient, 'topics');
   let q = query(topicsRef, orderBy('updated_at', 'desc'));
   
   // Apply category filter if categories are provided
@@ -42,7 +44,7 @@ export async function fetchTopicsByCategory(categories, parentId) {
 
 export async function fetchRelationshipTopics(topicId) {
     //console.log('Fetching relationship topics for topicId:', topicId);
-    const topicsRef = collection(db, 'topics');
+    const topicsRef = collection(db_viaClient, 'topics');
     let relationshipTopics = [];
   
     try {
@@ -114,3 +116,41 @@ export async function fetchRelationshipTopics(topicId) {
     //console.log('Total relationship topics found:', relationshipTopics.length);
     return relationshipTopics;
   }
+
+
+export const onTopicsChange = (type, categories, parentId, userId, onUpdate, onError) => {
+  const topicsRef = collection(db_viaClient, 'topics');
+  let q;
+
+  if (type === 'relationships') {
+    q = query(
+      topicsRef, 
+      where('parents', 'array-contains', parentId),
+      where('ownerId', '==', userId)
+    );
+  } else if (type === 'category') {
+    q = query(
+      topicsRef,
+      where('parents', 'array-contains', parentId),
+      where('topic_type', 'in', categories),
+      where('ownerId', '==', userId)
+    );
+  } else {
+    onError(new Error('Invalid type for onTopicsChange'));
+    return () => {};
+  }
+
+  return onSnapshot(q, 
+    (snapshot) => {
+      const updatedTopics = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      onUpdate(updatedTopics);
+    },
+    (error) => {
+      console.error("Firestore real-time update error:", error);
+      onError(error);
+    }
+  );
+};

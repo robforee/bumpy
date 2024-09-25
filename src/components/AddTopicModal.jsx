@@ -10,7 +10,7 @@ import { Input } from '@/src/components/ui/Input';
 import { addTopic } from '@/src/lib/firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
-import { db, functions } from '@/src/lib/firebase/clientApp';
+import { db_viaClient, functions } from '@/src/lib/firebase/clientApp';
 import { useUser } from '@/src/contexts/UserContext';
 
 const AddTopicModal = ({ isOpen, onClose, parentId, topicType, onTopicAdded }) => {
@@ -30,8 +30,9 @@ const AddTopicModal = ({ isOpen, onClose, parentId, topicType, onTopicAdded }) =
       //const newTopicId = await addTopic(db, parentId, { topic_type: topicType, title }, user.uid);
       const result = await addTopicFunction({ parentId, topicData: { topic_type: topicType, title } });
       const newTopicId = result.data.id;
-      onClose();
-      onTopicAdded(); // Call the callback to trigger a refresh
+      console.log(newTopicId)
+      //onClose();
+      //onTopicAdded(); // Call the callback to trigger a refresh
       if (openForEditing) {
         router.push(`/topics/${newTopicId}?edit=true`);
       }
@@ -41,7 +42,8 @@ const AddTopicModal = ({ isOpen, onClose, parentId, topicType, onTopicAdded }) =
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    
+    <div>
       <h2 className="text-xl font-bold mb-4">Add New {topicType}</h2>
       <Input
         type="text"
@@ -55,7 +57,7 @@ const AddTopicModal = ({ isOpen, onClose, parentId, topicType, onTopicAdded }) =
         <Button onClick={() => handleSubmit(true)}>Save and Edit</Button>
         <Button onClick={onClose} variant="secondary">Cancel</Button>
       </div>
-    </Dialog>
+    </div>
   );
 };
 

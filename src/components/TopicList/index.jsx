@@ -3,10 +3,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { db } from '@/src/lib/firebase/clientApp.js';
+import { db_viaClient } from '@/src/lib/firebase/clientApp.js';
 import { devConfig } from '@/src/config/devConfig';
 import { useUser } from '@/src/contexts/UserContext';
-import { fetchTopicsByCategory, fetchRelationshipTopics, updateTopicTitle } from '@/src/lib/topicFirebaseOperations';
+import { fetchTopicsByCategory, fetchRelationshipTopics, updateTopicTitle, onTopicsChange } from '@/src/lib/topicFirebaseOperations';
 import AddTopicModal from '../AddTopicModal';
 import { Dialog } from '@/src/components/ui/Dialog';
 import { Button } from '@/src/components/ui/Button';
@@ -15,8 +15,7 @@ import { getCategoryColor } from './utils';
 import TopicRelationships from './TopicRelationships';
 import TopicTable from './TopicTable';
 
-// type category 
-const TopicList = ({ categories, type, parentId, showAddButtons = true }) => {
+const TopicList = ({ categories, type, parentId, showAddButtons = true, refreshTrigger }) => {
   const { user } = useUser();
   const router = useRouter();
   const [topics, setTopics] = useState([]);
@@ -36,9 +35,7 @@ const TopicList = ({ categories, type, parentId, showAddButtons = true }) => {
       
       if (type === 'relationships') {          
         topicsData = await fetchRelationshipTopics(parentId);
-      } 
-      if (type === 'category' ) {          
-        // if you pass multiple categories you will get multiple lists
+      } else if (type === 'category') {          
         topicsData = await fetchTopicsByCategory(categories, parentId);
       }
       setTopics(topicsData);
@@ -52,7 +49,24 @@ const TopicList = ({ categories, type, parentId, showAddButtons = true }) => {
 
   useEffect(() => {
     fetchTopics();
-  }, [fetchTopics]);
+  }, [fetchTopics, refreshTrigger]);
+
+  useEffect(() => {
+    setLoading(true);
+    const unsubscribe = onTopicsChange(type, categories, parentId, user?.uid, 
+      (updatedTopics) => {
+        setTopics(updatedTopics);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error in real-time updates:", error);
+        setError("Failed to get real-time updates. Please refresh the page.");
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [type, categories, parentId, user?.uid]);
 
   const handleAddTopic = (category) => {
     if (!user) {
@@ -77,13 +91,14 @@ const TopicList = ({ categories, type, parentId, showAddButtons = true }) => {
       if (!editingTopic || !editingTopic.id || !editingTopic.title) {
         throw new Error("Invalid topic data");
       }
-      // Make sure updateTopicTitle is correctly imported and used
       await updateTopicTitle(editingTopic.id, editingTopic.title);
       setEditModalOpen(false);
-      fetchTopics(); // Refresh the topics list
+      // Optimistic update
+      setTopics(prevTopics => 
+        prevTopics.map(t => t.id === editingTopic.id ? {...t, title: editingTopic.title} : t)
+      );
     } catch (error) {
       console.error("Error updating topic title:", error);
-      // Optionally, you can set an error state here to display to the user
     }
   };
 
@@ -92,10 +107,8 @@ const TopicList = ({ categories, type, parentId, showAddButtons = true }) => {
 
   return (
     <div className="mb-4">
-      {/* 1 or more topic buttons for each categories */}
       <div className="flex flex-wrap gap-2 mb-4">
-        {/* the add button array? */}
-        { showAddButtons && categories && categories.map(category => {
+        {showAddButtons && categories && categories.map(category => {
           const buttonColor = getCategoryColor(category);
           return (
             <button
@@ -108,22 +121,12 @@ const TopicList = ({ categories, type, parentId, showAddButtons = true }) => {
           );
         })}
       </div>
-      {/* if type relationships show TopicRelationships
-          if type category */}
       <div className="max-h-[calc(20*${rowHeight})] overflow-y-auto">
         {type === 'relationships' 
           ? <TopicRelationships topics={topics} />
           : <TopicTable topics={topics} rowHeight={rowHeight} handleEditTitle={handleEditTitle} />
         }
       </div>
-      This Form
-      <AddTopicModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
-        parentId={parentId}
-        topicType={selectedCategory}
-        onTopicAdded={fetchTopics}
-      />
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
         <div className="p-4">
           <h2 className="text-xl font-bold mb-4">Edit Topic Title</h2>

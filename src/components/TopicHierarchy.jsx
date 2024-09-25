@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { db } from '@/src/lib/firebase/clientApp';
+import { db_viaClient } from '@/src/lib/firebase/clientApp';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 const TopicItem = ({ topic, depth = 0 }) => {
@@ -36,7 +36,7 @@ const TopicHierarchy = ({ rootTopicId }) => {
   const [error, setError] = useState(null);
 
   const fetchTopic = async (topicId) => {
-    const docRef = doc(db, 'topics', topicId);
+    const docRef = doc(db_viaClient, 'topics', topicId);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       return { id: docSnap.id, ...docSnap.data(), children: [] };
@@ -46,7 +46,7 @@ const TopicHierarchy = ({ rootTopicId }) => {
 
   const fetchChildren = async (parentId) => {
     const q = query(
-      collection(db, 'topics'), 
+      collection(db_viaClient, 'topics'), 
       where('parents', 'array-contains', parentId),
       where('topic_type', '==', 'topic') // Filter by category
     );

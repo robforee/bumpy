@@ -127,7 +127,7 @@ export default function TopicPage() {
             {topic.text && <p className="mt-2">{topic.text}</p>}
           </div>
           <div className="border-3 border-blue-500 text-blue-500">
-            Subtopics
+            Topics
             <TopicListTable
               parentId={topic.id}
               topic_type="topic"

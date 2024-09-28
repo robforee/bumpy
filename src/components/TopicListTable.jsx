@@ -1,30 +1,10 @@
+// src/components/Topics.jsx
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { FiSettings, FiPlusCircle, FiChevronRight } from 'react-icons/fi';
 import { fetchTopicsByCategory, updateTopic } from '@/src/lib/topicFirebaseOperations';
-import AddTopicModal from './AddTopicModal';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/src/components/ui/dialog';
-import { Button } from '@/src/components/ui/button';
-import { Input } from '@/src/components/ui/input';
-import { Textarea } from '@/src/components/ui/textarea';
-import ReactMarkdown from 'react-markdown';
-import { devConfig } from '@/src/config/devConfig';
+import TopicTable from './TopicTable';
+import TopicModals from './TopicModals';
 
-const markdownStyles = `
-  .markdown-content ul {
-    list-style-type: disc;
-    padding-left: 20px;
-  }
-  .markdown-content ol {
-    list-style-type: decimal;
-    padding-left: 20px;
-  }
-  .markdown-content li {
-    margin-bottom: 5px;
-  }
-`;
-
-const TopicListTable = ({ parentId, topic_type, rowHeight }) => {
+const Topics = ({ parentId, topic_type, rowHeight }) => {
   const [topics, setTopics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -115,123 +95,43 @@ const TopicListTable = ({ parentId, topic_type, rowHeight }) => {
 
   return (
     <div className="overflow-x-auto">
-    <style jsx global>{markdownStyles}</style>
+{/* 
+      big add topic button when empty table
+*/}
       {topics.length === 0 ? (
         <div className="flex justify-center items-center h-32">
           <button
             onClick={handleAddTopic}
-            className="text-blue-500 hover:text-blue-700 transition-colors duration-200"
-          >
+            className="text-blue-500 hover:text-blue-700 transition-colors duration-200">
             <FiPlusCircle size={48} />
           </button>
         </div>
       ) : (
-        <table className="min-w-full bg-white">
-          <thead>
-            <tr className="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
-              <th className={`${rowHeight} px-6 text-left`}>
-                <div className="flex items-center">
-                  <button
-                    onClick={handleAddTopic}
-                    className="mr-2 text-gray-500 hover:text-gray-700"
-                  >
-                    <FiPlusCircle size={18} />
-                  </button>
-                  Title
-                </div>
-              </th>
-              <th className={`${rowHeight} px-6 text-left`}>Type</th>
-              <th className={`${rowHeight} px-6 text-left`}>Last Updated</th>
-              <th className={`${rowHeight} px-6 text-left`}>Actions</th>
-            </tr>
-          </thead>
-          <tbody className="text-gray-600 text-sm font-light">
-            {topics.slice(0, 100).map((topic) => (
-              <React.Fragment key={topic.id}>
-                <tr className="border-b border-gray-200 hover:bg-gray-100">
-                  <td className={`${rowHeight} px-6 text-left whitespace-nowrap`}>
-                    <div className="flex items-center">
-                      <button
-                        onClick={() => handleEditTopic(topic)}
-                        className="mr-2 text-gray-500 hover:text-gray-700"
-                      >
-                        <FiSettings size={14} />
-                      </button>
-                      <Link href={`/topics/${topic.id}`} className="font-medium">
-                        {topic.title}
-                      </Link>
-                    </div>
-                  </td>
-                  <td className={`${rowHeight} px-6 text-left`}>{topic.topic_type}</td>
-                  <td className={`${rowHeight} px-6 text-left`}>
-                    {topic.updated_at instanceof Date ? topic.updated_at.toLocaleString() : 'N/A'}
-                  </td>
-                  <td className={`${rowHeight} px-6 text-left`}>
-                    <button onClick={() => toggleTopicExpansion(topic.id)}>
-                      <FiChevronRight size={14} className={expandedTopicIds.has(topic.id) ? 'transform rotate-90' : ''} />
-                    </button>
-                  </td>
-                </tr>
-                {expandedTopicIds.has(topic.id) && (
-                  <tr>
-                    <td colSpan="4" className="px-6 py-2">
-                      <div className="max-w-full overflow-x-auto px-4">
-                        <ReactMarkdown className={`markdown-content text-${devConfig.topicList.topicDetailFontSize} text-black font-black`}>
-                          {topic.text}
-                        </ReactMarkdown>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
+        <TopicTable 
+          topics={topics}
+          rowHeight={rowHeight}
+          handleAddTopic={handleAddTopic}
+          handleEditTopic={handleEditTopic}
+          expandedTopicIds={expandedTopicIds}
+          toggleTopicExpansion={toggleTopicExpansion}
+        />
       )}
 
-      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-        <AddTopicModal
-          onClose={() => setIsAddModalOpen(false)}
-          parentId={parentId}
-          topicType={topic_type}
-          onTopicAdded={handleTopicAdded}
-        />
-      </Dialog>
-
-      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen} hasChanges={hasChanges}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Topic</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <Input
-              name="title"
-              value={editingTopic?.title || ''}
-              onChange={handleEditChange}
-              placeholder="Title"
-            />
-            <Input
-              name="subtitle"
-              value={editingTopic?.subtitle || ''}
-              onChange={handleEditChange}
-              placeholder="Subtitle"
-            />
-            <Textarea
-              name="text"
-              value={editingTopic?.text || ''}
-              onChange={handleEditChange}
-              placeholder="Text"
-              rows={5}
-            />
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setEditModalOpen(false)} variant="secondary">Cancel</Button>
-            <Button onClick={handleSaveTopic}>Save</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Modals */}
+      <TopicModals 
+        isAddModalOpen={isAddModalOpen}
+        setIsAddModalOpen={setIsAddModalOpen}
+        editModalOpen={editModalOpen}
+        setEditModalOpen={setEditModalOpen}
+        editingTopic={editingTopic}
+        handleEditChange={handleEditChange}
+        handleSaveTopic={handleSaveTopic}
+        parentId={parentId}
+        topicType={topic_type}
+        onTopicAdded={handleTopicAdded}
+      />
     </div>
   );
 };
 
-export default TopicListTable;
+export default Topics;

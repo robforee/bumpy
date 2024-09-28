@@ -4,9 +4,12 @@ import Link from 'next/link';
 import { FiSettings } from 'react-icons/fi';
 
 const TopicTable = ({ topics, rowHeight, handleEditTitle }) => {
+  console.log(topics)
   if (topics.length === 0) {
     return null;
   }
+  console.log(topics)
+  
 
   return (
     <div className="overflow-x-auto">
@@ -19,7 +22,7 @@ const TopicTable = ({ topics, rowHeight, handleEditTitle }) => {
           </tr>
         </thead>
         <tbody className="text-gray-600 text-sm font-light">
-          {topics.slice(0, 20).map((topic) => (
+          {topics.slice(0, 100).map((topic) => (
             <tr key={topic.id} className="border-b border-gray-200 hover:bg-gray-100">
               <td className={`${rowHeight} px-6 text-left whitespace-nowrap`}>
                 <div className="flex items-center">

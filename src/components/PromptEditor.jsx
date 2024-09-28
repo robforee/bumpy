@@ -2,9 +2,9 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Button } from '@/src/components/ui/Button';
-import { Input } from '@/src/components/ui/Input';
-import { Textarea } from '@/src/components/ui/Textarea';
+import { Button } from '@/src/components/ui/button';
+import { Input } from '@/src/components/ui/input';
+import { Textarea } from '@/src/components/ui/textarea';
 import { functions } from '@/src/lib/firebase/clientApp';
 import { httpsCallable } from 'firebase/functions';
 import { useUser } from '@/src/contexts/UserContext';

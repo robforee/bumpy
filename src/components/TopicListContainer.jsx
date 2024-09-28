@@ -32,6 +32,7 @@ const TopicListContainer = ({ config, parentId, refreshTrigger, refreshTopics })
 
         divs.push(
           <div key={key}>
+            <p>{key} KEY</p>
             <TopicList 
               type="category" 
               categories={categories} 

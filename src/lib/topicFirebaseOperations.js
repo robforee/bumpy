@@ -1,5 +1,6 @@
 // src/lib/topicFirebaseOperations.js
-import { doc, updateDoc, collection, query, getDocs, where, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, where, orderBy } from 'firebase/firestore';
+import { doc, getDoc, addDoc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
 import { onSnapshot } from 'firebase/firestore';
 import { db_viaClient } from './firebase/clientApp';
 
@@ -20,27 +21,55 @@ export const updateTopicTitle = async (topicId, newTitle) => {
 
 // omit parentId get them all
 // fetchTopicsByCategory('comment', parentId)
-export async function fetchTopicsByCategory(categories, parentId) {
-  const topicsRef = collection(db_viaClient, 'topics');
-  let q = query(topicsRef, orderBy('updated_at', 'desc'));
-  
-  // Apply category filter if categories are provided
-  if (categories && categories.length > 0) {
-    q = query(q, where('topic_type', 'in', categories));
-  }
-  
-  // Apply parent filter if parentId is provided
-  if (parentId) {
-    q = query(q, where('parents', 'array-contains', parentId));
-  }
+export const updateTopic = async (topicId, updatedData) => {
+  try {
+    const topicRef = doc(db_viaClient, 'topics', topicId);
+    
+    const topicSnap = await getDoc(topicRef);
+    if (!topicSnap.exists()) {
+      throw new Error('Topic not found');
+    }
 
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data(),
-    updated_at: doc.data().updated_at?.toDate()
-  }));
-}
+    const dataToUpdate = {};
+    if (updatedData.title !== undefined) dataToUpdate.title = updatedData.title;
+    if (updatedData.subtitle !== undefined) dataToUpdate.subtitle = updatedData.subtitle;
+    if (updatedData.text !== undefined) dataToUpdate.text = updatedData.text;
+
+    // Use serverTimestamp() for the update timestamp
+    dataToUpdate.updated_at = serverTimestamp();
+
+    await updateDoc(topicRef, dataToUpdate);
+
+    console.log('Topic updated successfully');
+    return { id: topicId, ...dataToUpdate };
+  } catch (error) {
+    console.error('Error updating topic:', error);
+    throw error;
+  }
+};
+
+export const fetchTopicsByCategory = async (categories, parentId) => {
+  try {
+    const topicsRef = collection(db_viaClient, 'topics');
+    const q = query(
+      topicsRef,
+      where('topic_type', 'in', categories),
+      where('parents', 'array-contains', parentId)
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      // Convert Firestore Timestamp to JavaScript Date
+      if (data.updated_at && typeof data.updated_at.toDate === 'function') {
+        data.updated_at = data.updated_at.toDate();
+      }
+      return { id: doc.id, ...data };
+    });
+  } catch (error) {
+    console.error('Error fetching topics:', error);
+    throw error;
+  }
+};
 
 export async function fetchRelationshipTopics(topicId) {
     //console.log('Fetching relationship topics for topicId:', topicId);
@@ -115,8 +144,7 @@ export async function fetchRelationshipTopics(topicId) {
   
     //console.log('Total relationship topics found:', relationshipTopics.length);
     return relationshipTopics;
-  }
-
+}
 
 export const onTopicsChange = (type, categories, parentId, userId, onUpdate, onError) => {
   const topicsRef = collection(db_viaClient, 'topics');
@@ -154,3 +182,31 @@ export const onTopicsChange = (type, categories, parentId, userId, onUpdate, onE
     }
   );
 };
+
+export const addTopic = async (userId, parentId, topicData) => {
+  try {
+    const newTopic = {
+      ...topicData,
+      topic_type: topicData.topic_type || 'default',
+      owner: userId,
+      parents: parentId ? [parentId] : [],
+      children: [],
+      created_at: serverTimestamp(),
+      updated_at: serverTimestamp()
+    };
+
+    const docRef = await addDoc(collection(db_viaClient, 'topics'), newTopic);
+
+    if (parentId) {
+      await updateDoc(doc(db_viaClient, 'topics', parentId), {
+        children: arrayUnion(docRef.id)
+      });
+    }
+
+    return { id: docRef.id };
+  } catch (error) {
+    console.error("Error adding new topic:", error);
+    throw error;
+  }
+};
+

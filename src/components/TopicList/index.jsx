@@ -8,9 +8,9 @@ import { devConfig } from '@/src/config/devConfig';
 import { useUser } from '@/src/contexts/UserContext';
 import { fetchTopicsByCategory, fetchRelationshipTopics, updateTopicTitle, onTopicsChange } from '@/src/lib/topicFirebaseOperations';
 import AddTopicModal from '../AddTopicModal';
-import { Dialog } from '@/src/components/ui/Dialog';
-import { Button } from '@/src/components/ui/Button';
-import { Input } from '@/src/components/ui/Input';
+import { Dialog } from '@/src/components/ui/dialog';
+import { Button } from '@/src/components/ui/button';
+import { Input } from '@/src/components/ui/input';
 import { getCategoryColor } from './utils';
 import TopicRelationships from './TopicRelationships';
 import TopicTable from './TopicTable';
@@ -36,8 +36,11 @@ const TopicList = ({ categories, type, parentId, showAddButtons = true, refreshT
       if (type === 'relationships') {          
         topicsData = await fetchRelationshipTopics(parentId);
       } else if (type === 'category') {          
+        console.log('get categories')
         topicsData = await fetchTopicsByCategory(categories, parentId);
+        console.log(topicsData);
       }
+      
       setTopics(topicsData);
     } catch (error) {
       console.error("Error fetching topics:", error);
@@ -122,6 +125,8 @@ const TopicList = ({ categories, type, parentId, showAddButtons = true, refreshT
         })}
       </div>
       <div className="max-h-[calc(20*${rowHeight})] overflow-y-auto">
+       
+        
         {type === 'relationships' 
           ? <TopicRelationships topics={topics} />
           : <TopicTable topics={topics} rowHeight={rowHeight} handleEditTitle={handleEditTitle} />

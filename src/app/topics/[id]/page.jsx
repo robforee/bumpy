@@ -6,18 +6,34 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getTopicById, addTopic } from '@/src/lib/firebase/firestore';
 import { db_viaClient } from '@/src/lib/firebase/clientApp';
-import TopicEditor from '@/src/components/TopicEditor';
 import { getCategoryColor } from '@/src/components/TopicList/utils';
 import { useUser } from '@/src/contexts/UserContext';
-import PromptEditor from '@/src/components/PromptEditor';
-import TopicListTable from '@/src/components/TopicListTable';
+import ReactMarkdown from 'react-markdown';
 import { updateTopicTitle } from '@/src/lib/topicFirebaseOperations';
 import { Dialog } from '@/src/components/ui/dialog';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { Textarea } from '@/src/components/ui/textarea';
-import { FiEdit } from 'react-icons/fi';
 import { devConfig } from '@/src/config/devConfig';
+
+import TopicModals from '@/src/components/TopicModals';
+import TopicListTable from '@/src/components/TopicListTable';
+
+import { FiEdit, FiPlusCircle } from 'react-icons/fi';
+
+const markdownStyles = `
+  .markdown-content ul {
+    list-style-type: disc;
+    padding-left: 20px;
+  }
+  .markdown-content ol {
+    list-style-type: decimal;
+    padding-left: 20px;
+  }
+  .markdown-content li {
+    margin-bottom: 5px;
+  }
+`;
 
 export default function TopicPage() {
   const { user, loading } = useUser();
@@ -28,6 +44,8 @@ export default function TopicPage() {
   const router = useRouter();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [addingTopicType, setAddingTopicType] = useState(null);
 
   const rowHeight = devConfig.topicList.rowHeight;
 
@@ -68,21 +86,14 @@ export default function TopicPage() {
     }
   };
 
-  const handleAddTopic = async () => {
-    if (!user) {
-      setError("You must be logged in to add a topic");
-      return;
-    }
-    try {
-      const newTopicId = await addTopic(db_viaClient, params.id, {
-        topic_type: 'topic',
-        title: 'New Topic'
-      }, user.uid);
-      router.push(`/topics/${newTopicId}`);
-    } catch (error) {
-      console.error("Error adding new topic:", error);
-      setError("Failed to add new topic. Please try again.");
-    }
+  const handleAddTopic = (topicType) => {
+    setAddingTopicType(topicType);
+    setIsAddModalOpen(true);
+  };
+
+  const handleTopicAdded = () => {
+    refreshTopics();
+    setIsAddModalOpen(false);
   };
 
   if (!user) return <div>Please sign in for access</div>;
@@ -91,6 +102,8 @@ export default function TopicPage() {
   if (!topic) return <div>Topic not found</div>;
 
   return (
+    <>
+    <style jsx global>{markdownStyles}</style>
     <div className="min-h-screen bg-gray-100 py-8">
       <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
         <div className="px-6 py-4 bg-yellow-100 border-b border-yellow-200">
@@ -104,42 +117,80 @@ export default function TopicPage() {
               </Link>
             </span>
           </p>
+{/* 
+          ADD COMMENT
+*/}
           <div className="flex flex-wrap gap-2 mb-4">
             <button
               key={'comment'}
               onClick={() => handleAddTopic('comment')}
-              className={`${getCategoryColor('comment')} text-white text-sm font-bold py-1 px-2 rounded transition duration-300`}
-            >
+              className={`${getCategoryColor('comment')} text-white text-sm font-bold py-1 px-2 rounded transition duration-300`}>
               + {'comment'}
             </button>
           </div>
           <div className="mb-4">
             <div className="flex items-center justify-between">
-              <h1 className="text-3xl font-bold">{topic.title}</h1>
+              <h1 className="text-3xl font-bold">{topic.title} 
+                &nbsp;
               <button
                 onClick={handleEditTopic}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <FiEdit size={24} />
+                className="text-gray-500 hover:text-gray-700">
+                <FiEdit size={15} />
               </button>
+
+
+              </h1>
             </div>
             {topic.subtitle && <h2 className="text-xl text-gray-600 mt-2">{topic.subtitle}</h2>}
-            {topic.text && <p className="mt-2">{topic.text}</p>}
+{/*             
+            TEXT in MARKDOWN
+*/}
+            {topic.text && <p className="mt-2">            
+              <div className="max-w-full overflow-x-auto px-4">
+                  <ReactMarkdown className={`markdown-content text-red-600`}>
+                    {topic.text}
+                  </ReactMarkdown>
+                </div>            
+              </p>}
+
+
           </div>
+{/* 
+          Prompts
+*/}
+          <div className="border-3 border-blue-500 text-green-500">
+            <div className="flex items-center">
+              Questions 
+              <button
+                onClick={() => handleAddTopic('prompt')}
+                className="ml-2 text-gray-500 hover:text-gray-700"
+              >
+                <FiPlusCircle size={18} />
+              </button>
+            </div>
+            <TopicListTable
+                parentId={topic.id}
+                topic_type="prompt"
+                rowHeight={rowHeight}
+              />
+          </div>
+          <br/>
+{/*           
+          TOPICS
+ */}
           <div className="border-3 border-blue-500 text-blue-500">
-            Topics
+            <div className="flex items-center">
+              Topics
+              <button
+                onClick={() => handleAddTopic('topic')}
+                className="ml-2 text-gray-500 hover:text-gray-700"
+              >
+                <FiPlusCircle size={18} />
+              </button>
+            </div>
             <TopicListTable
               parentId={topic.id}
               topic_type="topic"
-              rowHeight={rowHeight}
-            />
-          </div>
-          <br/>
-          <div className="border-3 border-blue-500 text-blue-500">
-          Prompts
-          <TopicListTable
-              parentId={topic.id}
-              topic_type="prompt"
               rowHeight={rowHeight}
             />
           </div>
@@ -175,6 +226,14 @@ export default function TopicPage() {
           </div>
         </div>
       </Dialog>
+      <TopicModals 
+        isAddModalOpen={isAddModalOpen}
+        setIsAddModalOpen={setIsAddModalOpen}
+        parentId={topic.id}
+        topicType={addingTopicType}
+        onTopicAdded={handleTopicAdded}
+      />
     </div>
+    </>
   );
 }

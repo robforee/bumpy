@@ -1,10 +1,13 @@
-// src/components/Topics.jsx
+// src/components/TopicListTable.jsx
 import React, { useState, useEffect } from 'react';
 import { fetchTopicsByCategory, updateTopic } from '@/src/lib/topicFirebaseOperations';
 import TopicTable from './TopicTable';
 import TopicModals from './TopicModals';
+import { FiPlusCircle } from 'react-icons/fi';
+import { useUser } from '@/src/contexts/UserContext';  // Add this import
 
-const Topics = ({ parentId, topic_type, rowHeight }) => {
+const TopicListTable = ({ parentId, topic_type, rowHeight }) => {
+  const { user } = useUser();  // Add this line to get the user
   const [topics, setTopics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -13,6 +16,7 @@ const Topics = ({ parentId, topic_type, rowHeight }) => {
   const [editingTopic, setEditingTopic] = useState(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [expandedTopicIds, setExpandedTopicIds] = useState(new Set());
+  const [addingCommentToTopicId, setAddingCommentToTopicId] = useState(null);
 
   const loadTopics = async () => {
     try {
@@ -53,9 +57,15 @@ const Topics = ({ parentId, topic_type, rowHeight }) => {
     setIsAddModalOpen(true);
   };
 
+  const handleAddComment = (topicId) => {
+    setAddingCommentToTopicId(topicId);
+    setIsAddModalOpen(true);
+  };
+
   const handleTopicAdded = () => {
     loadTopics();
     setIsAddModalOpen(false);
+    setAddingCommentToTopicId(null);
   };
 
   const handleEditTopic = (topic) => {
@@ -114,6 +124,7 @@ const Topics = ({ parentId, topic_type, rowHeight }) => {
           handleEditTopic={handleEditTopic}
           expandedTopicIds={expandedTopicIds}
           toggleTopicExpansion={toggleTopicExpansion}
+          handleAddComment={handleAddComment}
         />
       )}
 
@@ -126,12 +137,13 @@ const Topics = ({ parentId, topic_type, rowHeight }) => {
         editingTopic={editingTopic}
         handleEditChange={handleEditChange}
         handleSaveTopic={handleSaveTopic}
-        parentId={parentId}
-        topicType={topic_type}
+        parentId={addingCommentToTopicId || parentId}
+        topicType={addingCommentToTopicId ? 'comment' : topic_type}
         onTopicAdded={handleTopicAdded}
+        userId={user?.uid}  // Add this line to pass the user ID
       />
     </div>
   );
 };
 
-export default Topics;
+export default TopicListTable;

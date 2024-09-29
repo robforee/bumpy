@@ -1,15 +1,14 @@
 // src/components/TopicListTable.jsx
 import React, { useState, useEffect } from 'react';
-import { FiPlusCircle } from 'react-icons/fi';
 import { useUser } from '@/src/contexts/UserContext';  // Add this import
 
-import { fetchTopicsByCategory, updateTopic } from '@/src/lib/topicFirebaseOperations';
+import { fetchTopicsByCategory, updateTopic, deleteTopic } from '@/src/lib/topicFirebaseOperations';
 import TopicTable from './TopicTable';
 import TopicModals from './TopicModals';
 
 
 const TopicListTable = ({ parentId, topic_type, rowHeight }) => {
-  const { user } = useUser();  // Add this line to get the user
+  const { user } = useUser();
   const [topics, setTopics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -18,7 +17,8 @@ const TopicListTable = ({ parentId, topic_type, rowHeight }) => {
   const [editingTopic, setEditingTopic] = useState(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [expandedTopicIds, setExpandedTopicIds] = useState(new Set());
-  const [addingCommentToTopicId, setAddingCommentToTopicId] = useState(null);
+  const [addingTopicType, setAddingTopicType] = useState(null);
+  const [addingToTopicId, setAddingToTopicId] = useState(null);
 
   const loadTopics = async () => {
     try {
@@ -55,19 +55,31 @@ const TopicListTable = ({ parentId, topic_type, rowHeight }) => {
     });
   };
 
-  const handleAddTopic = () => {
+  const handleAddTopic = (topicType = topic_type, toTopicId = parentId) => {
+    setAddingTopicType(topicType);
+    setAddingToTopicId(toTopicId);
     setIsAddModalOpen(true);
   };
 
-  const handleAddComment = (topicId) => {
-    setAddingCommentToTopicId(topicId);
-    setIsAddModalOpen(true);
-  };
+  const handleAddComment = (topicId) => handleAddTopic('comment', topicId);
+  const handleAddPrompt = (topicId) => handleAddTopic('prompt', topicId);
+  const handleAddArtifact = (topicId) => handleAddTopic('artifact', topicId);
 
   const handleTopicAdded = () => {
     loadTopics();
     setIsAddModalOpen(false);
-    setAddingCommentToTopicId(null);
+    setAddingTopicType(null);
+    setAddingToTopicId(null);
+  };
+
+  const handleDeleteTopic = async (topicId) => {
+    try {
+      await deleteTopic(topicId);
+      setTopics(prevTopics => prevTopics.filter(t => t.id !== topicId));
+    } catch (error) {
+      console.error("Error deleting topic:", error);
+      setError("Failed to delete topic. Please try again.");
+    }
   };
 
   const handleEditTopic = (topic) => {
@@ -107,21 +119,19 @@ const TopicListTable = ({ parentId, topic_type, rowHeight }) => {
 
   return (
     <div className="overflow-x-auto">
-{/* 
-      big add topic button when empty table
-*/}
-        <TopicTable 
-          topics={topics}
-          rowHeight={rowHeight}
-          handleAddTopic={handleAddTopic}
-          handleEditTopic={handleEditTopic}
-          expandedTopicIds={expandedTopicIds}
-          toggleTopicExpansion={toggleTopicExpansion}
-          handleAddComment={handleAddComment}
-        />
+      <TopicTable 
+        topics={topics}
+        rowHeight={rowHeight}
+        handleAddTopic={handleAddTopic}
+        handleEditTopic={handleEditTopic}
+        expandedTopicIds={expandedTopicIds}
+        toggleTopicExpansion={toggleTopicExpansion}
+        handleAddComment={handleAddComment}
+        handleAddPrompt={handleAddPrompt}
+        handleAddArtifact={handleAddArtifact}
+        handleDeleteTopic={handleDeleteTopic}
+      />
 
-
-      {/* Modals */}
       <TopicModals 
         isAddModalOpen={isAddModalOpen}
         setIsAddModalOpen={setIsAddModalOpen}
@@ -130,10 +140,10 @@ const TopicListTable = ({ parentId, topic_type, rowHeight }) => {
         editingTopic={editingTopic}
         handleEditChange={handleEditChange}
         handleSaveTopic={handleSaveTopic}
-        parentId={addingCommentToTopicId || parentId}
-        topicType={addingCommentToTopicId ? 'comment' : topic_type}
+        parentId={addingToTopicId || parentId}
+        topicType={addingTopicType || topic_type}
         onTopicAdded={handleTopicAdded}
-        userId={user?.uid}  // Add this line to pass the user ID
+        userId={user?.uid}
       />
     </div>
   );

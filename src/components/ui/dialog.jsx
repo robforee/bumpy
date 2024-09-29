@@ -1,5 +1,6 @@
 // src/components/ui/dialog.jsx
 import React, { useEffect, useRef } from 'react';
+import { Button } from '@/src/components/ui/button';
 
 export const Dialog = ({ open, onOpenChange, children, hasChanges = false }) => {
   const dialogRef = useRef(null);
@@ -55,5 +56,22 @@ export const DialogClose = ({ onClick, children }) => {
     >
       {children}
     </button>
+  );
+};
+
+export const DeleteConfirmationDialog = ({ isOpen, onClose, onConfirm }) => {
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Confirm Deletion</DialogTitle>
+        </DialogHeader>
+        <p>Are you sure you want to delete this topic?</p>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="destructive" onClick={onConfirm}>Delete</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

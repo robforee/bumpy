@@ -1,6 +1,6 @@
 // src/lib/topicFirebaseOperations.js
-import { collection, query, getDocs, where, orderBy } from 'firebase/firestore';
-import { doc, getDoc, addDoc, updateDoc, arrayUnion, serverTimestamp } from 'firebase/firestore';
+import { collection, query, getDocs, where, orderBy, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, addDoc, updateDoc, arrayUnion, serverTimestamp, arrayRemove } from 'firebase/firestore';
 import { onSnapshot } from 'firebase/firestore';
 import { db_viaClient } from './firebase/clientApp';
 
@@ -19,8 +19,56 @@ export const updateTopicTitle = async (topicId, newTitle) => {
   }
 };
 
-// omit parentId get them all
-// fetchTopicsByCategory('comment', parentId)
+export const addTopic = async (userId, parentId, topicData) => {
+  try {
+    const newTopic = {
+      ...topicData,
+      topic_type: topicData.topic_type || 'default',
+      owner: userId,
+      parents: parentId ? [parentId] : [],
+      children: [],
+      created_at: serverTimestamp(),
+      updated_at: serverTimestamp()
+    };
+
+    const docRef = await addDoc(collection(db_viaClient, 'topics'), newTopic);
+
+    if (parentId) {
+      await updateDoc(doc(db_viaClient, 'topics', parentId), {
+        children: arrayUnion(docRef.id)
+      });
+    }
+
+    return { id: docRef.id };
+  } catch (error) {
+    console.error("Error adding new topic:", error);
+    throw error;
+  }
+};
+
+export const fetchTopicsByCategory = async (categories, parentId) => {
+  try {
+    const topicsRef = collection(db_viaClient, 'topics');
+    const q = query(
+      topicsRef,
+      where('topic_type', 'in', categories),
+      where('parents', 'array-contains', parentId)
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      // Convert Firestore Timestamp to JavaScript Date
+      if (data.updated_at && typeof data.updated_at.toDate === 'function') {
+        data.updated_at = data.updated_at.toDate();
+      }
+      return { id: doc.id, ...data };
+    });
+  } catch (error) {
+    console.error('Error fetching topics:', error);
+    throw error;
+  }
+};
+
 export const updateTopic = async (topicId, updatedData) => {
   try {
     const topicRef = doc(db_viaClient, 'topics', topicId);
@@ -48,25 +96,34 @@ export const updateTopic = async (topicId, updatedData) => {
   }
 };
 
-export const fetchTopicsByCategory = async (categories, parentId) => {
+export const deleteTopic = async (topicId) => {
   try {
-    const topicsRef = collection(db_viaClient, 'topics');
-    const q = query(
-      topicsRef,
-      where('topic_type', 'in', categories),
-      where('parents', 'array-contains', parentId)
-    );
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => {
-      const data = doc.data();
-      // Convert Firestore Timestamp to JavaScript Date
-      if (data.updated_at && typeof data.updated_at.toDate === 'function') {
-        data.updated_at = data.updated_at.toDate();
-      }
-      return { id: doc.id, ...data };
-    });
+    const topicRef = doc(db_viaClient, 'topics', topicId);
+    
+    // First, get the topic data to find its parent
+    const topicSnap = await getDoc(topicRef);
+    if (!topicSnap.exists()) {
+      throw new Error('Topic not found');
+    }
+    
+    const topicData = topicSnap.data();
+    
+    // Remove this topic from its parent's children array
+    if (topicData.parents && topicData.parents.length > 0) {
+      const parentId = topicData.parents[0];
+      const parentRef = doc(db_viaClient, 'topics', parentId);
+      await updateDoc(parentRef, {
+        children: arrayRemove(topicId)
+      });
+    }
+    
+    // Delete the topic document
+    await deleteDoc(topicRef);
+    
+    console.log('Topic deleted successfully');
+    return { success: true, id: topicId };
   } catch (error) {
-    console.error('Error fetching topics:', error);
+    console.error('Error deleting topic:', error);
     throw error;
   }
 };
@@ -181,32 +238,5 @@ export const onTopicsChange = (type, categories, parentId, userId, onUpdate, onE
       onError(error);
     }
   );
-};
-
-export const addTopic = async (userId, parentId, topicData) => {
-  try {
-    const newTopic = {
-      ...topicData,
-      topic_type: topicData.topic_type || 'default',
-      owner: userId,
-      parents: parentId ? [parentId] : [],
-      children: [],
-      created_at: serverTimestamp(),
-      updated_at: serverTimestamp()
-    };
-
-    const docRef = await addDoc(collection(db_viaClient, 'topics'), newTopic);
-
-    if (parentId) {
-      await updateDoc(doc(db_viaClient, 'topics', parentId), {
-        children: arrayUnion(docRef.id)
-      });
-    }
-
-    return { id: docRef.id };
-  } catch (error) {
-    console.error("Error adding new topic:", error);
-    throw error;
-  }
 };
 

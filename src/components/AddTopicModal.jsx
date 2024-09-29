@@ -1,4 +1,4 @@
-// scrcp,[pmemtsAddTopicModal.jsx]
+// src/components/AddTopicModal.jsx]
 "use client"
 
 import React, { useState } from 'react';

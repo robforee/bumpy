@@ -1,10 +1,12 @@
 // src/components/TopicListTable.jsx
 import React, { useState, useEffect } from 'react';
+import { FiPlusCircle } from 'react-icons/fi';
+import { useUser } from '@/src/contexts/UserContext';  // Add this import
+
 import { fetchTopicsByCategory, updateTopic } from '@/src/lib/topicFirebaseOperations';
 import TopicTable from './TopicTable';
 import TopicModals from './TopicModals';
-import { FiPlusCircle } from 'react-icons/fi';
-import { useUser } from '@/src/contexts/UserContext';  // Add this import
+
 
 const TopicListTable = ({ parentId, topic_type, rowHeight }) => {
   const { user } = useUser();  // Add this line to get the user
@@ -108,15 +110,6 @@ const TopicListTable = ({ parentId, topic_type, rowHeight }) => {
 {/* 
       big add topic button when empty table
 */}
-      {topics.length === 0 ? (
-        <div className="flex justify-center items-center h-32">
-          <button
-            onClick={handleAddTopic}
-            className="text-blue-500 hover:text-blue-700 transition-colors duration-200">
-            <FiPlusCircle size={48} />
-          </button>
-        </div>
-      ) : (
         <TopicTable 
           topics={topics}
           rowHeight={rowHeight}
@@ -126,7 +119,7 @@ const TopicListTable = ({ parentId, topic_type, rowHeight }) => {
           toggleTopicExpansion={toggleTopicExpansion}
           handleAddComment={handleAddComment}
         />
-      )}
+
 
       {/* Modals */}
       <TopicModals 

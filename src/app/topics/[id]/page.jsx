@@ -9,7 +9,7 @@ import { db_viaClient } from '@/src/lib/firebase/clientApp';
 import { getCategoryColor } from '@/src/components/TopicList/utils';
 import { useUser } from '@/src/contexts/UserContext';
 import ReactMarkdown from 'react-markdown';
-import { updateTopicTitle } from '@/src/lib/topicFirebaseOperations';
+import { FiEdit, FiPlusCircle } from 'react-icons/fi';
 import { Dialog } from '@/src/components/ui/dialog';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
@@ -18,8 +18,9 @@ import { devConfig } from '@/src/config/devConfig';
 
 import TopicModals from '@/src/components/TopicModals';
 import TopicListTable from '@/src/components/TopicListTable';
+import { updateTopic } from '@/src/lib/topicFirebaseOperations';
 
-import { FiEdit, FiPlusCircle } from 'react-icons/fi';
+import {topicTypes} from '@/src/lib/TopicTypes'
 
 const markdownStyles = `
   .markdown-content ul {
@@ -34,6 +35,7 @@ const markdownStyles = `
     margin-bottom: 5px;
   }
 `;
+const terms = topicTypes;
 
 export default function TopicPage() {
   const { user, loading } = useUser();
@@ -72,20 +74,6 @@ export default function TopicPage() {
     fetchTopic();
   }, [params.id]);
 
-  const handleEditTopic = () => {
-    setEditModalOpen(true);
-  };
-
-  const handleSaveTopic = async (updatedTopic) => {
-    try {
-      await updateTopicTitle(topic.id, updatedTopic.title);
-      setTopic({ ...topic, ...updatedTopic });
-      setEditModalOpen(false);
-    } catch (error) {
-      console.error("Error updating topic:", error);
-    }
-  };
-
   const handleAddTopic = (topicType) => {
     setAddingTopicType(topicType);
     setIsAddModalOpen(true);
@@ -94,6 +82,32 @@ export default function TopicPage() {
   const handleTopicAdded = () => {
     refreshTopics();
     setIsAddModalOpen(false);
+  };
+
+  const handleEditTopic = () => {
+    setEditModalOpen(true);
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setTopic(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveTopic = async () => {
+    try {
+      const updatedData = {
+        title: topic.title,
+        subtitle: topic.subtitle,
+        text: topic.text
+      };
+      const updatedTopic = await updateTopic(topic.id, updatedData);
+      setEditModalOpen(false);
+      // Update the local state with the returned data
+      setTopic(prevTopic => ({ ...prevTopic, ...updatedTopic }));
+    } catch (error) {
+      console.error("Error updating topic:", error);
+      alert("Error updating topic: " + error.message);
+    }
   };
 
   if (!user) return <div>Please sign in for access</div>;
@@ -106,29 +120,33 @@ export default function TopicPage() {
     <style jsx global>{markdownStyles}</style>
     <div className="min-h-screen bg-gray-100 py-8">
       <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
+{/*         
+        yellow header
+*/}
         <div className="px-6 py-4 bg-yellow-100 border-b border-yellow-200">
-          <p className="text-sm font-semibold text-yellow-800">Topic Type: {topic.topic_type}</p>
+          <pre>
+          topic.title and favicon, 
+
+          </pre>
         </div>
+
         <div className="p-6">
           <p className="text-base">
             <span className="text-1xl font-bold text-blue-500">
-              <Link href={`/topics/${topic_parent?.id}`} className="text-blue-600 hover:underline">
-                {topic_parent?.title}
-              </Link>
+              {
+                topic_parent?.title 
+                ? <Link href={`/topics/${topic_parent?.id}`} className="text-blue-600 hover:underline">
+                    {topic_parent?.title}
+                  </Link>
+                :'top-of-your-world'
+              }
             </span>
           </p>
-{/* 
-          ADD COMMENT
-*/}
-          <div className="flex flex-wrap gap-2 mb-4">
-            <button
-              key={'comment'}
-              onClick={() => handleAddTopic('comment')}
-              className={`${getCategoryColor('comment')} text-white text-sm font-bold py-1 px-2 rounded transition duration-300`}>
-              + {'comment'}
-            </button>
-          </div>
+
           <div className="mb-4">
+{/* 
+            TOPIC TITLE & EDIT
+*/}
             <div className="flex items-center justify-between">
               <h1 className="text-3xl font-bold">{topic.title} 
                 &nbsp;
@@ -137,17 +155,18 @@ export default function TopicPage() {
                 className="text-gray-500 hover:text-gray-700">
                 <FiEdit size={15} />
               </button>
-
-
               </h1>
             </div>
-            {topic.subtitle && <h2 className="text-xl text-gray-600 mt-2">{topic.subtitle}</h2>}
+{/* 
+            TOPIC SUB TITLE
+             */}
+            {topic.subtitle && <h2 className="text-xl text-purple-600 mt-2">{topic.subtitle}</h2>}
 {/*             
-            TEXT in MARKDOWN
+            red TEXT in MARKDOWN
 */}
             {topic.text && <p className="mt-2">            
               <div className="max-w-full overflow-x-auto px-4">
-                  <ReactMarkdown className={`markdown-content text-red-600`}>
+                  <ReactMarkdown className={`markdown-content text-blue-600`}>
                     {topic.text}
                   </ReactMarkdown>
                 </div>            
@@ -156,21 +175,21 @@ export default function TopicPage() {
 
           </div>
 {/* 
-          Prompts
+          Comments
 */}
           <div className="border-3 border-blue-500 text-green-500">
             <div className="flex items-center">
-              Questions 
+            Comments
               <button
-                onClick={() => handleAddTopic('prompt')}
-                className="ml-2 text-gray-500 hover:text-gray-700"
+                onClick={() => handleAddTopic('comment')}
+                className="ml-2 text-green-500 hover:text-green-700"
               >
                 <FiPlusCircle size={18} />
               </button>
             </div>
             <TopicListTable
                 parentId={topic.id}
-                topic_type="prompt"
+                topic_type="comment"
                 rowHeight={rowHeight}
               />
           </div>
@@ -194,44 +213,44 @@ export default function TopicPage() {
               rowHeight={rowHeight}
             />
           </div>
+          <br/>
+
+{/* 
+          Prompts
+*/}
+          <div className="border-3 border-blue-500 text-green-500">
+            <div className="flex items-center">
+              Prompts 
+              <button
+                onClick={() => handleAddTopic('prompt')}
+                className="ml-2 text-green-500 hover:text-green-700"
+              >
+                <FiPlusCircle size={18} />
+              </button>
+            </div>
+            <TopicListTable
+                parentId={topic.id}
+                topic_type="prompt"
+                rowHeight={rowHeight}
+              />
+          </div>
+          <br/>
+
         </div>
       </div>
-      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
-        <div className="p-4">
-          <h2 className="text-xl font-bold mb-4">Edit Topic</h2>
-          <Input
-            type="text"
-            value={topic?.title || ''}
-            onChange={(e) => setTopic({ ...topic, title: e.target.value })}
-            className="mb-4"
-            placeholder="Title"
-          />
-          <Input
-            type="text"
-            value={topic?.subtitle || ''}
-            onChange={(e) => setTopic({ ...topic, subtitle: e.target.value })}
-            className="mb-4"
-            placeholder="Subtitle"
-          />
-          <Textarea
-            value={topic?.text || ''}
-            onChange={(e) => setTopic({ ...topic, text: e.target.value })}
-            className="mb-4"
-            placeholder="Text"
-            rows={5}
-          />
-          <div className="flex justify-end space-x-2">
-            <Button onClick={() => setEditModalOpen(false)} variant="secondary">Cancel</Button>
-            <Button onClick={() => handleSaveTopic(topic)}>Save</Button>
-          </div>
-        </div>
-      </Dialog>
+
       <TopicModals 
         isAddModalOpen={isAddModalOpen}
         setIsAddModalOpen={setIsAddModalOpen}
+        editModalOpen={editModalOpen}
+        setEditModalOpen={setEditModalOpen}
+        editingTopic={topic}
+        handleEditChange={handleEditChange}
+        handleSaveTopic={handleSaveTopic}
         parentId={topic.id}
         topicType={addingTopicType}
         onTopicAdded={handleTopicAdded}
+        userId={user.uid}
       />
     </div>
     </>

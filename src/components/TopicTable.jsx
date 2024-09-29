@@ -1,7 +1,8 @@
 // src/components/TopicTable.jsx
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { FiSettings, FiPlusCircle, FiChevronRight, FiClock, FiMic } from 'react-icons/fi';
+import { FiEdit, FiSettings, FiPlusCircle, FiChevronRight, FiClock, FiMic } from 'react-icons/fi';
+
 import ReactMarkdown from 'react-markdown';
 import TopicListTable from './TopicListTable';
 
@@ -48,6 +49,13 @@ const TopicTable = ({ topics, rowHeight, handleAddTopic, handleEditTopic, expand
               >
                 <td className={`${rowHeight} px-6 text-left`}>
                   <div className="flex items-center">
+{/*                 
+                expansion toggle chevron
+ */}
+                        <button onClick={() => toggleTopicExpansion(topic.id)} className="ml-2">
+                          <FiChevronRight size={14} className={expandedTopicIds.has(topic.id) ? 'transform rotate-90' : ''} />
+                        </button> &nbsp;
+
 {/*                     
                     navigate to topic
  */}
@@ -64,7 +72,7 @@ const TopicTable = ({ topics, rowHeight, handleAddTopic, handleEditTopic, expand
                           onClick={() => handleEditTopic(topic)}
                           className="ml-2 text-gray-500 hover:text-gray-700"
                         >
-                          <FiSettings size={14} />
+                          <FiEdit size={14} />
                         </button>
 {/* 
                 last update time
@@ -75,21 +83,18 @@ const TopicTable = ({ topics, rowHeight, handleAddTopic, handleEditTopic, expand
                             {formatDate(new Date(topic.updated_at))}
                           </span>
                         </div>
-{/*                 
-                expansion toggle chevron
- */}
-                        <button onClick={() => toggleTopicExpansion(topic.id)} className="ml-2">
-                          <FiChevronRight size={14} className={expandedTopicIds.has(topic.id) ? 'transform rotate-90' : ''} />
-                        </button>
+
 {/*                 
                 add comment button
  */}
-                        <button onClick={() => handleAddComment(topic.id)} className="ml-2">
+                        <button onClick={() => handleAddComment(topic.id)} className="ml-2" title="Add Comment">
                           <FiMic size={14} />
                         </button>
                       </span>
                     )}
                   </div>
+                  <br/>
+                  A new row? what width?
                 </td>
               </tr>
 {/* 
@@ -98,11 +103,15 @@ const TopicTable = ({ topics, rowHeight, handleAddTopic, handleEditTopic, expand
               {expandedTopicIds.has(topic.id) && (
                 <tr>
                   <td className="px-6 py-2">
+{/* SUB-TITLE */}
+                  {topic.subtitle && <h2 className="text-xl text-purple-600 mt-2">{topic.subtitle}</h2>}
+{/* TOPIC-TEXT */}
                     <div className="max-w-full overflow-x-auto px-4">
-                      <ReactMarkdown className={`markdown-content text-red-600`}>
+                      <ReactMarkdown className={`markdown-content text-blue-600`}>
                         {topic.text}
                       </ReactMarkdown>
                     </div>
+{/* TOPIC COMMENTS                     */}
                     <div className="mt-4 pl-4">
                       <TopicListTable
                         parentId={topic.id}

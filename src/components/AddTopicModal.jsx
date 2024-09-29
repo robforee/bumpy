@@ -1,3 +1,6 @@
+// scrcp,[pmemtsAddTopicModal.jsx]
+"use client"
+
 import React, { useState } from 'react';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';

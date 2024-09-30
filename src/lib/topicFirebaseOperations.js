@@ -45,6 +45,30 @@ export const addTopic = async (userId, parentId, topicData) => {
     throw error;
   }
 };
+export const fetchTopic = async (topicId) => {
+  try {
+    const topicRef = doc(db_viaClient, 'topics', topicId);
+    const topicSnap = await getDoc(topicRef);
+
+    if (!topicSnap.exists()) {
+      throw new Error('Topic not found');
+    }
+
+    const data = topicSnap.data();
+    // Convert Firestore Timestamp to JavaScript Date
+    if (data.updated_at && typeof data.updated_at.toDate === 'function') {
+      data.updated_at = data.updated_at.toDate();
+    }
+    if (data.created_at && typeof data.created_at.toDate === 'function') {
+      data.created_at = data.created_at.toDate();
+    }
+
+    return { id: topicSnap.id, ...data };
+  } catch (error) {
+    console.error('Error fetching topic:', error);
+    throw error;
+  }
+};
 
 export const fetchTopicsByCategory = async (categories, parentId) => {
   try {

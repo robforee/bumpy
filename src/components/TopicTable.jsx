@@ -1,11 +1,10 @@
 // src/components/TopicTable.jsx
-// src/components/TopicTable.jsx
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { FiEdit, FiChevronRight, FiClock, FiPlusCircle, FiTrash2 } from 'react-icons/fi';
 import ReactMarkdown from 'react-markdown';
-import TopicListTable from './TopicListTable';
 import { DeleteConfirmationDialog } from '@/src/components/ui/dialog';
+import TopicTableContainer from './TopicTableContainer';
 
 const markdownStyles = `
   .markdown-content ul {
@@ -34,6 +33,7 @@ const formatDate = (date) => {
 };
 
 const TopicTable = ({ 
+  parentTopic,
   topics, 
   rowHeight, 
   handleAddTopic, 
@@ -62,12 +62,26 @@ const TopicTable = ({
     }
   };
 
+  if(!topics.length) return (<></>)
+
   return (
-    <div className="min-w-full bg-white">
+    
+    <div className="min-w-full bg-white shadow-[0_0_10px_rgba(0,255,0,0.5)] border border-green-300">
       <style jsx global>{markdownStyles}</style>
+      
+      {/* {topics[0]?.topic_type} <span>about &nbsp;</span>{parentTopic.title} */}
+
+        {parentTopic.text && 
+              <p className="mt-2">            
+                <div className="max-w-full overflow-x-auto px-4">
+                  <ReactMarkdown className={`markdown-content text-blue-600 italic`}>
+                    {parentTopic.text}
+                  </ReactMarkdown>
+                </div>            
+              </p>}        
       {/* LOOP THROUGH TOPICS */}
       {topics.slice(0, 100).map((topic) => (
-        <div key={topic.id} className="border-b border-gray-200">
+        <div key={topic.id} className="border-b border-gray-200 stufff">
           <div className="flex flex-col">
             <div 
               className={`${rowHeight} px-6 py-2 hover:bg-gray-100 flex items-center`}
@@ -79,14 +93,16 @@ const TopicTable = ({
                 <FiChevronRight size={14} className={expandedTopicIds.has(topic.id) ? 'transform rotate-90' : ''} />
               </button>
 
-              {/* navigate to topic */}
-              <Link href={`/topics/${topic.id}`} className="font-medium">
-                {topic.title}
+              {/* navigate to topic with title and subtitle */}
+              <Link href={`/topics/${topic.id}`} className="font-medium flex-grow">
+                <span className="font-bold">{topic.title}</span>
+                {topic.subtitle && (
+                  <span className="text-gray-500 ml-2">: {topic.subtitle}</span>
+                )}
               </Link>
               
               {hoveredRow === topic.id && (
                 <div className="ml-2 flex items-center">
-                  :
                   {/* edit button */}
                   <button
                     onClick={() => handleEditTopic(topic)}
@@ -128,39 +144,47 @@ const TopicTable = ({
 
             {/* collapsable markdown content */}
             {expandedTopicIds.has(topic.id) && (
-              <div className="pl-12 pr-6 py-2 bg-gray-50">
-                {/* SUB-TITLE */}
-                {topic.subtitle && <h2 className="text-xl text-purple-600 mt-2">{topic.subtitle}</h2>}
-                {/* TOPIC-TEXT */}
-                <div className="max-w-full overflow-x-auto px-4">
+              <div className="pl-12 pr-6 py-2 bg-gray-200">
+                <div className="max-w-full overflow-x-auto px-4 bg-blue-200">
                   <ReactMarkdown className="markdown-content text-blue-600">
                     {topic.text}
                   </ReactMarkdown>
                 </div>
-                {/* TOPIC COMMENTS */}
+                {/* COMMENTS */}
+                {topic.topic_type == 'topic' ?
+                  <div className="mt-4">
+                      Comments about {topic.title}
+                    <TopicTableContainer
+                      parentId={topic.id}
+                      topic_type="comment"
+                      rowHeight={rowHeight}
+                    />
+                  </div>
+                : ''}
+
+                {/*  PROMPTS */}
+                {topic.topic_type == 'topic' ?
                 <div className="mt-4">
-                  <TopicListTable
-                    parentId={topic.id}
-                    topic_type="comment"
-                    rowHeight={rowHeight}
-                  />
-                </div>
-                {/* TOPIC PROMPTS */}
-                <div className="mt-4">
-                  <TopicListTable
+                  Prompts about {topic.title}
+                  <TopicTableContainer 
                     parentId={topic.id}
                     topic_type="prompt"
                     rowHeight={rowHeight}
                   />
                 </div>
-                {/* TOPIC ARTIFACTS */}
-                <div className="mt-4">
-                  <TopicListTable
-                    parentId={topic.id}
-                    topic_type="artifact"
-                    rowHeight={rowHeight}
-                  />
-                </div>
+                : ''}
+
+                {/* ARTIFACTS */}
+                {topic.topic_type == 'topic' ?
+                  <div className="mt-4">
+                      Artifacts about {topic.title}
+                    <TopicTableContainer
+                      parentId={topic.id}
+                      topic_type="artifact"
+                      rowHeight={rowHeight}
+                    />
+                  </div>
+                : ''}
               </div>
             )}
           </div>

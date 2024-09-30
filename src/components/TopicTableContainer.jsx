@@ -1,15 +1,15 @@
 // src/components/TopicListTable.jsx
-import React, { useState, useEffect } from 'react';
-import { useUser } from '@/src/contexts/UserContext';  // Add this import
+import React, { useState, useEffect, useCallback } from 'react';
+import { useUser } from '@/src/contexts/UserContext';
 
-import { fetchTopicsByCategory, updateTopic, deleteTopic } from '@/src/lib/topicFirebaseOperations';
+import { fetchTopicsByCategory, updateTopic, deleteTopic, fetchTopic } from '@/src/lib/topicFirebaseOperations';
 import TopicTable from './TopicTable';
 import TopicModals from './TopicModals';
 
-
-const TopicListTable = ({ parentId, topic_type, rowHeight }) => {
+const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
   const { user } = useUser();
   const [topics, setTopics] = useState([]);
+  const [parentTopic, setParentTopic] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -20,27 +20,31 @@ const TopicListTable = ({ parentId, topic_type, rowHeight }) => {
   const [addingTopicType, setAddingTopicType] = useState(null);
   const [addingToTopicId, setAddingToTopicId] = useState(null);
 
-  const loadTopics = async () => {
+  const loadTopicsAndParent = useCallback(async () => {
     try {
       setLoading(true);
-      const fetchedTopics = await fetchTopicsByCategory([topic_type], parentId);
+      const [fetchedTopics, fetchedParentTopic] = await Promise.all([
+        fetchTopicsByCategory([topic_type], parentId),
+        fetchTopic(parentId)
+      ]);
       const sortedTopics = fetchedTopics.sort((a, b) => a.title.localeCompare(b.title));
       setTopics(sortedTopics);
+      setParentTopic(fetchedParentTopic);
       setLoading(false);
     } catch (err) {
-      console.error("Error fetching topics:", err);
-      setError("Failed to load topics. Please try again.");
+      console.error("Error fetching data:", err);
+      setError("Failed to load data. Please try again.");
       setLoading(false);
     }
-  };
+  }, [parentId, topic_type]);
 
   useEffect(() => {
-    loadTopics();
+    loadTopicsAndParent();
     const savedExpandedIds = localStorage.getItem(`expandedTopics_${parentId}_${topic_type}`);
     if (savedExpandedIds) {
       setExpandedTopicIds(new Set(JSON.parse(savedExpandedIds)));
     }
-  }, [parentId, topic_type]);
+  }, [parentId, topic_type, loadTopicsAndParent]);
 
   const toggleTopicExpansion = (topicId) => {
     setExpandedTopicIds(prev => {
@@ -66,7 +70,7 @@ const TopicListTable = ({ parentId, topic_type, rowHeight }) => {
   const handleAddArtifact = (topicId) => handleAddTopic('artifact', topicId);
 
   const handleTopicAdded = () => {
-    loadTopics();
+    loadTopicsAndParent();
     setIsAddModalOpen(false);
     setAddingTopicType(null);
     setAddingToTopicId(null);
@@ -117,9 +121,12 @@ const TopicListTable = ({ parentId, topic_type, rowHeight }) => {
   if (loading) return <div>Loading topics...</div>;
   if (error) return <div>Error: {error}</div>;
 
+  if(!topics.length) return (<></>);
+  
   return (
     <div className="overflow-x-auto">
       <TopicTable 
+        parentTopic={parentTopic}
         topics={topics}
         rowHeight={rowHeight}
         handleAddTopic={handleAddTopic}
@@ -149,4 +156,4 @@ const TopicListTable = ({ parentId, topic_type, rowHeight }) => {
   );
 };
 
-export default TopicListTable;
+export default TopicTableContainer;

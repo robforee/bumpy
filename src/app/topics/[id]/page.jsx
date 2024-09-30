@@ -16,8 +16,8 @@ import { Input } from '@/src/components/ui/input';
 import { Textarea } from '@/src/components/ui/textarea';
 import { devConfig } from '@/src/config/devConfig';
 
-import TopicModals from '@/src/components/TopicModals';
-import TopicListTable from '@/src/components/TopicListTable';
+// import TopicModals from '@/src/components/TopicModals';
+import TopicTableContainer from '@/src/components/TopicTableContainer';
 import { updateTopic } from '@/src/lib/topicFirebaseOperations';
 
 import {topicTypes} from '@/src/lib/TopicTypes'
@@ -124,122 +124,24 @@ export default function TopicPage() {
         yellow header
 */}
         <div className="px-6 py-4 bg-yellow-100 border-b border-yellow-200">
-          <pre>
-          topic.title and favicon, 
-
-          </pre>
-        </div>
-
-        <div className="p-6">
-          <p className="text-base">
-            <span className="text-1xl font-bold text-blue-500">
-              {
-                topic_parent?.title 
-                ? <Link href={`/topics/${topic_parent?.id}`} className="text-blue-600 hover:underline">
-                    {topic_parent?.title}
-                  </Link>
-                :'top-of-your-world'
-              }
-            </span>
-          </p>
-
-          <div className="mb-4">
-{/* 
-            TOPIC TITLE & EDIT
-*/}
-            <div className="flex items-center justify-between">
-              <h1 className="text-3xl font-bold">{topic.title} 
-                &nbsp;
-              <button
-                onClick={handleEditTopic}
-                className="text-gray-500 hover:text-gray-700">
-                <FiEdit size={15} />
-              </button>
-              </h1>
-            </div>
-{/* 
-            TOPIC SUB TITLE
-             */}
-            {topic.subtitle && <h2 className="text-xl text-purple-600 mt-2">{topic.subtitle}</h2>}
-{/*             
-            red TEXT in MARKDOWN
-*/}
-            {topic.text && <p className="mt-2">            
-              <div className="max-w-full overflow-x-auto px-4">
-                  <ReactMarkdown className={`markdown-content text-blue-600`}>
-                    {topic.text}
-                  </ReactMarkdown>
-                </div>            
-              </p>}
-
-
-          </div>
-{/* 
-          Comments
-*/}
-          <div className="border-3 border-blue-500 text-green-500">
-            <div className="flex items-center">
-            Comments
-              <button
-                onClick={() => handleAddTopic('comment')}
-                className="ml-2 text-green-500 hover:text-green-700"
-              >
-                <FiPlusCircle size={18} />
-              </button>
-            </div>
-            <TopicListTable
+          <span className="text-1xl font-bold text-blue-500">
+                {
+                  topic_parent?.title 
+                  ? <Link href={`/topics/${topic_parent?.id}`} className="text-blue-600 hover:underline">
+                      {topic_parent?.title}
+                    </Link>
+                  : topic.title
+                }
+          </span>
+          <TopicTableContainer
                 parentId={topic.id}
-                topic_type="comment"
+                topic_type="topic"
                 rowHeight={rowHeight}
-              />
-          </div>
-          <br/>
-{/*           
-          TOPICS
- */}
-          <div className="border-3 border-blue-500 text-blue-500">
-            <div className="flex items-center">
-              Topics
-              <button
-                onClick={() => handleAddTopic('topic')}
-                className="ml-2 text-gray-500 hover:text-gray-700"
-              >
-                <FiPlusCircle size={18} />
-              </button>
-            </div>
-            <TopicListTable
-              parentId={topic.id}
-              topic_type="topic"
-              rowHeight={rowHeight}
-            />
-          </div>
-          <br/>
-
-{/* 
-          Prompts
-*/}
-          <div className="border-3 border-blue-500 text-green-500">
-            <div className="flex items-center">
-              Prompts 
-              <button
-                onClick={() => handleAddTopic('prompt')}
-                className="ml-2 text-green-500 hover:text-green-700"
-              >
-                <FiPlusCircle size={18} />
-              </button>
-            </div>
-            <TopicListTable
-                parentId={topic.id}
-                topic_type="prompt"
-                rowHeight={rowHeight}
-              />
-          </div>
-          <br/>
-
+              />          
         </div>
       </div>
 
-      <TopicModals 
+      {/* <TopicModals 
         isAddModalOpen={isAddModalOpen}
         setIsAddModalOpen={setIsAddModalOpen}
         editModalOpen={editModalOpen}
@@ -251,7 +153,7 @@ export default function TopicPage() {
         topicType={addingTopicType}
         onTopicAdded={handleTopicAdded}
         userId={user.uid}
-      />
+      /> */}
     </div>
     </>
   );

@@ -140,20 +140,6 @@ export default function TopicPage() {
               />          
         </div>
       </div>
-
-      {/* <TopicModals 
-        isAddModalOpen={isAddModalOpen}
-        setIsAddModalOpen={setIsAddModalOpen}
-        editModalOpen={editModalOpen}
-        setEditModalOpen={setEditModalOpen}
-        editingTopic={topic}
-        handleEditChange={handleEditChange}
-        handleSaveTopic={handleSaveTopic}
-        parentId={topic.id}
-        topicType={addingTopicType}
-        onTopicAdded={handleTopicAdded}
-        userId={user.uid}
-      /> */}
     </div>
     </>
   );

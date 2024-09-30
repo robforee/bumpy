@@ -72,13 +72,13 @@ const TopicTable = ({
       {/* {topics[0]?.topic_type} <span>about &nbsp;</span>{parentTopic.title} */}
 
         {parentTopic.text && 
-              <p className="mt-2">            
+              <div className="mt-2">            
                 <div className="max-w-full overflow-x-auto px-4">
                   <ReactMarkdown className={`markdown-content text-blue-600 italic`}>
                     {parentTopic.text}
                   </ReactMarkdown>
                 </div>            
-              </p>}        
+              </div>}        
       {/* LOOP THROUGH TOPICS */}
       {topics.slice(0, 100).map((topic) => (
         <div key={topic.id} className="border-b border-gray-200 stufff">

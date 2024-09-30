@@ -68,14 +68,16 @@ const Header = () => {
   }
 
   return (
-    <header className="flex items-center justify-between p-4 bg-white shadow-md">
-      <Link href="/" className="logo flex items-center">
-        <img src="/friendly-eats.svg" alt="FriendlyEats" className="h-8 mr-2" />
-        <span className="text-xl font-bold">Analyst Server</span>
-      </Link>
-      
-      <div className="flex items-center space-x-4">
-        <Link href="/about" className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+    <header className="bg-white shadow-md">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between py-4">
+          <Link href="/" className="logo flex items-center">
+            <img src="/friendly-eats.svg" alt="FriendlyEats" className="h-8 mr-2" />
+            <span className="text-xl font-bold">Analyst Server</span>
+          </Link>
+          
+          <div className="flex items-center space-x-2 sm:space-x-4">
+          <Link href="/about" className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-300">
           About Us
         </Link>
 
@@ -132,6 +134,9 @@ const Header = () => {
             <span className="text-xs">Sign In with Google<br/> if you are on the list</span>
           </button>
         )}
+        
+          </div>
+        </div>
       </div>
     </header>
   );

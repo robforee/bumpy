@@ -1,17 +1,15 @@
-// src/app/members/page.js
+// src/components/MembersComponent.jsx
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 import MembersListing from "@/src/components/MembersListing";
 import { useUser } from '@/src/contexts/UserContext';
 
-export default function MembersPage() {
+const MembersComponent = () => {
   const { user, loading } = useUser();
   const [members, setMembers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     async function fetchMembers() {
@@ -19,12 +17,8 @@ export default function MembersPage() {
         setIsLoading(true);
         setError(null);
         try {
-          const params = new URLSearchParams(searchParams);
-          const category = params.get('category') || 'Member';
-
-          const response = await fetch(`/api/members?${params.toString()}`);
+          const response = await fetch(`/api/members`);
           if (!response.ok) {
-            console.log(response)
             throw new Error('Failed to fetch members');
           }
           const data = await response.json();
@@ -40,12 +34,22 @@ export default function MembersPage() {
     if (!loading) {
       fetchMembers();
     }
-  }, [user, loading, searchParams]);
+  }, [user, loading]);
+
+  if (loading || isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
 
   return (
-    <main className="main__members">
-      <h1>{searchParams.get('category') || 'unknown category'}s</h1>
+    <div className="members-component">
+      <h1>All Members</h1>
       <MembersListing members={members} />
-    </main>
+    </div>
   );
-}
+};
+
+export default MembersComponent;

@@ -15,7 +15,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className="bg-gray-100">
         <UserProvider>
-          <div className="min-h-screen flex flex-col">
+          <div className="min-h-screen flex flex-col inside-user-provider">
             <Header />
             <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
               {children}

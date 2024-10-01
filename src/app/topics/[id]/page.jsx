@@ -16,7 +16,8 @@ import { Input } from '@/src/components/ui/input';
 import { Textarea } from '@/src/components/ui/textarea';
 import { devConfig } from '@/src/config/devConfig';
 
-// import TopicModals from '@/src/components/TopicModals';
+import MenuItems from '@/src/components/MenuItems';  // Import the new MenuItems component
+
 import TopicTableContainer from '@/src/components/TopicTableContainer';
 import { updateTopic } from '@/src/lib/topicFirebaseOperations';
 
@@ -120,6 +121,7 @@ export default function TopicPage() {
     <style jsx global>{markdownStyles}</style>
     <div className="min-h-screen bg-gray-100 py-8">
       <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
+
 {/*         
         yellow header
 */}

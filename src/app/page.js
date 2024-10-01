@@ -6,7 +6,7 @@ import { getAuthenticatedAppForUser } from "@/src/lib/firebase/serverApp.js";
 import { getFirestore } from "firebase/firestore";
 import { default as dynamicImport } from 'next/dynamic';
 import AdminPage from "./admin/page";
-
+import MembersComponent from '@/src/components/MembersComponent';
 
 // Dynamically import ServerTime with no SSR
 const ServerTime = dynamicImport(() => import('@/src/components/ServerTime'), { ssr: false });
@@ -34,9 +34,8 @@ export default async function Home({ searchParams }) {
 	
 	return (
 		<main className="main__home">
-			<h1>Welcome to Analyst Server</h1>
-			<ServerTime />			
-
+			<UnderConstruction />
+			<MembersComponent />
 		</main>
 	);
 }

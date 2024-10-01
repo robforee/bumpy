@@ -3,30 +3,31 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from "next/link";
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { signInWithGoogle, signOut } from "@/src/lib/firebase/auth.js";
 import { useUser } from '@/src/contexts/UserContext';
-import { userService } from '@/src/services/userService'
+import { userService } from '@/src/services/userService';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/src/components/ui/dialog';
+import { Button } from '@/src/components/ui/button';
 
 const Header = () => {
   const { user, loading, userProfile } = useUser();
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [avatarError, setAvatarError] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
-  const handleSignOut = async (event) => {
-    event.preventDefault();
+  const handleSignOut = async () => {
     try {
       await signOut();
+      setShowMenu(false);
       router.push('/');
     } catch (error) {
       console.error('Error signing out:', error);
     }
   };
 
-  const handleSignIn = async (event) => {
-    event.preventDefault();
+  const handleSignIn = async () => {
     try {
       await signInWithGoogle();
       setIsSigningIn(true);
@@ -36,9 +37,8 @@ const Header = () => {
     }
   };
 
-  const handleImageError = (e) => {
-    e.target.onerror = null; // Prevent infinite loop if fallback also fails
-    e.target.src = "/default-avatar.png"; // Make sure this file exists in your public folder
+  const handleAvatarError = () => {
+    setAvatarError(true);
   };
 
   useEffect(() => {
@@ -55,17 +55,7 @@ const Header = () => {
     }
   }, [isSigningIn, user]);
 
-  const toggleCategory = () => {
-    const params = new URLSearchParams(searchParams);
-    const currentCategory = params.get('category');
-    const newCategory = currentCategory === 'Member' ? 'Restaurant' : 'Member';
-    params.set('category', newCategory);
-    router.push(`${pathname}?${params.toString()}`);
-  };
-
-  const showToggleButton = pathname.startsWith('/members');
   let isAuthorizedUser = user && user.uid === 'e660ZS3gfxTXZR06kqn5M23VCzl2';
-  
   isAuthorizedUser = true; // Note: This line overrides the previous check. Consider removing if not needed.
 
   if (loading) {
@@ -75,81 +65,68 @@ const Header = () => {
   return (
     <header className="bg-white shadow-md">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between py-4">
+        <div className="flex items-center justify-center py-4 space-x-4">
           <Link href="/" className="logo flex items-center">
             <img src="/friendly-eats.svg" alt="FriendlyEats" className="h-8 mr-2" />
-            <span className="text-xl font-bold">Analyst Server</span>
           </Link>
-          
-          <div className="flex items-center space-x-2 sm:space-x-4">
-            <Link href="/about" className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-              About Us
+
+          <Link href="/" className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+            About Us
+          </Link>
+
+          {isAuthorizedUser && userProfile?.topicRootId && (
+            <Link href={`/topics/${userProfile.topicRootId}`} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+              Root Topic
             </Link>
+          )}
 
-            {isAuthorizedUser && userProfile?.topicRootId && (
-              <>
-                <Link href={`/topics/${userProfile.topicRootId}`} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-                  Root Topic
-                </Link>
-                <Link href="/admin" className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-                  Admin
-                </Link>
-                <Link href="/gmail-dashboard" className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-                  Gmail Dashboard
-                </Link>
-                <Link href="/members" className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-                  Members
-                </Link>
-                <Link href="/activity-feed" className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-                  Activity Feed
-                </Link>
-                <Link href="/config" className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-                  Config
-                </Link>
-                {showToggleButton && (
-                  <button 
-                    onClick={toggleCategory} 
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition duration-300"
-                  >
-                    Toggle Category
-                  </button>
-                )}
-              </>
-            )}
-
-            {user ? (
-              <div className="profile relative">
-                <button className="flex items-center space-x-2">
+          {user ? (
+            <>
+              <button 
+                className="flex items-center space-x-2"
+                onClick={() => setShowMenu(true)}
+              >
+                {!avatarError ? (
                   <img 
-                    className="w-8 h-8 rounded-full object-cover"
-                    src={user.photoURL || "/default-avatar.png"}
-                    alt={user.displayName || "User profile"}
-                    onError={handleImageError}
+                    className="w-8 h-8 rounded-full" 
+                    src={user.photoURL || "/default-avatar.png"} 
+                    alt={user.email} 
+                    onError={handleAvatarError}
                   />
-                  <span>{user.displayName}</span>
-                </button>
-                <div className="menu absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg hidden group-hover:block">
-                  <ul className="py-1">
-                    <li>
-                      <a href="#" onClick={handleSignOut} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                        Sign Out
-                      </a>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            ) : (
-              <button onClick={handleSignIn} className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-                <img 
-                  src="/default-avatar.png" 
-                  alt="Default user avatar" 
-                  className="w-6 h-6 object-cover rounded-full"
-                  onError={handleImageError}
-                />
-                <span className="text-xs">Sign In with Google<br/> if you are on the list</span>
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
+                    <span className="text-sm font-bold">{user.displayName ? user.displayName[0].toUpperCase() : '?'}</span>
+                  </div>
+                )}
+                <span>{user.displayName}</span>
               </button>
-            )}
-          </div>
+
+              <Dialog open={showMenu} onOpenChange={setShowMenu}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>User Menu</DialogTitle>
+                  </DialogHeader>
+                  <div className="py-4">
+                    <Button onClick={handleSignOut} className="w-full mb-2">Sign Out</Button>
+                    <br/>
+                    <Link href="/admin" passHref>
+                      <Button className="w-full mb-2">Admin</Button>
+                    </Link>
+                    <br/>
+                    <Link href="/gmail-dashboard" passHref>
+                      <Button className="w-full">Gmail Dashboard</Button>
+                    </Link>
+                    <br/>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </>
+          ) : (
+            <button onClick={handleSignIn} className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+              <img src="/profile.svg" alt="A placeholder user image" className="w-6 h-6" />
+              <span className="text-xs">Sign In with Google<br/> if you are on the list</span>
+            </button>
+          )}
         </div>
       </div>
     </header>

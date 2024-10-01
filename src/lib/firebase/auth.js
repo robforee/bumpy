@@ -3,6 +3,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   onAuthStateChanged as _onAuthStateChanged,
+  updateProfile
 } from "firebase/auth";
 import { getFirestore, doc, setDoc } from "firebase/firestore";
 import { auth, db_viaClient } from "./clientApp";
@@ -38,29 +39,21 @@ export async function signInWithGoogle() {
   provider.setCustomParameters({
     prompt: 'select_account'
   });  
-
   try {
     const result = await signInWithPopup(auth, provider);
     
-    // The signed-in user info.
     const user = result.user;
-    
-    // This gives you a Google Access Token.
     const credential = GoogleAuthProvider.credentialFromResult(result);
     const accessToken = credential.accessToken;
-
-    // Get the refresh token
     const refreshToken = user.refreshToken;
 
-    // Send the tokens to your backend
-    console.log('sendTokensToBackend')
-    await sendTokensToBackend(accessToken, refreshToken, user.uid);
+    // Update the user's photoURL
+    if (user.photoURL) {
+      await updateProfile(user, { photoURL: user.photoURL });
+    }
 
-    // Store the scopes in Firestore
-    // console.log('writing scopes',user.uid)
-    console.log('storeUserScopes')
-    await storeUserScopes(user.uid, scopes);// write as user?
-    // console.log('writing scopes',user.uid)
+    await sendTokensToBackend(accessToken, refreshToken, user.uid);
+    await storeUserScopes(user.uid, scopes);
 
     return user;
   } catch (error) {

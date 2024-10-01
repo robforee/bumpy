@@ -36,6 +36,11 @@ const Header = () => {
     }
   };
 
+  const handleImageError = (e) => {
+    e.target.onerror = null; // Prevent infinite loop if fallback also fails
+    e.target.src = "/default-avatar.png"; // Make sure this file exists in your public folder
+  };
+
   useEffect(() => {
     if (isSigningIn && user) {
       userService.initializeNewUserIfNeeded(user)
@@ -77,64 +82,73 @@ const Header = () => {
           </Link>
           
           <div className="flex items-center space-x-2 sm:space-x-4">
-          <Link href="/about" className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-          About Us
-        </Link>
+            <Link href="/about" className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+              About Us
+            </Link>
 
-        {isAuthorizedUser && userProfile?.topicRootId &&  (
-          <>
-          <Link href={`/topics/${userProfile.topicRootId}`} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-              Root Topic
-            </Link>
-            <Link href="/admin" className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-              Admin
-            </Link>
-            <Link href="/gmail-dashboard" className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-              Gmail Dashboard
-            </Link>
-            <Link href="/members" className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-              Members
-            </Link>
-            <Link href="/activity-feed" className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-              Activity Feed
-            </Link>
-            <Link href="/config" className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-              Config
-            </Link>
-            {showToggleButton && (
-              <button 
-                onClick={toggleCategory} 
-                className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition duration-300"
-              >
-                Toggle Category
+            {isAuthorizedUser && userProfile?.topicRootId && (
+              <>
+                <Link href={`/topics/${userProfile.topicRootId}`} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                  Root Topic
+                </Link>
+                <Link href="/admin" className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                  Admin
+                </Link>
+                <Link href="/gmail-dashboard" className="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                  Gmail Dashboard
+                </Link>
+                <Link href="/members" className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                  Members
+                </Link>
+                <Link href="/activity-feed" className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                  Activity Feed
+                </Link>
+                <Link href="/config" className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                  Config
+                </Link>
+                {showToggleButton && (
+                  <button 
+                    onClick={toggleCategory} 
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition duration-300"
+                  >
+                    Toggle Category
+                  </button>
+                )}
+              </>
+            )}
+
+            {user ? (
+              <div className="profile relative">
+                <button className="flex items-center space-x-2">
+                  <img 
+                    className="w-8 h-8 rounded-full object-cover"
+                    src={user.photoURL || "/default-avatar.png"}
+                    alt={user.displayName || "User profile"}
+                    onError={handleImageError}
+                  />
+                  <span>{user.displayName}</span>
+                </button>
+                <div className="menu absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg hidden group-hover:block">
+                  <ul className="py-1">
+                    <li>
+                      <a href="#" onClick={handleSignOut} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        Sign Out
+                      </a>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            ) : (
+              <button onClick={handleSignIn} className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                <img 
+                  src="/default-avatar.png" 
+                  alt="Default user avatar" 
+                  className="w-6 h-6 object-cover rounded-full"
+                  onError={handleImageError}
+                />
+                <span className="text-xs">Sign In with Google<br/> if you are on the list</span>
               </button>
             )}
-          </>
-        )}
-
-        {user ? (
-          <div className="profile relative">
-            <button className="flex items-center space-x-2">
-              <img className="w-8 h-8 rounded-full" src={user.photoURL || "/profile.svg"} alt={user.email} />
-              <span>{user.displayName}</span>
-            </button>
-            <div className="menu absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg hidden group-hover:block">
-              <ul className="py-1">
-                <li>
-                  <a href="#" onClick={handleSignOut} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                    Sign Out
-                  </a>
-                </li>
-              </ul>
-            </div>
-          </div>
-        ) : (
-          <button onClick={handleSignIn} className="flex items-center space-x-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-            <img src="/profile.svg" alt="A placeholder user image" className="w-6 h-6" />
-            <span className="text-xs">Sign In with Google<br/> if you are on the list</span>
-          </button>
-        )}
-        
           </div>
         </div>
       </div>

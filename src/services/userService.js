@@ -1,14 +1,8 @@
 // src/services/userService.js
-import { db_viaClient }        from '@/src/lib/firebase/clientApp';
-// import { doc, getDoc, setDoc } from '@/src/lib/firebase/clientApp';
+import { db_viaClient } from '@/src/lib/firebase/clientApp';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/src/lib/firebase/clientApp';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-
-// getUserPreferences
-// updateUserPreferences
-// getUserActivity
-// getUserRoles
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 
 export const userService = {
   
@@ -17,21 +11,20 @@ export const userService = {
     const userSnap = await getDoc(userRef);
 
     if (!userSnap.exists()) {
-      console.log('users/',user.uid)
       await setDoc(userRef, {
         email: user.email,
         displayName: user.displayName,
         photoURL: user.photoURL,
-        topicRootId: null, // To be set
-        preferences: {
-          // Default preferences
-        }
+        topicRootId: null,
+        preferences: {}
       });
 
-      // Initialize topic root and other necessary data
       await this.initializeTopicRoot(user.uid);
-    }else{
-      console.log('users/',user.uid,'exists')
+    } else {
+      // Update the photoURL if it has changed
+      if (user.photoURL !== userSnap.data().photoURL) {
+        await updateDoc(userRef, { photoURL: user.photoURL });
+      }
     }
   },
 
@@ -70,6 +63,16 @@ export const userService = {
       }
     } catch (error) {
       console.error("Error fetching user profile:", error);
+      throw error;
+    }
+  },  
+  async updateUserPhotoURL(userId, photoURL) {
+    try {
+      const userRef = doc(db_viaClient, 'users', userId);
+      await updateDoc(userRef, { photoURL: photoURL });
+      console.log(`Updated photoURL for user ${userId}`);
+    } catch (error) {
+      console.error('Error updating user photoURL:', error);
       throw error;
     }
   },  

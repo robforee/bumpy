@@ -9,11 +9,12 @@ const { defineSecret } = require("firebase-functions/params");
 
 // The Firebase Admin SDK to access Firestore.
 const {initializeApp} = require("firebase-admin/app");
-const {getFirestore} = require("firebase-admin/firestore");
-
-const { FieldValue } = require('firebase-admin/firestore');
+ 
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const crypto = require('crypto');
 
 const openaiApiKey = defineSecret('OPENAI_API_KEY');
+const encryptionKey = defineSecret('ENCRYPTION_KEY');
 
 initializeApp();
 
@@ -28,7 +29,6 @@ exports.addmessage = onRequest(async (req, res) => {
   // Send back a message that we've successfully written the message
   res.json({result: `Message with ID: ${writeResult.id} added.`});
 });
-
 
 exports.makeuppercase = onDocumentCreated("/messages/{documentId}", (event) => {
   // Grab the current value of what was written to Firestore.
@@ -46,7 +46,6 @@ exports.makeuppercase = onDocumentCreated("/messages/{documentId}", (event) => {
   return event.data.ref.set({uppercase}, {merge: true});
 });
 
-
 exports.getServerTime = onCall((request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'User must be authenticated.');
@@ -57,7 +56,6 @@ exports.getServerTime = onCall((request) => {
     serverTime: new Date().toISOString()
   };
 });
-
 
 exports.addTopic = onCall(async (request) => {
   if (!request.auth) {
@@ -210,3 +208,42 @@ exports.runOpenAIAndAddTopic = onCall({ secrets: [openaiApiKey] }, async (reques
     throw new HttpsError('internal', 'Error processing request', error);
   }
 });
+
+exports.storeTokens = onCall({ secrets: [encryptionKey] }, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'User must be logged in');
+  }
+
+  const { accessToken, refreshToken } = request.data;
+  const userId = request.auth.uid;
+
+  const db = getFirestore();
+  const userTokensRef = db.collection('user_tokens').doc(userId);
+
+  function encrypt(text) {
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(encryptionKey.value(), 'hex'), iv);
+    let encrypted = cipher.update(text);
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    return iv.toString('hex') + ':' + encrypted.toString('hex');
+  }
+
+  try {
+    const expirationTime = Date.now() + 3600000; // 1 hour
+    const encryptedAccessToken = encrypt(accessToken);
+    const encryptedRefreshToken = encrypt(refreshToken);
+
+    await userTokensRef.set({
+      accessToken: encryptedAccessToken,
+      refreshToken: encryptedRefreshToken,
+      expirationTime: expirationTime,
+      createdAt: FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    return { message: 'Tokens stored successfully' };
+  } catch (error) {
+    logger.error('Error storing tokens:', error);
+    throw new HttpsError('internal', 'Error storing tokens', error);
+  }
+});
+

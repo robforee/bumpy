@@ -25,7 +25,7 @@ export const Dialog = ({ open, onOpenChange, children, hasChanges = false }) => 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-      <div ref={dialogRef} className="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[85vh] overflow-auto">
+      <div ref={dialogRef} className="DIALOG_DIV bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[90vh] overflow-auto">
         {children}
       </div>
     </div>

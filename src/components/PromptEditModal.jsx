@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/src/components/ui/dialog';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
@@ -14,10 +14,18 @@ const PromptEditModal = ({
 }) => {
   const [localTopic, setLocalTopic] = useState(editingTopic);
   const [isLoading, setIsLoading] = useState(false);
+  const promptTextareaRef = useRef(null);
 
   useEffect(() => {
     setLocalTopic(editingTopic);
   }, [editingTopic]);
+
+  useEffect(() => {
+    if (promptTextareaRef.current) {
+      promptTextareaRef.current.style.height = 'auto';
+      promptTextareaRef.current.style.height = `${promptTextareaRef.current.scrollHeight}px`;
+    }
+  }, [localTopic.prompt]);
 
   const handleLocalChange = (e) => {
     const { name, value } = e.target;
@@ -31,7 +39,6 @@ const PromptEditModal = ({
       setLocalTopic(prev => ({ ...prev, text: gptResponse }));
     } catch (error) {
       console.error("Error submitting GPT query:", error);
-      // You might want to show an error message to the user here
     } finally {
       setIsLoading(false);
     }
@@ -42,11 +49,15 @@ const PromptEditModal = ({
     onClose();
   };
 
+  const handlePromoteText = () => {
+    setLocalTopic(prev => ({ ...prev, prompt: prev.text }));
+  };
+
   if (!isOpen) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="w-full h-full flex flex-col">
         <DialogHeader>
           <DialogTitle>Edit Prompt</DialogTitle>
           <button 
@@ -56,53 +67,46 @@ const PromptEditModal = ({
             <FiX size={18} />
           </button>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Input
-              id="title"
-              name="title"
-              value={localTopic.title || ''}
-              onChange={handleLocalChange}
-              placeholder="Title"
-              className="col-span-4"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Input
-              id="subtitle"
-              name="subtitle"
-              value={localTopic.subtitle || ''}
-              onChange={handleLocalChange}
-              placeholder="Subtitle"
-              className="col-span-4"
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Textarea
-              id="prompt"
-              name="prompt"
-              value={localTopic.prompt || ''}
-              onChange={handleLocalChange}
-              placeholder="Prompt"
-              className="col-span-4"
-              rows={4}
-            />
-          </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Textarea
-              id="text"
-              name="text"
-              value={localTopic.text || ''}
-              onChange={handleLocalChange}
-              placeholder="Text"
-              className="col-span-4"
-              rows={6}
-            />
-          </div>
+        <div className="flex-grow grid gap-4 py-4 overflow-y-auto">
+          <Input
+            id="title"
+            name="title"
+            value={localTopic.title || ''}
+            onChange={handleLocalChange}
+            placeholder="Title"
+          />
+          <Input
+            id="subtitle"
+            name="subtitle"
+            value={localTopic.subtitle || ''}
+            onChange={handleLocalChange}
+            placeholder="Subtitle"
+          />
+          <Textarea
+            ref={promptTextareaRef}
+            id="prompt"
+            name="prompt"
+            value={localTopic.prompt || ''}
+            onChange={handleLocalChange}
+            placeholder="Prompt"
+            className="min-h-[100px] resize-none overflow-hidden"
+          />
+          <Textarea
+            id="text"
+            name="text"
+            value={localTopic.text || ''}
+            onChange={handleLocalChange}
+            placeholder="Text"
+            rows={10}
+            className="min-h-[250px]"
+          />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancel
+          </Button>
+          <Button onClick={handlePromoteText}>
+            Promote Text to Prompt
           </Button>
           <Button onClick={handleSubmitGptQuery} disabled={isLoading}>
             {isLoading ? 'Submitting...' : 'Submit to GPT'}

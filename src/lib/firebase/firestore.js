@@ -1,6 +1,6 @@
 	// src/lib/firebase/firestore.js
 
-import { generateFakeRestaurantsAndReviews } from "@/src/lib/fakeRestaurants.js";
+import { generateFakeRestaurantsAndReviews } from "../fakeRestaurants.js";
 
 import {
 	collection,
@@ -17,7 +17,7 @@ import {
 	getFirestore,
 } from "firebase/firestore";
 
-import { db_viaClient } from "@/src/lib/firebase/clientApp";
+import { db_viaClient } from "../firebase/clientApp.js";
 
 export async function getMembers(db, filters = {}) {
     const collectionName = filters.category === 'Restaurant' ? 'restaurants' : 'members';
@@ -101,7 +101,6 @@ const updateWithRating = async (
 };
 
 export async function addReviewToRestaurant(db, restaurantId, review) {
-	console.log('@@@ SERVER? addReviewToRestaurant',review);
 
 	if (!restaurantId) {
 		throw new Error("No restaurant ID has been provided.");
@@ -119,7 +118,6 @@ export async function addReviewToRestaurant(db, restaurantId, review) {
 
 		// corrected line
 		//console.log('XXX',review);
-		console.log('@@@ runTransaction')
 		await runTransaction(db, transaction =>
 			updateWithRating(transaction, docRef, newRatingDocument, review)
 		);

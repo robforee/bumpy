@@ -1,18 +1,18 @@
 // src/lib/openai/openaiOperations.js
-import { OpenAI }        from 'openai';
-import { addDocument }   from '../firebase/firestore.js';
-import { cleanForTask }  from './utils.js';
+import OpenAI from 'openai';
+import { addDocument } from '../firebase/firestore.js';
+import { cleanForTask } from './utils.js';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-export async function runOpenAiQuery({
+export const runOpenAiQuery = async ({
   systemPrompt,
   userPrompts,
-  model = "gpt-4",
+  model = "gpt-4o",
   temperature = 0.1,
   responseFormat = { type: "text" },
   owner
-}) {
+}) => {
   try {
     const messages = [
       { role: "system", content: await cleanForTask(systemPrompt) },
@@ -38,11 +38,11 @@ export async function runOpenAiQuery({
       timestamp: new Date()
     };
 
-    const topicId = await addDocument("topics", topicData);
+    //const topicId = await addDocument("topics", topicData);
 
-    return { content, topicId };
+    return { content };
   } catch (error) {
     console.error("Error in runOpenAiQuery:", error);
     throw error;
   }
-}
+};

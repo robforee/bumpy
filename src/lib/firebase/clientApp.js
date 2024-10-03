@@ -2,7 +2,7 @@
 'use client';
 
 import { initializeApp, getApps } from "firebase/app";
-import { firebaseConfig } from "./config";
+import { firebaseConfig } from "./config.js";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getStorage, connectStorageEmulator } from "firebase/storage";

@@ -116,10 +116,15 @@ export const updateTopic = async (topicId, updatedData) => {
       throw new Error('Topic not found');
     }
 
-    const dataToUpdate = {};
-    if (updatedData.title !== undefined) dataToUpdate.title = updatedData.title;
-    if (updatedData.subtitle !== undefined) dataToUpdate.subtitle = updatedData.subtitle;
-    if (updatedData.text !== undefined) dataToUpdate.text = updatedData.text;
+    // Define all fields that can be updated
+    const updatableFields = ['title', 'subtitle', 'text', 'prompt', 'topic_type'];
+
+    const dataToUpdate = updatableFields.reduce((acc, field) => {
+      if (updatedData[field] !== undefined) {
+        acc[field] = updatedData[field];
+      }
+      return acc;
+    }, {});
 
     // Use serverTimestamp() for the update timestamp
     dataToUpdate.updated_at = serverTimestamp();
@@ -127,6 +132,7 @@ export const updateTopic = async (topicId, updatedData) => {
     await updateDoc(topicRef, dataToUpdate);
 
     console.log('Topic updated successfully');
+
     return { id: topicId, ...dataToUpdate };
   } catch (error) {
     console.error('Error updating topic:', error);

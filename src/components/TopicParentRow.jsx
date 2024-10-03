@@ -15,8 +15,6 @@ const TopicParentRow = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
-  if (!parentTopic.text) return null;
-
   const formatDate = (date) => {
     if (!(date instanceof Date)) return 'N/A';
     return date.toLocaleDateString('en-US', { 
@@ -32,7 +30,7 @@ const TopicParentRow = ({
   return (
     <div className="TOPIC_PARENT mt-2 parent-info relative cursor-pointer border-b border-gray-200">
       <div 
-        className={`${rowHeight} px-6 py-2 hover:bg-gray-100 flex items-center`}
+        className={`${rowHeight} px-2 py-2 hover:bg-gray-100 flex items-center`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -43,9 +41,9 @@ const TopicParentRow = ({
           />
         </button>
         <div className="font-medium flex-grow">
-          <span className="font-bold text-blue-800">{parentTopic.title}</span>
+          <span className="font-bold text-blue-800 text-4xl">{parentTopic.title}</span>
           {parentTopic.subtitle && (
-            <span className="text-red-700 ml-2">: {parentTopic.subtitle}</span>
+            <span className="text-red-700 ml-2"> {parentTopic.subtitle}</span>
           )}
         </div>
         
@@ -77,11 +75,14 @@ const TopicParentRow = ({
           </div>
         )}
       </div>
-      {isParentTopicExpanded && (
+      {isParentTopicExpanded && (        
         <div className="pl-12 pr-6 py-2 bg-gray-100">
-          <ReactMarkdown className="markdown-content text-blue-600 italic">
-            {parentTopic.text}
-          </ReactMarkdown>
+          { !parentTopic.text.length ? <div className="px-0 py-2 text-red-800">no topic text found</div>
+            :
+            <ReactMarkdown className="markdown-content text-blue-600 italic">
+                {parentTopic.text}
+            </ReactMarkdown>
+            }
         </div>
       )}
     </div>

@@ -31,15 +31,10 @@ const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
       ]);
       const sortedTopics = fetchedTopics.sort((a, b) => a.title.localeCompare(b.title));
       const sortedTypes = fetchedTopicTypes.sort((a, b) => {
-        // First sort by topic_type
         const topicTypeComparison = a.topic_type.localeCompare(b.topic_type);
-        
-        // If topic_type is the same, sort by title
         if (topicTypeComparison === 0) {
           return a.title.localeCompare(b.title);
         }
-      
-        // Otherwise, return the comparison of topic_type
         return topicTypeComparison;
       });      
       setTopics(sortedTopics);
@@ -109,20 +104,32 @@ const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
     setEditingTopic(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSaveTopic = async () => {
+  const handleSaveTopic = async (updatedTopic) => {
     try {
-      if (!editingTopic || !editingTopic.id) {
+      if (!updatedTopic || !updatedTopic.id) {
         throw new Error("Invalid topic data");
       }
-      await updateTopic(editingTopic.id, {
-        title: editingTopic.title,
-        subtitle: editingTopic.subtitle,
-        text: editingTopic.text
-      });
+      
+      // Create an object with all fields that should be updated
+      const updatedFields = {
+        title: updatedTopic.title,
+        subtitle: updatedTopic.subtitle,
+        text: updatedTopic.text,
+        prompt: updatedTopic.prompt,
+        // Include any other fields that might be edited
+      };
+  
+      // Remove undefined fields
+      Object.keys(updatedFields).forEach(key => updatedFields[key] === undefined && delete updatedFields[key]);
+  
+      // Log the updated fields for debugging
+  
+      await updateTopic(updatedTopic.id, updatedFields);
       setEditModalOpen(false);
       loadTopicsAndParent();
     } catch (error) {
       console.error("Error updating topic:", error);
+      // Optionally, show an error message to the user
     }
   };
 
@@ -137,8 +144,6 @@ const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
 
   if (loading) return <div>Loading topics...</div>;
   if (error) return <div>Error: {error}</div>;
-  
-  console.log(parentTopic.title, topics.length,topicTypes.length)
   
   return (
     <div className="TOPIC_TABLE_CONTAINER overflow-x-auto">

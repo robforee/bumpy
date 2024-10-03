@@ -9,12 +9,6 @@ import { getAdminAuth, getAdminFirestore }       from '@/src/lib/firebase/adminA
 
 
 export async function handleReviewFormSubmission(data) {
-    console.log('@@@ SERVER ~ handleReviewFormSubmission 3', {
-        text: data.get("text"),
-        rating: data.get("rating"),
-        userId: data.get("userId"),
-        userName: data.get("userName")
-    });
 
     try {
         const { firebaseServerApp } = await getAuthenticatedAppForUser();
@@ -27,7 +21,6 @@ export async function handleReviewFormSubmission(data) {
             userName: data.get("userName")
         });
 
-        console.log('@@@ Review submitted successfully');
     } catch (error) {
         console.error("Error submitting review:", error);
         throw error;
@@ -35,7 +28,6 @@ export async function handleReviewFormSubmission(data) {
 }
 
 export async function writeReviewServerSide(restaurantId, review) {
-    console.log('@@@ SERVER ~ writeReviewServerSide', { restaurantId, review });
 
     try {
         const { firebaseServerApp } = await getAuthenticatedAppForUser();
@@ -43,7 +35,6 @@ export async function writeReviewServerSide(restaurantId, review) {
 
         await addReviewToRestaurant(db, restaurantId, review);
 
-        console.log('@@@ Review submitted successfully from server-side');
         return { success: true };
     } catch (error) {
         console.error("Error submitting review from server-side:", error);
@@ -52,7 +43,6 @@ export async function writeReviewServerSide(restaurantId, review) {
 }
 
 export async function writeToUserOwnedPath(userId, rating) {
-    console.log('@@@ SERVER ~ writeToUserOwnedPath', { userId, rating });
 
     try {
         const { firebaseServerApp } = await getAuthenticatedAppForUser();
@@ -63,7 +53,6 @@ export async function writeToUserOwnedPath(userId, rating) {
 
         await setDoc(ratingRef, rating);
 
-        console.log('@@@ Rating submitted successfully to user-owned path');
         return { success: true };
     } catch (error) {
         console.error("Error submitting rating to user-owned path:", error);
@@ -82,17 +71,13 @@ export async function ServerWriteWithServiceAccount() {
 }
 
 export async function ServerWriteAsImpersonatedUser(idToken) {
-    console.log('@@@ SERVER ~ writeAsUser started', { idTokenLength: idToken?.length || 0 });
 
     try {
         const adminAuth = getAdminAuth();
-        console.log('@@@ Admin Auth obtained');
 
         const decodedToken = await adminAuth.verifyIdToken(idToken);
-        console.log('@@@ Token verified', { uid: decodedToken.uid });
 
         const db = getAdminFirestore();
-        console.log('@@@ Admin Firestore obtained');
 
         const docRef = db.collection('users').doc(decodedToken.uid).collection('serverData').doc('testDoc');
         
@@ -101,7 +86,6 @@ export async function ServerWriteAsImpersonatedUser(idToken) {
             timestamp: new Date().toISOString()
         });
         
-        console.log('@@@ Document written successfully in writeAsUser');
         return { success: true };
     } catch (error) {
         console.error('Error in writeAsUser:', error);

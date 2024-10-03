@@ -7,6 +7,7 @@ import { addTopic } from '@/src/lib/firebase/firestore';
 import { db_viaClient } from '@/src/lib/firebase/clientApp';
 import { FiX } from 'react-icons/fi';
 import PromptEditModal from './PromptEditModal';
+import { runOpenAiQuery } from '@/src/lib/openai/openaiOperations';
 
 const TopicModals = ({
   isAddModalOpen,
@@ -47,9 +48,20 @@ const TopicModals = ({
   };
 
   const handleGptQuery = async (prompt) => {
-    // This is a stub for now. We'll implement the actual GPT query later.
-    console.log("GPT query with prompt:", prompt);
-    return "This is a placeholder response from GPT.";
+    try {
+      const result = await runOpenAiQuery({
+        systemPrompt: "You are a helpful assistant.",
+        userPrompts: [prompt],
+        model: "gpt-4o-mini", // or whichever model you prefer
+        temperature: 0.7,
+        responseFormat: { type: "text" },
+        owner: userId
+      });
+      return result.content;
+    } catch (error) {
+      console.error("Error in GPT query:", error);
+      throw error;
+    }
   };
 
   const handleSavePrompt = (updatedTopic) => {

@@ -157,7 +157,7 @@ exports.updateUser = onCall(async (request) => {
 });
 
 exports.runOpenAIAndAddTopic = onCall({ secrets: [openaiApiKey] }, async (request) => {
-    if (!request.auth) {
+  if (!request.auth) {
     throw new HttpsError('unauthenticated', 'User must be logged in');
   }
 
@@ -247,3 +247,53 @@ exports.storeTokens = onCall({ secrets: [encryptionKey] }, async (request) => {
   }
 });
 
+const cleanForTask = async (task) => {
+  return str.replace(/[\\"\u0000-\u001F\u007F-\u009F]/g, (c) => {
+    return '\\u' + ('0000' + c.charCodeAt(0).toString(16)).slice(-4);
+  });
+};
+
+exports.runOpenAiQuery = onCall({ secrets: [openaiApiKey] }, async (request) => {
+  const openai = new OpenAI({ apiKey: openaiApiKey.value() });
+
+  try {
+    const {
+      systemPrompt,
+      userPrompts,
+      model,
+      temperature,
+      responseFormat,
+      owner
+    } = request.data;
+
+    console.log('Received request:', JSON.stringify(request.data, null, 2));
+
+    const messages = [
+      { role: "system", content: systemPrompt },
+      ...userPrompts.map(prompt => ({ role: "user", content: prompt }))
+    ];
+
+    console.log('Sending request to OpenAI:', JSON.stringify({
+      model,
+      temperature,
+      response_format: responseFormat,
+      messages
+    }, null, 2));
+
+    const openAiResponse = await openai.chat.completions.create({
+      model,
+      temperature,
+      response_format: responseFormat,
+      messages,
+    });
+
+    console.log('Received response from OpenAI:', JSON.stringify(openAiResponse, null, 2));
+
+    const content = openAiResponse.choices[0].message.content;
+
+    return { content };
+  } catch (error) {
+    console.error("Detailed error in runOpenAiQuery:", JSON.stringify(error, null, 2));
+    throw new HttpsError('internal', 'Error processing OpenAI query', error.message);
+  }
+});

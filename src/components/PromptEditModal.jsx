@@ -13,6 +13,7 @@ const PromptEditModal = ({
   handleGptQuery
 }) => {
   const [localTopic, setLocalTopic] = useState(editingTopic);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     setLocalTopic(editingTopic);
@@ -24,12 +25,15 @@ const PromptEditModal = ({
   };
 
   const handleSubmitGptQuery = async () => {
+    setIsLoading(true);
     try {
       const gptResponse = await handleGptQuery(localTopic.prompt);
       setLocalTopic(prev => ({ ...prev, text: gptResponse }));
     } catch (error) {
       console.error("Error submitting GPT query:", error);
       // You might want to show an error message to the user here
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -100,8 +104,8 @@ const PromptEditModal = ({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleSubmitGptQuery}>
-            Submit to GPT
+          <Button onClick={handleSubmitGptQuery} disabled={isLoading}>
+            {isLoading ? 'Submitting...' : 'Submit to GPT'}
           </Button>
           <Button onClick={handleSave}>Save</Button>
         </DialogFooter>

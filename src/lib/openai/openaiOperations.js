@@ -1,46 +1,35 @@
 // src/lib/openai/openaiOperations.js
-import OpenAI from 'openai';
-import { addDocument } from '../firebase/firestore.js';
+import { functions } from '../firebase/clientApp';
+import { httpsCallable } from 'firebase/functions';
 import { cleanForTask } from './utils.js';
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export const runOpenAiQuery = async ({
   systemPrompt,
   userPrompts,
-  model = "gpt-4o",
+  model = "gpt-4-1106-preview",
   temperature = 0.1,
   responseFormat = { type: "text" },
   owner
 }) => {
-  try {
-    const messages = [
-      { role: "system", content: await cleanForTask(systemPrompt) },
-      ...userPrompts.map(prompt => ({ role: "user", content: prompt }))
-    ];
+  console.log('Running query:', userPrompts);
 
-    const response = await openai.chat.completions.create({
+  try {
+    const runOpenAiQueryFunction = httpsCallable(functions, 'runOpenAiQuery');
+
+    const cleanedSystemPrompt = await cleanForTask(systemPrompt);
+
+    const result = await runOpenAiQueryFunction({
+      systemPrompt: cleanedSystemPrompt,
+      userPrompts,
       model,
       temperature,
-      response_format: responseFormat,
-      messages,
+      responseFormat,
+      owner
     });
 
-    const content = response.choices[0].message.content;
+    console.log('Cloud function response:', result.data);
 
-    // Save to Firestore
-    const topicData = {
-      owner,
-      name: `OpenAI Query Result - ${new Date().toISOString()}`,
-      topic_type: 'prompt-response',
-      text: content,
-      response_format: responseFormat.type,
-      timestamp: new Date()
-    };
-
-    //const topicId = await addDocument("topics", topicData);
-
-    return { content };
+    return result.data;
   } catch (error) {
     console.error("Error in runOpenAiQuery:", error);
     throw error;

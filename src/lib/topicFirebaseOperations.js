@@ -73,15 +73,29 @@ export const fetchTopic = async (topicId) => {
 export const fetchTopicsByCategory = async (categories, parentId) => {
   try {
     const topicsRef = collection(db_viaClient, 'topics');
-    const q = query(
-      topicsRef,
-      where('topic_type', 'in', categories),
-      where('parents', 'array-contains', parentId)
-    );
+
+    let q;
+    
+    if (categories === '-topic') {
+      // If categories is '-topic', fetch all except those with topic_type 'topic'
+      q = query(
+        topicsRef,
+        where('topic_type', '!=', 'topic'), // Exclude 'topic' type
+        where('parents', 'array-contains', parentId)
+      );
+    } else {
+      // Fetch topics where the topic_type is in the provided categories
+      q = query(
+        topicsRef,
+        where('topic_type', 'in', categories), // Match provided categories
+        where('parents', 'array-contains', parentId)
+      );
+    }
+
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => {
       const data = doc.data();
-      // Convert Firestore Timestamp to JavaScript Date
+      // Convert Firestore Timestamp to JavaScript Date if necessary
       if (data.updated_at && typeof data.updated_at.toDate === 'function') {
         data.updated_at = data.updated_at.toDate();
       }

@@ -6,17 +6,8 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getTopicById, addTopic } from '@/src/lib/firebase/firestore';
 import { db_viaClient } from '@/src/lib/firebase/clientApp';
-import { getCategoryColor } from '@/src/components/TopicList/utils';
 import { useUser } from '@/src/contexts/UserContext';
-import ReactMarkdown from 'react-markdown';
-import { FiEdit, FiPlusCircle } from 'react-icons/fi';
-import { Dialog } from '@/src/components/ui/dialog';
-import { Button } from '@/src/components/ui/button';
-import { Input } from '@/src/components/ui/input';
-import { Textarea } from '@/src/components/ui/textarea';
 import { devConfig } from '@/src/config/devConfig';
-
-import MenuItems from '@/src/components/MenuItems';  // Import the new MenuItems component
 
 import TopicTableContainer from '@/src/components/TopicTableContainer';
 import { updateTopic } from '@/src/lib/topicFirebaseOperations';
@@ -94,23 +85,6 @@ export default function TopicPage() {
     setTopic(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSaveTopic = async () => {
-    try {
-      const updatedData = {
-        title: topic.title,
-        subtitle: topic.subtitle,
-        text: topic.text
-      };
-      const updatedTopic = await updateTopic(topic.id, updatedData);
-      setEditModalOpen(false);
-      // Update the local state with the returned data
-      setTopic(prevTopic => ({ ...prevTopic, ...updatedTopic }));
-    } catch (error) {
-      console.error("Error updating topic:", error);
-      alert("Error updating topic: " + error.message);
-    }
-  };
-
   if (!user) return <div>Please sign in for access</div>;
   if (loading) return <div>Loading...</div>;
   if (error) return <div>Error: {error}</div>;
@@ -125,17 +99,20 @@ export default function TopicPage() {
 {/*         
         yellow header
 */}
-        <div className="px-6 py-4 bg-yellow-100 border-b border-yellow-200">
-          <span className="text-1xl font-bold text-blue-500">
+        <div className="TOPIC_PAGE px-6 py-4 bg-yellow-100 border-b border-yellow-200">
+          <span className="TOPIC_TITLE text-1xl font-bold text-blue-500">
                 {
                   topic_parent?.title 
                   ? <Link href={`/topics/${topic_parent?.id}`} className="text-blue-600 hover:underline">
-                      {topic_parent?.title}
-                    </Link>
+                      {topic_parent?.title} 
+                    </Link> 
                   : topic.title
                 }
+                {topic_parent?.subtitle && (
+                  <span className="text-red-700 ">&nbsp;{topic_parent.subtitle}</span>
+                )}
           </span>
-          <TopicTableContainer
+          <TopicTableContainer className="TOPIC_TABLE_CONATINER"
                 parentId={topic.id}
                 topic_type="topic"
                 rowHeight={rowHeight}

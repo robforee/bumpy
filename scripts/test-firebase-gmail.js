@@ -1,3 +1,4 @@
+// scripts/test-firebase-gmail.js
 const admin = require('firebase-admin');
 const path = require('path');
 const { google } = require('googleapis');
@@ -244,7 +245,42 @@ async function fetchGmailMessages(userId) {
       maxResults: 10
     });
 
-    console.log('Fetched Gmail messages:', response.data);
+    console.log('Fetching details for Gmail messages...');
+
+    const messageDetails = await Promise.all(response.data.messages.map(async (message) => {
+      const details = await gmail.users.messages.get({
+        userId: 'me',
+        id: message.id,
+        format: 'metadata',
+        metadataHeaders: ['Date', 'From', 'Subject', 'To']
+      });
+
+      const headers = details.data.payload.headers;
+      const date = headers.find(h => h.name === 'Date')?.value;
+      const from = headers.find(h => h.name === 'From')?.value;
+      const subject = headers.find(h => h.name === 'Subject')?.value;
+      const to = headers.find(h => h.name === 'To')?.value;
+
+      return {
+        id: message.id,
+        date,
+        from,
+        to,
+        subject
+      };
+    }));
+
+    console.log('Fetched Gmail messages:');
+    messageDetails.forEach(msg => {
+      console.log(`ID: ${msg.id}`);
+      console.log(`\tDate: ${msg.date}`);
+      console.log(`\tFrom: ${msg.from}`);
+      console.log(`\tTo: ${msg.to}`);
+      console.log(`\tSubject: ${msg.subject}`);
+      console.log('---');
+    });
+
+    return messageDetails;
   } catch (error) {
     console.error('Error fetching Gmail messages:', error.message);
     if (error.response) {

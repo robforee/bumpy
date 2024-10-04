@@ -1,19 +1,17 @@
 // src/components/Header.jsx
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { signInWithGoogle, signOut } from "@/src/lib/firebase/auth.js";
 import { useUser } from '@/src/contexts/UserContext';
-import { userService } from '@/src/services/userService';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/src/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/src/components/ui/dialog';
 import { Button } from '@/src/components/ui/button';
 
 const Header = () => {
-  const { user, loading, userProfile, profileLoading, refreshUserProfile } = useUser();
+  const { user, userProfile, loading, refreshUserProfile } = useUser();
   const router = useRouter();
-  const [isSigningIn, setIsSigningIn] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
 
@@ -29,13 +27,10 @@ const Header = () => {
 
   const handleSignIn = async () => {
     try {
-      console.log('Signing in...');
       await signInWithGoogle();
-      console.log('Sign-in successful, setting isSigningIn');
-      setIsSigningIn(true);
+      await refreshUserProfile();
     } catch (error) {
       console.error("Sign-in error:", error);
-      setIsSigningIn(false);
     }
   };
 
@@ -43,39 +38,22 @@ const Header = () => {
     setAvatarError(true);
   };
 
-  useEffect(() => {
-    console.log('Header effect:', { isSigningIn, user, userProfile, profileLoading });
-    if (isSigningIn && user && !profileLoading) {
-      console.log('Initializing new user if needed');
-      userService.initializeNewUserIfNeeded(user)
-        .then(() => {
-          console.log('User initialized, refreshing profile');
-          return refreshUserProfile();
-        })
-        .then(() => {
-          console.log('Profile refreshed, setting isSigningIn to false');
-          setIsSigningIn(false);
-        })
-        .catch((error) => {
-          console.error("Error initializing user or refreshing profile:", error);
-          setIsSigningIn(false);
-        });
-    }
-  }, [isSigningIn, user, userProfile, profileLoading, refreshUserProfile]);
+  const handleMenuItemClick = (action) => {
+    setShowMenu(false);
+    action();
+  };
 
-  let isAuthorizedUser = user && userProfile?.topicRootId;
-
-  console.log('Render state:', { user, userProfile, isAuthorizedUser, loading, profileLoading });
-
-  if (loading || profileLoading) {
+  if (loading) {
     return <div>Loading...</div>;
   }
 
+  const isAuthorizedUser = user && userProfile?.topicRootId;
 
   return (
     <header className="bg-white shadow-md">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-center py-4 space-x-4">
+
           <Link href="/" className="logo flex items-center">
             <img src="/friendly-eats.svg" alt="FriendlyEats" className="h-8 mr-2" />
           </Link>
@@ -84,7 +62,7 @@ const Header = () => {
             About Us
           </Link>
 
-          {isAuthorizedUser && (
+     {isAuthorizedUser && (
             <>
               <Link href={`/topics/${userProfile.topicRootId}`} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
                 Your Plan
@@ -99,6 +77,7 @@ const Header = () => {
               </Link>
             </>
           )}
+
           {user ? (
             <>
               <button 
@@ -126,16 +105,21 @@ const Header = () => {
                     <DialogTitle>User Menu</DialogTitle>
                   </DialogHeader>
                   <div className="py-4">
-                    <Button onClick={handleSignOut} className="w-full mb-2">Sign Out</Button>
-                    <br/>
-                    <Link href="/admin" passHref>
-                      <Button className="w-full mb-2">Admin</Button>
-                    </Link>
-                    <br/>
-                    <Link href="/gmail-dashboard" passHref>
-                      <Button className="w-full">Gmail Dashboard</Button>
-                    </Link>
-                    <br/>
+                    <Button onClick={() => handleMenuItemClick(handleSignOut)} className="w-full mb-2">
+                      Sign Out
+                    </Button>
+                    <Button 
+                      onClick={() => handleMenuItemClick(() => router.push('/admin'))} 
+                      className="w-full mb-2"
+                    >
+                      Admin
+                    </Button>
+                    <Button 
+                      onClick={() => handleMenuItemClick(() => router.push('/gmail-dashboard'))} 
+                      className="w-full"
+                    >
+                      Gmail Dashboard
+                    </Button>
                   </div>
                 </DialogContent>
               </Dialog>

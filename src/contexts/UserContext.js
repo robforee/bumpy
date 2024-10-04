@@ -1,7 +1,7 @@
 // src/contexts/UserContext.js
 "use client";
 
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { onAuthStateChanged } from '@/src/lib/firebase/auth';
 import { userService } from '@/src/services/userService';
 
@@ -9,47 +9,58 @@ const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
-  const [profileLoading, setProfileLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const refreshUserProfile = async () => {
-    if (user) {
-      setProfileLoading(true);
-      try {
-        console.log('Refreshing user profile for:', user.uid);
-        const profile = await userService.getUserProfile(user.uid);
-        console.log('Fetched user profile:', profile);
+  const loadUserProfile = useCallback(async (uid) => {
+    try {
+      const profile = await userService.getUserProfile(uid);
+      if (!profile) {
+        console.log("Profile not found, initializing new user");
+        await userService.initializeNewUserIfNeeded({ uid });
+        const newProfile = await userService.getUserProfile(uid);
+        setUserProfile(newProfile);
+      } else {
         setUserProfile(profile);
-      } catch (error) {
-        console.error('Error refreshing user profile:', error);
-      } finally {
-        setProfileLoading(false);
       }
+    } catch (error) {
+      console.error("Error loading user profile:", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    console.log('Setting up auth state change listener');
-    const unsubscribe = onAuthStateChanged(async (user) => {
-      console.log('Auth state changed. User:', user?.uid);
-      setUser(user);
-      if (user) {
-        await refreshUserProfile();
+    const unsubscribe = onAuthStateChanged(async (authUser) => {
+      console.log("Auth state changed:", authUser?.uid);
+      setLoading(true);
+      
+      if (authUser) {
+        setUser(authUser);
+        await loadUserProfile(authUser.uid);
       } else {
+        setUser(null);
         setUserProfile(null);
       }
+      
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [loadUserProfile]);
 
-  return (
-    <UserContext.Provider value={{ user, loading, userProfile, profileLoading, refreshUserProfile }}>
-      {children}
-    </UserContext.Provider>
-  );
+  const refreshUserProfile = useCallback(async () => {
+    if (user) {
+      await loadUserProfile(user.uid);
+    }
+  }, [user, loadUserProfile]);
+
+  const value = {
+    user,
+    userProfile,
+    loading,
+    refreshUserProfile
+  };
+
+  return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 };
 
 export const useUser = () => useContext(UserContext);

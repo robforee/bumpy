@@ -77,7 +77,7 @@ const TopicParentRow = ({
       </div>
       {isParentTopicExpanded && (        
         <div className="pl-12 pr-6 py-2 bg-gray-100">
-          { !parentTopic.text.length ? <div className="px-0 py-2 text-red-800">no topic text found</div>
+          { !parentTopic.text.length ? <div className="px-0 py-2 text-red-800">no topic overview yet</div>
             :
             <ReactMarkdown className="markdown-content text-blue-600 italic">
                 {parentTopic.text}

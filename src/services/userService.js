@@ -1,4 +1,3 @@
-// src/services/userService.js
 import { db_viaClient } from '@/src/lib/firebase/clientApp';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/src/lib/firebase/clientApp';
@@ -20,12 +19,7 @@ export const userService = {
       });
 
       await this.initializeTopicRoot(user.uid);
-    } else {
-      // Update the photoURL if it has changed
-      if (user.photoURL !== userSnap.data().photoURL) {
-        await updateDoc(userRef, { photoURL: user.photoURL });
-      }
-    }
+    } 
   },
 
   async initializeTopicRoot(userId) {
@@ -37,10 +31,7 @@ export const userService = {
       });
       const newTopicId = result.data.id;
   
-      const updateUserFunction = httpsCallable(functions, 'updateUser');
-      await updateUserFunction({ 
-        updateData: { topicRootId: newTopicId } 
-      });
+      await this.updateUserTopicRoot(userId, newTopicId);
   
       console.log(`Topic root initialized for user ${userId} with ID ${newTopicId}`);
       return newTopicId;
@@ -66,6 +57,7 @@ export const userService = {
       throw error;
     }
   },  
+
   async updateUserPhotoURL(userId, photoURL) {
     try {
       const userRef = doc(db_viaClient, 'users', userId);
@@ -76,5 +68,16 @@ export const userService = {
       throw error;
     }
   },  
+
+  async updateUserTopicRoot(userId, topicRootId) {
+    try {
+      const userRef = doc(db_viaClient, 'users', userId);
+      await updateDoc(userRef, { topicRootId: topicRootId });
+      console.log(`Updated topicRootId for user ${userId}`);
+    } catch (error) {
+      console.error('Error updating user topicRootId:', error);
+      throw error;
+    }
+  },
 
 };

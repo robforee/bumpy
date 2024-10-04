@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/src/components/ui/button';
 
 const Header = () => {
-  const { user, loading, userProfile } = useUser();
+  const { user, loading, userProfile, profileLoading, refreshUserProfile } = useUser();
   const router = useRouter();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
@@ -29,7 +29,9 @@ const Header = () => {
 
   const handleSignIn = async () => {
     try {
+      console.log('Signing in...');
       await signInWithGoogle();
+      console.log('Sign-in successful, setting isSigningIn');
       setIsSigningIn(true);
     } catch (error) {
       console.error("Sign-in error:", error);
@@ -42,25 +44,33 @@ const Header = () => {
   };
 
   useEffect(() => {
-    if (isSigningIn && user) {
+    console.log('Header effect:', { isSigningIn, user, userProfile, profileLoading });
+    if (isSigningIn && user && !profileLoading) {
+      console.log('Initializing new user if needed');
       userService.initializeNewUserIfNeeded(user)
         .then(() => {
+          console.log('User initialized, refreshing profile');
+          return refreshUserProfile();
+        })
+        .then(() => {
+          console.log('Profile refreshed, setting isSigningIn to false');
           setIsSigningIn(false);
-          console.log('User initialized:', user);
         })
         .catch((error) => {
-          console.error("Error initializing user:", error);
+          console.error("Error initializing user or refreshing profile:", error);
           setIsSigningIn(false);
         });
     }
-  }, [isSigningIn, user]);
+  }, [isSigningIn, user, userProfile, profileLoading, refreshUserProfile]);
 
-  let isAuthorizedUser = user && user.uid === 'e660ZS3gfxTXZR06kqn5M23VCzl2';
-  isAuthorizedUser = true; // Note: This line overrides the previous check. Consider removing if not needed.
+  let isAuthorizedUser = user && userProfile?.topicRootId;
 
-  if (loading) {
+  console.log('Render state:', { user, userProfile, isAuthorizedUser, loading, profileLoading });
+
+  if (loading || profileLoading) {
     return <div>Loading...</div>;
   }
+
 
   return (
     <header className="bg-white shadow-md">
@@ -74,15 +84,21 @@ const Header = () => {
             About Us
           </Link>
 
-          {isAuthorizedUser && userProfile?.topicRootId && (
-            <Link href={`/topics/${userProfile.topicRootId}`} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-              Root Topic
-            </Link>
+          {isAuthorizedUser && (
+            <>
+              <Link href={`/topics/${userProfile.topicRootId}`} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                Your Plan
+              </Link>
+            
+              <Link href={`/topics/ulj8nfbMZSOAV1qeaQKo`} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                  Biz Plan
+              </Link>
+              
+              <Link href={`/topics/qqIGRbzwrQSwpwn5UXt5`} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                  Product Plan
+              </Link>
+            </>
           )}
-          <Link href={`/topics/ulj8nfbMZSOAV1qeaQKo`} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-              Biz Plan
-          </Link>
-
           {user ? (
             <>
               <button 

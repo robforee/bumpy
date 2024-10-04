@@ -18,8 +18,7 @@ const UnderConstruction = () => {
         <Image
           src="/img/hacker-noon.webp"
           alt="Hacker furiously typing"
-          layout="fill"
-          objectFit="cover"
+          fill
           priority
         />
         <div className="absolute inset-0 bg-black bg-opacity-15 flex items-center justify-center">

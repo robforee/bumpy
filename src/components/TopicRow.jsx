@@ -42,7 +42,8 @@ const TopicRow = ({
           <button onClick={() => toggleTopicExpansion(topic.id)} className="mr-2">
             <FiChevronRight size={14} className={expandedTopicIds.has(topic.id) ? 'transform rotate-90' : ''} />
           </button>
-
+          {/* tag for topic type */}
+          {topic.topic_type == 'topic' ? '' : <span>[{topic.topic_type}]</span>} &nbsp;
           {/* navigate to topic with title and subtitle */}
           <Link href={`/topics/${topic.id}`} className="font-medium flex-grow">
             <span className="font-bold">{topic.title}</span>

@@ -247,6 +247,44 @@ exports.storeTokens = onCall({ secrets: [encryptionKey] }, async (request) => {
   }
 });
 
+exports.decryptTokens = onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be logged in');
+  }
+
+  const userId = context.auth.uid;
+  const db = getFirestore();
+
+  function decrypt(text) {
+    const [ivHex, encryptedHex] = text.split(':');
+    const iv = Buffer.from(ivHex, 'hex');
+    const encrypted = Buffer.from(encryptedHex, 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(process.env.ENCRYPTION_KEY, 'hex'), iv);
+    let decrypted = decipher.update(encrypted);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
+  }
+
+  try {
+    const userTokensRef = db.collection('user_tokens').doc(userId);
+    const tokenDoc = await userTokensRef.get();
+
+    if (!tokenDoc.exists) {
+      throw new functions.https.HttpsError('not-found', 'No tokens found for this user');
+    }
+
+    const { accessToken, refreshToken } = tokenDoc.data();
+
+    return {
+      accessToken: decrypt(accessToken),
+      refreshToken: decrypt(refreshToken)
+    };
+  } catch (error) {
+    console.error('Error decrypting tokens:', error);
+    throw new functions.https.HttpsError('internal', 'Error decrypting tokens', error);
+  }
+});
+
 const cleanForTask = async (task) => {
   return str.replace(/[\\"\u0000-\u001F\u007F-\u009F]/g, (c) => {
     return '\\u' + ('0000' + c.charCodeAt(0).toString(16)).slice(-4);

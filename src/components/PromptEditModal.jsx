@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/src/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/src/components/ui/dialog';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { Textarea } from '@/src/components/ui/textarea';
-import { FiX } from 'react-icons/fi';
+import { FiX, FiMaximize, FiMinimize } from 'react-icons/fi';
 
 const PromptEditModal = ({
   isOpen,
@@ -14,18 +14,29 @@ const PromptEditModal = ({
 }) => {
   const [localTopic, setLocalTopic] = useState(editingTopic);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPromptExpanded, setIsPromptExpanded] = useState(false);
   const promptTextareaRef = useRef(null);
+  const textTextareaRef = useRef(null);
+  const dialogContentRef = useRef(null);
 
   useEffect(() => {
     setLocalTopic(editingTopic);
   }, [editingTopic]);
 
   useEffect(() => {
-    if (promptTextareaRef.current) {
-      promptTextareaRef.current.style.height = 'auto';
-      promptTextareaRef.current.style.height = `${promptTextareaRef.current.scrollHeight}px`;
+    if (dialogContentRef.current) {
+      dialogContentRef.current.addEventListener('wheel', handleWheel, { passive: false });
     }
-  }, [localTopic.prompt]);
+    return () => {
+      if (dialogContentRef.current) {
+        dialogContentRef.current.removeEventListener('wheel', handleWheel);
+      }
+    };
+  }, []);
+
+  const handleWheel = (e) => {
+    e.stopPropagation();
+  };
 
   const handleLocalChange = (e) => {
     const { name, value } = e.target;
@@ -36,14 +47,18 @@ const PromptEditModal = ({
     setIsLoading(true);
     try {
       const gptResponse = await handleGptQuery(localTopic.prompt);
-      setLocalTopic(prev => ({ ...prev, text: gptResponse }));
+      const updatedTopic = { ...localTopic, text: gptResponse };
+      setLocalTopic(updatedTopic);
+      
+      // Automatically save the topic after receiving the GPT response
+      await handleSaveTopic(updatedTopic);
     } catch (error) {
       console.error("Error submitting GPT query:", error);
     } finally {
       setIsLoading(false);
     }
   };
-
+  
   const handleSave = () => {
     handleSaveTopic(localTopic);
     onClose();
@@ -53,19 +68,32 @@ const PromptEditModal = ({
     setLocalTopic(prev => ({ ...prev, prompt: prev.text }));
   };
 
+  const togglePromptExpansion = () => {
+    setIsPromptExpanded(!isPromptExpanded);
+  };
+
   if (!isOpen) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-full h-full flex flex-col">
-        <DialogHeader>
+      <DialogContent className="w-full h-full flex flex-col" ref={dialogContentRef}>
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Edit Prompt</DialogTitle>
-          <button 
-            onClick={onClose}
-            className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-          >
-            <FiX size={18} />
-          </button>
+          <div className="flex justify-between items-center space-x-2">
+            <Button variant="outline" size="sm" onClick={handlePromoteText}>
+              Promote Text to Prompt
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleSubmitGptQuery} disabled={isLoading}>
+              {isLoading ? 'Submitting...' : 'Submit to GPT'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleSave}>Save</Button>
+            <Button variant="outline" size="sm" onClick={togglePromptExpansion}>
+              {isPromptExpanded ? <FiMinimize /> : <FiMaximize />}
+            </Button>
+            <Button variant="outline" size="sm" onClick={onClose}>
+              <FiX />
+            </Button>
+          </div>
         </DialogHeader>
         <div className="flex-grow grid gap-4 py-4 overflow-y-auto">
           <Input
@@ -89,30 +117,18 @@ const PromptEditModal = ({
             value={localTopic.prompt || ''}
             onChange={handleLocalChange}
             placeholder="Prompt"
-            className="min-h-[100px] resize-none overflow-hidden"
+            className={`resize-none overflow-auto ${isPromptExpanded ? 'h-[calc(100vh-300px)]' : 'h-[200px]'}`}
           />
           <Textarea
+            ref={textTextareaRef}
             id="text"
             name="text"
             value={localTopic.text || ''}
             onChange={handleLocalChange}
             placeholder="Text"
-            rows={10}
-            className="min-h-[250px]"
+            className={`resize-none overflow-auto ${isPromptExpanded ? 'h-0' : 'h-[200px]'}`}
           />
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={handlePromoteText}>
-            Promote Text to Prompt
-          </Button>
-          <Button onClick={handleSubmitGptQuery} disabled={isLoading}>
-            {isLoading ? 'Submitting...' : 'Submit to GPT'}
-          </Button>
-          <Button onClick={handleSave}>Save</Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

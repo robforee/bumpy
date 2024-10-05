@@ -234,7 +234,7 @@ function encrypt(text) {
   return iv.toString('hex') + ':' + encrypted;
 }
 
-exports.storeTokens2 = functions.https.onCall(async (data, context) => {
+exports.storeTokens2 = functions.https.onCall({cors: [ "https://redshirt.info",  "http://localhost:3000","https://bumpy-roads--analyst-server.us-central1.hosted.app"  ]}, async (data, context) => {
   //console.log('Received data structure:', JSON.stringify(data, null, 2));
   
   // Access the actual data sent by the client

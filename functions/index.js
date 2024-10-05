@@ -2,9 +2,11 @@
 
 const { OpenAI } = require('openai');
 const { logger } = require("firebase-functions");
+
 const {onRequest} = require("firebase-functions/v2/https");
 const {onDocumentCreated} = require("firebase-functions/v2/firestore");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
+
 // onCall is for calling via Firebase SDK
 const { defineSecret } = require("firebase-functions/params");
 const cors = require('cors')({origin: true});
@@ -234,7 +236,9 @@ function encrypt(text) {
   return iv.toString('hex') + ':' + encrypted;
 }
 
-exports.storeTokens2 = functions.https.onCall({cors: [ "https://redshirt.info",  "http://localhost:3000","https://bumpy-roads--analyst-server.us-central1.hosted.app"  ]}, async (data, context) => {
+// ,"https://bumpy-roads--analyst-server.us-central1.hosted.app"
+exports.storeTokens2 = functions.https.onCall( { cors:  true  }, async (data, context) => {
+
   //console.log('Received data structure:', JSON.stringify(data, null, 2));
   
   // Access the actual data sent by the client
@@ -335,7 +339,8 @@ exports.storeTokens3 = functions.https.onCall(async (data, context) => {
   }
 });
 
-exports.storeTokens1 = onCall({ secrets: [encryptionKey], cors: ['http://localhost:3000','http://redshirt.info'] }, async (request) => {
+// had this , cors: ['http://localhost:3000','http://redshirt.info']
+exports.storeTokens1 = onCall({ secrets: [encryptionKey] }, async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'User must be logged in');
   }

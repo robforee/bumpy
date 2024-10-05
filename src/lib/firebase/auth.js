@@ -93,7 +93,9 @@ async function storeTokens(accessToken, refreshToken) {
       throw new Error('User not authenticated');
     }
     
-    const storeTokensFunction = httpsCallable(functions, 'storeTokens2');
+    const funkPath = 'https://us-central1-analyst-server.cloudfunctions.net/storeTokens2';
+    const funk = 'storeTokens2';
+    const storeTokensFunction = httpsCallable(functions, funkPath);
 
     console.log('sending user.uid as userId',user?.uid, 'NODE_ENV (set in clientApp)', process.env.NODE_ENV )
 

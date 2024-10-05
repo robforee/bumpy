@@ -30,13 +30,14 @@ export const UserProvider = ({ children }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(async (authUser) => {
-      console.log("Auth state changed:", authUser?.uid);
       setLoading(true);
       
       if (authUser) {
+        console.log("Auth state changed:", authUser?.uid, process.env.NODE_ENV);
         setUser(authUser);
         await loadUserProfile(authUser.uid);
       } else {
+        console.log("Auth state changed:", authUser?.uid, process.env.NODE_ENV);
         setUser(null);
         setUserProfile(null);
       }

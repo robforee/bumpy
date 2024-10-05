@@ -21,7 +21,7 @@ source $tmp_env_file
 rm $tmp_env_file
 
 # Run the Node.js script with the exported environment variables
-node test-firebase-gmail.js
+node test-firebase-gmail.cjs
 
 # Optionally, unset the variables after running the script
 # while IFS='=' read -r key value

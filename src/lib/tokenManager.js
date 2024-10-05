@@ -68,6 +68,13 @@ export async function getTokens(userId) {
 }
 
 export async function refreshAccessToken(userId) {
+  /*
+    getTokens
+    setCredentials
+    refreshAccessToken
+    userTokensRef.update
+   
+  */
   const db = getAdminFirestore();
   const userTokensRef = db.collection('user_tokens').doc(userId);
   
@@ -147,18 +154,21 @@ export async function getCalendarService(userId) {
   return calendar;
 }
 
-
-/*
-*   getTokens (decrpyt)
-*   checkTokenValidity ( try it vs gmail )
-*   refreshAccessToken
-*/
 export async function getValidAccessToken(userId) {
+  /*
+  *   tokenManager uses this 3 places
+  * 
+  *   getTokens (decrpyt)
+  *   checkTokenValidity ( try it vs gmail )
+  *   refreshAccessToken
+  */  
   try {
     const { accessToken: accessToken, expirationTime } = await getTokens(userId);
-    
+    console.log('~~~~~~ check token validity')
     if (Date.now() >= expirationTime || !(await checkTokenValidity(accessToken))) {
+      console.log('~~~~~~ refresh access token')
       return await refreshAccessToken(userId);
+      
     }
     
     const duration = (expirationTime - Date.now()) / 1000 / 60; // duration in minutes

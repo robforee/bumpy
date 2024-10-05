@@ -10,8 +10,9 @@ import {
 import { getFirestore, doc, setDoc } from "firebase/firestore";
 import { auth, db_viaClient } from "./clientApp";
 import { httpsCallable } from "firebase/functions";
-import { functions } from './clientApp'; // Assuming you have initialized Firebase functions in clientApp
 import { userService } from '../../services/userService';
+
+import { functions } from './clientApp'; // 
 
 // Initialize Firestore
 //const db = getFirestore();
@@ -44,6 +45,7 @@ export async function signInWithGoogle() {
   });
 
   try {
+
     const result = await signInWithPopup(auth, provider);
 
     const user = result.user;
@@ -52,14 +54,12 @@ export async function signInWithGoogle() {
     const refreshToken = user.refreshToken;
 
     await userService.initializeNewUserIfNeeded(user)
-    // Update the user's photoURL
-    if (user.photoURL) {
-      await updateProfile(user, { photoURL: user.photoURL });
-    }
 
     // Call the new cloud function to store tokens
     await storeTokens(accessToken, refreshToken, user.uid);
+    
     // await storeUserScopes(user.uid, scopes);
+
     console.log('not storing scopes')
 
     return user;
@@ -79,14 +79,44 @@ async function storeUserScopes(userId, scopes) {
   }
 }
 
-async function storeTokens(accessToken, refreshToken, userId) {
+//import { getAuth } from 'firebase/auth';
+
+/*
+*  functions from ./clientApp
+*  httpsCallable from firebase/functions lib
+*/
+async function storeTokens(accessToken, refreshToken) {
   try {
-    //console.log('Attempting to call storeTokens cloud function for user:', userId);
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+    
+    const storeTokensFunction = httpsCallable(functions, 'storeTokens2');
+
+    console.log('sending user.uid as userId',user?.uid, 'NODE_ENV (set in clientApp)', process.env.NODE_ENV )
+
+    const result = await storeTokensFunction({ 
+      accessToken, 
+      refreshToken,
+      userId: user.uid 
+    });
+
+    console.log('Tokens stored successfully:', result.data);
+    return result.data;
+  } catch (error) {
+    console.error('Error storing tokens:', error);
+    throw error;
+  }
+}
+
+async function storeTokens1(accessToken, refreshToken, userId) {
+  try {
 
     const storeTokensFunction = httpsCallable(functions, 'storeTokens');
     const response = await storeTokensFunction({ accessToken, refreshToken });
 
-    //console.log('Successfully stored tokens:', response);
   } catch (error) {
     console.error('Error in storeTokens function:', error);
     if (error.message.includes("Unexpected end of JSON input")) {

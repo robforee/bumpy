@@ -5,17 +5,9 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   onAuthStateChanged as _onAuthStateChanged,
-  updateProfile
 } from "firebase/auth";
-import { getFirestore, doc, setDoc } from "firebase/firestore";
-import { auth, db_viaClient } from "./clientApp";
-import { httpsCallable } from "firebase/functions";
-import { userService } from '../../services/userService';
-
-import { functions } from './clientApp'; // 
-
-// Initialize Firestore
-//const db = getFirestore();
+import { auth } from "./clientApp";
+import { storeTokens } from '../../app/actions';
 
 export function onAuthStateChanged(cb) {
   return _onAuthStateChanged(auth, cb);
@@ -45,99 +37,52 @@ export async function signInWithGoogle() {
   });
 
   try {
-
     const result = await signInWithPopup(auth, provider);
-
     const user = result.user;
     const credential = GoogleAuthProvider.credentialFromResult(result);
     const accessToken = credential.accessToken;
     const refreshToken = user.refreshToken;
 
-    await userService.initializeNewUserIfNeeded(user)
-
-    // Call the new cloud function to store tokens
-    await storeTokens(accessToken, refreshToken, user.uid);
-    
-    // await storeUserScopes(user.uid, scopes);
-
-    console.log('not storing scopes')
-
-    return user;
+    // Call the server action to store tokens
+    try {
+      await storeTokens({
+        userId: user.uid,
+        accessToken,
+        refreshToken
+      });
+      return { success: true, user, action: 'DASHBOARD' };
+    } catch (tokenError) {
+      console.error("Error storing tokens:", tokenError);
+      return { success: false, error: tokenError, action: 'CREATE_TOKENS' };
+    }
   } catch (error) {
     console.error("Error signing in with Google", error);
-    throw error;
-  }
-}
-
-async function storeUserScopes(userId, scopes) {
-  try {
-    const userRef = doc(db_viaClient, "user_scopes", userId);
-    await setDoc(userRef, { scopes: scopes }, { merge: true });
-    //console.log("User scopes stored successfully for user:", userId);
-  } catch (error) {
-    console.error("Error storing user scopes:", error);
-  }
-}
-
-//import { getAuth } from 'firebase/auth';
-
-/*
-*  functions from ./clientApp
-*  httpsCallable from firebase/functions lib
-*/
-async function storeTokens(accessToken, refreshToken) {
-  try {
-    const auth = getAuth();
-    const user = auth.currentUser;
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
     
-    const funkPath = 'https://us-central1-analyst-server.cloudfunctions.net/storeTokens2';
-    const funk = 'storeTokens2';
-    const storeTokensFunction = httpsCallable(functions, funkPath);
-
-    console.log('sending user.uid as userId',user?.uid, 'NODE_ENV (set in clientApp)', process.env.NODE_ENV )
-
-    const result = await storeTokensFunction({ 
-      accessToken, 
-      refreshToken,
-      userId: user.uid 
-    });
-
-    console.log('Tokens stored successfully:', result.data);
-    return result.data;
-  } catch (error) {
-    console.error('Error storing tokens:', error);
-    throw error;
-  }
-}
-
-async function storeTokens1(accessToken, refreshToken, userId) {
-  try {
-
-    const storeTokensFunction = httpsCallable(functions, 'storeTokens');
-    const response = await storeTokensFunction({ accessToken, refreshToken });
-
-  } catch (error) {
-    console.error('Error in storeTokens function:', error);
-    if (error.message.includes("Unexpected end of JSON input")) {
-      console.error('Unexpected end of JSON input error, please check network connectivity or payload structure.');
+    if (error.code === 'auth/popup-closed-by-user') {
+      console.log("Popup closed by user");
+      return { success: false, error, action: 'STAY' };
+    } else if (error.code === 'auth/cancelled-popup-request') {
+      console.log("Auth cancelled");
+      return { success: false, error, action: 'STAY' };
+    } else if (error.code === 'auth/popup-blocked') {
+      return { success: false, error, action: 'ENABLE_POPUPS' };
+    } else {
+      return { success: false, error, action: 'AUTH_ERROR' };
     }
-    throw error;
   }
 }
 
 export async function signOut() {
   try {
-    return auth.signOut();
+    await auth.signOut();
+    return { success: true, action: 'HOME' };
   } catch (error) {
     console.error("Error signing out with Google", error);
+    return { success: false, error, action: 'AUTH_ERROR' };
   }
 }
 
 export async function getUserIdToken() {
-  const auth = getAuth();
   const user = auth.currentUser;
   if (user) {
     return user.getIdToken();

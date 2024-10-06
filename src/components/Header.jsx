@@ -17,20 +17,51 @@ const Header = () => {
 
   const handleSignOut = async () => {
     try {
-      await signOut();
+      const result = await signOut();
       setShowMenu(false);
-      router.push('/');
+      if (result.success) {
+        router.push('/');
+      } else {
+        console.error('Sign-out failed:', result.error);
+        router.push('/auth-error');
+      }
     } catch (error) {
       console.error('Error signing out:', error);
+      router.push('/auth-error');
     }
   };
 
   const handleSignIn = async () => {
     try {
-      await signInWithGoogle();
-      await refreshUserProfile();
+      const result = await signInWithGoogle();
+      if (result.success) {
+        await refreshUserProfile();
+        switch (result.action) {
+          case 'DASHBOARD':
+            router.push('/dashboard');
+            break;
+          case 'CREATE_TOKENS':
+            router.push('/create-tokens');
+            break;
+          default:
+            console.error('Unexpected action:', result.action);
+        }
+      } else {
+        switch (result.action) {
+          case 'ENABLE_POPUPS':
+            router.push('/enable-popups');
+            break;
+          case 'AUTH_ERROR':
+            router.push('/auth-error');
+            break;
+          case 'STAY':
+          default:
+            console.error('Sign-in failed:', result.error);
+        }
+      }
     } catch (error) {
       console.error("Sign-in error:", error);
+      router.push('/auth-error');
     }
   };
 
@@ -62,7 +93,7 @@ const Header = () => {
             About Us
           </Link>
 
-     {isAuthorizedUser && (
+          {isAuthorizedUser && (
             <>
               <Link href={`/topics/${userProfile.topicRootId}`} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
                 Your Plan

@@ -5,7 +5,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { google } from 'googleapis';
 
-export function getAdminApp() {
+export function old_getAdminApp() {
     if (getApps().length === 0) {
       const serviceAccount = {
         type: "service_account",
@@ -25,6 +25,21 @@ export function getAdminApp() {
       });
     }
     return getApps()[0];
+}
+// new
+function getAdminApp() {
+  if (getApps().length === 0) {
+    try {
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
+      return initializeApp({
+        credential: cert(serviceAccount)
+      });
+    } catch (error) {
+      console.error('Error initializing Firebase Admin app:', error);
+      throw error;
+    }
+  }
+  return getApps()[0];
 }
 
 export function getAdminAuth() {

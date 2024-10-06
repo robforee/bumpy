@@ -1,51 +1,54 @@
 // src/components/GmailInbox.js
+// InboxIntel
 
-import React, { useState, useEffect } from 'react';
-//import { useAuth } from '@/src/contexts/AuthContext'; // Assuming you have an auth context
-import { useUser }               from '@/src/contexts/UserContext';
+'use client';
 
+import React, { useState } from 'react';
+import { useUser } from '@/src/contexts/UserContext';
+import { queryGmailInbox } from "@/src/app/actions.js";
 
-export default function GmailInbox() {
+const GmailComponent = () => {
+  const { user } = useUser();
   const [emails, setEmails] = useState([]);
-  //const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const { currentUser, loading } = useUser();
 
-  useEffect(() => {
-    async function fetchEmails() {
-      if (!currentUser) return;
-
-      try {
-        const response = await fetch(`/api/gmail?userId=${currentUser.uid}&maxResults=10`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch emails');
-        }
-        const data = await response.json();
-        setEmails(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+  const handleFetchEmails = async () => {
+    if (!user) {
+      setError('No user logged in');
+      return;
     }
 
-    fetchEmails();
-  }, [currentUser]);
+    setIsLoading(true);
+    setError(null);
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
-
+    try {
+      const idToken = await user.getIdToken();
+      const emailDetails = await queryGmailInbox(idToken);
+      setEmails(emailDetails);
+    } catch (error) {
+      console.error('Error fetching emails:', error);
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  console.log('im here')
   return (
     <div>
-      <h2>Last 10 Emails</h2>
+      <button onClick={handleFetchEmails} disabled={isLoading}>
+        {isLoading ? 'Fetching...' : 'Fetch Recent Emails'}
+      </button>
+      {error && <p style={{ color: 'red' }}>{error}</p>}
       <ul>
         {emails.map(email => (
           <li key={email.id}>
-            <strong>{email.payload.headers.find(h => h.name === "From").value}</strong>
-            <p>{email.payload.headers.find(h => h.name === "Subject").value}</p>
+            <strong>{email.subject}</strong> from {email.from}
           </li>
         ))}
       </ul>
     </div>
   );
-}
+};
+
+export default GmailComponent;

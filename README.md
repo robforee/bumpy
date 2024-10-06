@@ -1,8 +1,10 @@
 # Gmail Project
 
-sendTokesToBackend if failing with unexpected end of json
-move to functions and log what is messed up
-
+## about actions
+// src/app/actions.js
+    ServerWriteAsImpersonatedUser
+        getAdminAuth(); // do AUTH( get CONFIG )  (lib/firebase/adminApp)
+        getAdminFirestore();                      (lib/firebase/adminApp)
 
 ## LAYOUT AUTH FLOW (update for where user profile is fetched at login )
     RootLayout                   src/app/layout  
@@ -14,7 +16,8 @@ move to functions and log what is messed up
     Header
         handleSignIn                     src/components/Header
             signInWithGoogle             src/lib/firebase/auth.js
-                provider.addScopes       src/lib/firebase/auth.js  | change this to get scope list from /user_scopes
+                provider.addScopes       src/lib/firebase/auth.js  
+                   | change this to get scope list from /user_scopes
                 signInWithPopup          firebase/auth
                 
                 updateProfile(photo)     src/lib/firebase/auth.js
@@ -62,8 +65,8 @@ layout.js
 
     handleSignIn          (src/components/Header.js )
     signInWithGoogle      (src/lib/firebase/auth )
-    sendTokensToBackend   (src/lib/firebase/auth         via api db.user_tokens)
-    storeUserScopes       (src/lib/firebase/auth     )
+    sendTokensToBackend   (src/lib/firebase/auth   via api db.user_tokens)
+    storeUserScopes       (src/lib/firebase/auth )
     ### new user setup
     initializeUser        (src/services/userService  db_viaClient)
     initializeTopicRoot   (src/services/userService  fbFunction: addTopic,  :updateUser)
@@ -79,6 +82,7 @@ layout.js
     fetchRelationshipTopics (parentId)           ( /src/lib/topicFirebaseOperations)
     fetchTopicsByCategory   (categories,parentId)( /src/lib/topicFirebaseOperations)
     onTopicsChange        ( /src/lib/topicFirebaseOperations)
+
 
 ## GET USER EMAIL FLOW >broken<
     handleFetchEmails                    (src/app/admin/page)

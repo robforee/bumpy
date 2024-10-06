@@ -62,12 +62,17 @@ const AdminPage = () => {
   };
 
   const handleServerSideUserWrite = async () => {
+    if (!user) {
+      console.error('No user logged in');
+      return;
+    }
     try {
-      const idToken = await user.getIdToken();
+      const idToken = await user.getIdToken(); // for firebase services
+      console.log('idToken at this point')
       const result = await ServerWriteAsImpersonatedUser(idToken);
       console.log('Document written successfully from server-side as user');
     } catch (error) {
-      console.error('Error writing document from server-side as user:', error);
+      console.error('Error writing document from server-side as user:');
     }
   };
 
@@ -220,6 +225,7 @@ const AdminPage = () => {
         )}
       </div>
 
+        Gmail Componenet
       <div className="mt-8">
         <h2 className="text-2xl font-bold mb-4">Gmail Inbox Component</h2>
         <GmailInbox />

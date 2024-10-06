@@ -113,7 +113,7 @@ function encrypt(text) {
   }
 
   
-  function decrypt(text) {
+function decrypt(text) {
     const key = crypto.scryptSync(encryptionKey, 'salt', 32);
     const [ivHex, encryptedHex] = text.split(':');
     const iv = Buffer.from(ivHex, 'hex');
@@ -124,7 +124,7 @@ function encrypt(text) {
     return decrypted;
   }
   
-  async function getStoredTokens(userId) {
+async function getStoredTokens(userId) {
     const db = getAdminFirestore();
     const userTokenDoc = await db.collection('user_tokens').doc(userId).get();
     if (!userTokenDoc.exists) {
@@ -160,7 +160,7 @@ export async function storeTokens({ userId, accessToken, refreshToken }) {
   }
 }
   
-  async function refreshAccessToken(refreshToken) {
+async function refreshAccessToken(refreshToken) {
     const oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
@@ -182,81 +182,81 @@ export async function storeTokens({ userId, accessToken, refreshToken }) {
     }
   }
   
-  export async function queryGmailInbox(idToken) {
+export async function queryGmailInbox(idToken) {
     const adminAuth = getAdminAuth();
-  
+
     try {
-      const decodedToken = await adminAuth.verifyIdToken(idToken);
-      const userId = decodedToken.uid;
-  
-      let storedTokens = await getStoredTokens(userId);
-  
-      if (!storedTokens) {
+        const decodedToken = await adminAuth.verifyIdToken(idToken);
+        const userId = decodedToken.uid;
+
+    let storedTokens = await getStoredTokens(userId);
+
+    if (!storedTokens) {
         console.log('No stored tokens found for user');
         throw new Error('REAUTH_REQUIRED');
-      }
-  
-      let { accessToken, refreshToken, expirationTime } = storedTokens;
-  
-      // Check if the access token is expired
-      if (Date.now() > expirationTime) {
+    }
+
+    let { accessToken, refreshToken, expirationTime } = storedTokens;
+
+    // Check if the access token is expired
+    if (Date.now() > expirationTime) {
         console.log('Access token expired, refreshing...');
         const refreshResult = await refreshAccessToken(refreshToken);
         
         if (!refreshResult.success) {
-          if (refreshResult.error === 'invalid_grant') {
-            // Delete the stored tokens as they are no longer valid
-            await deleteStoredTokens(userId);
-            throw new Error('REAUTH_REQUIRED');
-          } else {
-            throw new Error('Failed to refresh token');
-          }
+            if (refreshResult.error === 'invalid_grant') {
+                // Delete the stored tokens as they are no longer valid
+                await deleteStoredTokens(userId);
+                throw new Error('REAUTH_REQUIRED');
+            } else {
+                throw new Error('Failed to refresh token');
+            }
         }
         
         const updateTime = await storeTokens({
-          userId,
-          accessToken: refreshResult.tokens.access_token,
-          refreshToken: refreshResult.tokens.refresh_token || refreshToken
+            userId,
+            accessToken: refreshResult.tokens.access_token,
+            refreshToken: refreshResult.tokens.refresh_token || refreshToken
         });
         console.log('Tokens refreshed and stored. Update time:', updateTime);
         accessToken = refreshResult.tokens.access_token;
-      }
-  
-      const oauth2Client = new google.auth.OAuth2();
-      oauth2Client.setCredentials({ access_token: accessToken });
-  
-      const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
-  
-      const response = await gmail.users.messages.list({
+    }
+
+    const oauth2Client = new google.auth.OAuth2();
+    oauth2Client.setCredentials({ access_token: accessToken });
+
+    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+
+    const response = await gmail.users.messages.list({
         userId: 'me',
         maxResults: 10,
-      });
-  
-      const messages = response.data.messages || [];
-      const messageDetails = await Promise.all(messages.map(async (message) => {
+    });
+
+    const messages = response.data.messages || [];
+    const messageDetails = await Promise.all(messages.map(async (message) => {
         const details = await gmail.users.messages.get({
-          userId: 'me',
-          id: message.id,
-          format: 'metadata',
-          metadataHeaders: ['Subject', 'From'],
+            userId: 'me',
+            id: message.id,
+            format: 'metadata',
+            metadataHeaders: ['Subject', 'From'],
         });
-  
+
         const subject = details.data.payload.headers.find(h => h.name === 'Subject')?.value || 'No Subject';
         const from = details.data.payload.headers.find(h => h.name === 'From')?.value || 'Unknown Sender';
-  
+
         return { id: message.id, subject, from };
-      }));
-  
-      return messageDetails;
-  
+    }));
+
+    return messageDetails;
+
     } catch (error) {
-      console.error('Error querying Gmail:', error);
-      if (error.message === 'REAUTH_REQUIRED') {
+        console.error('Error querying Gmail:', error);
+        if (error.message === 'REAUTH_REQUIRED') {
         throw new Error('REAUTH_REQUIRED');
-      }
-      throw new Error('An error occurred while querying Gmail: ' + error.message);
+        }
+        throw new Error('An error occurred while querying Gmail: ' + error.message);
     }
-  }
+}
   
   async function deleteStoredTokens(userId) {
     const db = getAdminFirestore();

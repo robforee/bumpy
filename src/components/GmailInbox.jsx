@@ -23,7 +23,7 @@ const GmailComponent = () => {
     setError(null);
 
     try {
-      const idToken = await user.getIdToken();
+      const idToken = await user.getIdToken(); // firebase authId
       const emailDetails = await queryGmailInbox(idToken);
       setEmails(emailDetails);
     } catch (error) {
@@ -33,7 +33,6 @@ const GmailComponent = () => {
       setIsLoading(false);
     }
   };
-  console.log('im here')
   return (
     <div>
       <button onClick={handleFetchEmails} disabled={isLoading}>

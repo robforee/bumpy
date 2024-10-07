@@ -1,17 +1,17 @@
-// src/components/GmailInbox.jsx
+// src/components/GoogleCalendar.jsx
 'use client';
 
 import React, { useState } from 'react';
 import { useUser } from '@/src/contexts/UserContextProvider';
-import { queryGmailInbox } from "@/src/app/actions/google-actions";
+import { queryGoogleCalendar } from "@/src/app/actions/google-actions";
 
-const GmailComponent = () => {
+const GoogleCalendar = () => {
   const { user } = useUser();
-  const [emails, setEmails] = useState([]);
+  const [events, setEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleFetchEmails = async () => {
+  const handleFetchEvents = async () => {
     if (!user) {
       setError('No user logged in');
       return;
@@ -21,18 +21,18 @@ const GmailComponent = () => {
     setError(null);
 
     try {
-      const emailDetails = await queryGmailInbox();
-      setEmails(emailDetails);
+      const calendarEvents = await queryGoogleCalendar();
+      setEvents(calendarEvents);
     } catch (error) {
-      console.error('Error fetching emails:', error);
+      console.error('Error fetching calendar events:', error);
       setError(error.message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleClearEmails = () => {
-    setEmails([]);
+  const handleClearEvents = () => {
+    setEvents([]);
     setError(null);
   };
 
@@ -40,34 +40,34 @@ const GmailComponent = () => {
     <div>
       <div className="flex space-x-2 mb-4">
         <button 
-          onClick={handleFetchEmails} 
+          onClick={handleFetchEvents} 
           disabled={isLoading}
           className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
         >
-          {isLoading ? 'Fetching...' : 'Fetch Recent Emails'}
+          {isLoading ? 'Fetching...' : 'Fetch Upcoming Events'}
         </button>
         <button 
-          onClick={handleClearEmails}
+          onClick={handleClearEvents}
           className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
         >
-          Clear Emails
+          Clear Events
         </button>
       </div>
       {error && <p className="text-red-500 mb-4">{error}</p>}
-      {emails.length > 0 ? (
+      {events.length > 0 ? (
         <ul className="space-y-2">
-          {emails.map(email => (
-            <li key={email.id} className="border-b pb-2">
-              <strong className="font-semibold">{email.subject}</strong> 
-              <span className="text-gray-600"> from {email.from}</span>
+          {events.map(event => (
+            <li key={event.id} className="border-b pb-2">
+              <strong className="font-semibold">{event.summary}</strong> 
+              <span className="text-gray-600"> from {new Date(event.start).toLocaleString()} to {new Date(event.end).toLocaleString()}</span>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="text-gray-500">No emails to display.</p>
+        <p className="text-gray-500">No events to display.</p>
       )}
     </div>
   );
 };
 
-export default GmailComponent;
+export default GoogleCalendar;

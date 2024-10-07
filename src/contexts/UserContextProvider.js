@@ -1,4 +1,4 @@
-// src/contexts/UserContext.js
+// src/contexts/UserContextProvider.js
 "use client";
 
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
@@ -12,19 +12,21 @@ export const UserProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const loadUserProfile = useCallback(async (uid) => {
+  const loadUserProfile = useCallback(async (authUser) => {
     try {
-      const profile = await userService.getUserProfile(uid);
-      if (!profile) {
-        console.log("Profile not found, initializing new user");
-        await userService.initializeNewUserIfNeeded({ uid });
-        const newProfile = await userService.getUserProfile(uid);
-        setUserProfile(newProfile);
+      const result = await userService.getUserInfo();
+      if (result.success) {
+        setUserProfile(result.data.profile)  
       } else {
-        setUserProfile(profile);
-      }
+        if(result?.error === "not logged in"){
+          // happens alot, no big deal
+        }else{
+          throw new Error('error loading user info', result.error);  
+        }
+      }    
+  
     } catch (error) {
-      console.error("Error loading user profile:", error);
+      console.error("Error loading userService.getUserInfo:", error);
     }
   }, []);
 
@@ -33,11 +35,11 @@ export const UserProvider = ({ children }) => {
       setLoading(true);
       
       if (authUser) {
-        console.log("Auth state changed:", authUser?.uid, process.env.NODE_ENV);
         setUser(authUser);
-        await loadUserProfile(authUser.uid);
+        await loadUserProfile(authUser);
+        console.log("Auth state changed: user profile loaded");
       } else {
-        console.log("Auth state changed:", authUser?.uid, process.env.NODE_ENV);
+        console.log("Auth state changed:");
         setUser(null);
         setUserProfile(null);
       }

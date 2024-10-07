@@ -1,5 +1,24 @@
 # Gmail Project
 
+// use actions so we can throttle usage
+
+these files
+layout.js, UserContextProvider.jx, components/Header.jsx, userService.js firebase/auth.js, actions/auth,
+
+this object
+RootLayout { 
+    UserProvider { 
+        Header { handleSignIn{  signInWithGoogle{ signInWithPopup, storeTokens, } } }, children 
+        useEffect{ loadUserProfile{ getUserProfile2, initializeNewUserIfNeeded{ getOrCreateProfile_viaServer }, setUserProfile }, setUser }, 
+    }
+}
+this problem
+
+from handleSignIn
+Error loading user profile: Error: User not authenticated
+    at getOrCreateProfile_viaServer 
+I thought user auth would be extracted from headers() Authorization, not true?
+
 ## about actions
 // src/app/actions.js
     ServerWriteAsImpersonatedUser

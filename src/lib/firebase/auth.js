@@ -7,7 +7,7 @@ import {
   onAuthStateChanged as _onAuthStateChanged,
 } from "firebase/auth";
 import { auth } from "./clientApp";
-import { storeTokens } from '../../app/actions';
+import { storeTokens } from '../../app/actions/auth-actions';
 
 export function onAuthStateChanged(cb) {
   return _onAuthStateChanged(auth, cb);
@@ -32,9 +32,9 @@ export async function signInWithGoogle() {
   scopes.forEach(scope => provider.addScope(scope));
 
   // Add these parameters to force account selection
-  provider.setCustomParameters({
-    prompt: 'select_account'
-  });
+  if(false)
+  provider.setCustomParameters({ prompt: 'select_account' });
+  provider.setCustomParameters();
 
   try {
     const result = await signInWithPopup(auth, provider);
@@ -45,11 +45,12 @@ export async function signInWithGoogle() {
 
     // Call the server action to store tokens
     try {
-      await storeTokens({
-        userId: user.uid,
-        accessToken,
-        refreshToken
-      });
+      const response = await storeTokens({
+                                  userId: user.uid,
+                                  accessToken,
+                                  refreshToken
+                                });
+      console.log('Login: tokens updated',response)
       return { success: true, user, action: 'DASHBOARD' };
     } catch (tokenError) {
       console.error("Error storing tokens:", tokenError);
@@ -89,3 +90,4 @@ export async function getUserIdToken() {
   }
   throw new Error('No user is signed in');
 }
+

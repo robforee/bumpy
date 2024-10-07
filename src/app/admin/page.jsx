@@ -4,12 +4,12 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { addFakeRestaurantsAndReviews } from "@/src/lib/firebase/firestore.js";
-import { ServerWriteAsImpersonatedUser, ServerWriteWithServiceAccount, writeToUserOwnedPath } from "@/src/app/actions.js";
+///import { ServerWriteAsImpersonatedUser, ServerWriteWithServiceAccount, writeToUserOwnedPath } from "@/src/app/actions.js";
 import { fetchEmailsFromServer } from "@/src/lib/gmail/gmailClientOperations";
 import { fetchDriveFilesFromServer } from "@/src/lib/drive/driveClientOperations";
 import { fetchCalendarEventsFromServer } from "@/src/lib/calendar/calendarClientOperations";
 
-import { useUser } from '@/src/contexts/UserContext';
+import { useUser } from '@/src/contexts/UserContextProvider';
 import GmailInbox from '@/src/components/GmailInbox';
 import Link from 'next/link';
 
@@ -54,7 +54,7 @@ const AdminPage = () => {
         rating: 4,
         timestamp: new Date().toISOString()
       };
-      await writeToUserOwnedPath(user.uid, rating);
+      //await writeToUserOwnedPath(user.uid, rating);
       console.log('Rating written successfully to user-owned path');
     } catch (error) {
       console.error('Error writing to user-owned path:', error);
@@ -69,7 +69,7 @@ const AdminPage = () => {
     try {
       const idToken = await user.getIdToken(); // for firebase services
       console.log('idToken at this point')
-      const result = await ServerWriteAsImpersonatedUser(idToken);
+      //const result = await ServerWriteAsImpersonatedUser(idToken);
       console.log('Document written successfully from server-side as user');
     } catch (error) {
       console.error('Error writing document from server-side as user:');
@@ -78,7 +78,7 @@ const AdminPage = () => {
 
   const handleServerSideWrite = async () => {
     try {
-      await ServerWriteWithServiceAccount();
+      //await ServerWriteWithServiceAccount();
       console.log('Review written successfully from server-side');
     } catch (error) {
       console.error('Error writing review from server-side:', error);

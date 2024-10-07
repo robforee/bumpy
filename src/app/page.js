@@ -1,15 +1,12 @@
 // src/app/page.js
 // a server render
-import RestaurantListings from "@/src/components/restaurant/RestaurantListings.jsx";
 import { getRestaurants } from "@/src/lib/firebase/firestore.js";
 import { getAuthenticatedAppForUser } from "@/src/lib/firebase/serverApp.js";
 import { getFirestore } from "firebase/firestore";
 import { default as dynamicImport } from 'next/dynamic';
-import AdminPage from "./admin/page";
 import MembersComponent from '@/src/components/MembersComponent';
 
 // Dynamically import ServerTime with no SSR
-const ServerTime = dynamicImport(() => import('@/src/components/ServerTime'), { ssr: false });
 const UnderConstruction = dynamicImport(() => import('@/src/components/UnderConstruction'), { ssr: false });
 
 

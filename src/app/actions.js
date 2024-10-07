@@ -138,7 +138,7 @@ async function getStoredTokens(userId) {
     };
   }
   
-export async function storeTokens({ userId, accessToken, refreshToken }) {
+export async function _storeTokens({ userId, accessToken, refreshToken }) {
   const db = getAdminFirestore();
   const userTokensRef = db.collection('user_tokens').doc(userId);
   const expirationTime = Date.now() + 3600000; // 1 hour
@@ -258,7 +258,7 @@ export async function queryGmailInbox(idToken) {
     }
 }
   
-  async function deleteStoredTokens(userId) {
+async function deleteStoredTokens(userId) {
     const db = getAdminFirestore();
     await db.collection('user_tokens').doc(userId).delete();
-  }
+}

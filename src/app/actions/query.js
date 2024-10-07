@@ -1,68 +1,53 @@
-// app/actions/query.js
-'use server'
+// src/app/actions/queries.js
+"use server";
 
 import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';
-import { OpenAI } from 'openai';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { initializeApp, getApps } from 'firebase-admin/app';
-import { auth } from '@/lib/auth';
+import OpenAI from 'openai';
 
-// Initialize Firebase Admin SDK if not already initialized
-if (!getApps().length) {
-  initializeApp();
-}
-
-const db = getFirestore();
-
-export async function runOpenAIAndAddTopic(data) {
-  const session = await auth();
-  if (!session) {
-    throw new Error('User must be logged in');
-  }
-
-  const { model, temp, response_format, messages, owner, parentId, title } = data;
-
-  // Initialize OpenAI
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
+export async function runOpenAiQuery(queryData) {
   try {
-    // Run OpenAI query
-    const request = {
-      model: model || "gpt-4-turbo-preview",
-      temperature: temp || 0.1,
-      response_format: response_format || { type: "json_object" },
-      messages: messages,
-    };
-    const response = await openai.chat.completions.create(request);
-
-    const content = response.choices[0].message.content;
-
-    // Add topic
-    const newTopic = {
-      topic_type: 'prompt-response',
-      title: title,
-      content: content,
-      owner: owner || session.user.id,
-      parents: parentId ? [parentId] : [],
-      children: [],
-      created_at: new Date(),
-      updated_at: new Date()
-    };
-
-    const docRef = await db.collection('topics').add(newTopic);
-
-    if (parentId) {
-      await db.doc(`topics/${parentId}`).update({
-        children: FieldValue.arrayUnion(docRef.id)
-      });
+    const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser();
+    
+    if (!currentUser) {
+      throw new Error('User not authenticated');
     }
 
-    return { 
-      id: docRef.id,
-      content: content
-    };
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+    const {
+      systemPrompt,
+      userPrompts,
+      model,
+      temperature,
+      responseFormat,
+      owner
+    } = queryData;
+
+    const messages = [
+      { role: "system", content: systemPrompt },
+      ...userPrompts.map(prompt => ({ role: "user", content: prompt }))
+    ];
+
+    if(false)
+      console.log('Sending request to OpenAI:', JSON.stringify({
+        model,
+        temperature,
+        response_format: responseFormat,
+        messages
+      }, null, 2));
+
+    const openAiResponse = await openai.chat.completions.create({
+      model,
+      temperature,
+      response_format: responseFormat,
+      messages,
+    });
+
+    const content = openAiResponse.choices[0].message.content;
+
+    return { success: true, content };
   } catch (error) {
-    console.error("Error in runOpenAIAndAddTopic:", error);
-    throw new Error('Error processing request: ' + error.message);
+    console.error("Detailed error in runOpenAiQuery:", JSON.stringify(error, null, 2));
+    return { success: false, error: error.message };
   }
 }

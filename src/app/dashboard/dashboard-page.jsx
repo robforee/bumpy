@@ -9,6 +9,7 @@ import GoogleCalendar from '@/src/components/GoogleCalendar';
 
 import TokenInfo from '@/src/components/TokenInfo';
 import ScopeManager from '@/src/components/ScopeManager';
+import QueryOpenAi from '@/src/components/QueryOpenAi';
 
 export default function Dashboard() {
   const { user, userProfile } = useUser();
@@ -30,31 +31,16 @@ export default function Dashboard() {
         )}
       </div>
       Use these to test connectivity
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-        <div className="bg-gray-100 p-4 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Gmail Inbox</h2>
-          <GmailInbox />
-        </div>
-        <div className="bg-gray-100 p-4 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Drive Folders</h2>
-          <DriveFiles />
-        </div>
-        <div className="bg-gray-100 p-4 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Google Calendar</h2>
-          <GoogleCalendar />
-        </div>
-        
-        
-        <div className="bg-gray-100 p-4 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Token Info</h2>
-          <TokenInfo />
-        </div>
-        <div className="bg-gray-100 p-4 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Scope Manager</h2>
-          <ScopeManager />
-        </div>        
-      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TokenInfo />
+        <GmailInbox />
+        <DriveFiles />
+        <GoogleCalendar />
 
+        <QueryOpenAi />
+        <ScopeManager />
+
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Link href="/admin" className="bg-green-500 text-white p-4 rounded hover:bg-green-600 transition">
           Admin Panel

@@ -26,7 +26,7 @@ const QueryOpenAi = () => {
       const queryData = {
         systemPrompt: "You are a helpful assistant providing information about world events.",
         userPrompts: [prompt],
-        model: "gpt-0-mini",
+        model: "gpt-4o-mini",
         temperature: 0.7,
         responseFormat: { type: "text" },
       };

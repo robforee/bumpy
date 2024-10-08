@@ -6,6 +6,8 @@ import { useSearchParams } from 'next/navigation';
 import MembersListing from "@/src/components/MembersListing";
 import { useUser } from '@/src/contexts/UserContextProvider';
 
+export const dynamic = 'force-dynamic';
+
 export default function MembersPage() {
   const { user, loading } = useUser();
   const [members, setMembers] = useState([]);

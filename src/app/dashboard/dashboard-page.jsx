@@ -1,4 +1,4 @@
-// src/app/dashboard/page.js
+// src/app/dashboard/dashboard-page.js
 'use client';
 
 import { useUser } from '@/src/contexts/UserContextProvider';

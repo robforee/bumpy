@@ -38,6 +38,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 export async function getAuthenticatedAppForUser() {
   const idToken = headers().get("Authorization")?.split("Bearer ")[1];
 
+  //console.log('\n~~~ getAuthenticateAppForUser ~~~~\n',idToken);
   const firebaseServerApp = initializeServerApp(
     firebaseConfig,
     idToken ? { authIdToken: idToken, }

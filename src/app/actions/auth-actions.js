@@ -6,6 +6,7 @@ import { google } from 'googleapis';// oauth
 import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 import moment from 'moment-timezone';
 import crypto from 'crypto';
+import { headers } from "next/headers";
 
 const encryptionKey = process.env.ENCRYPTION_KEY;
 
@@ -30,38 +31,45 @@ function decrypt(text) {
     return decrypted;
   }
   
-  export async function storeTokens({ userId, accessToken, refreshToken }) {
+export async function storeTokens({ accessToken, refreshToken }) {
     try {
+      const idToken = headers().get("Authorization")?.split("Bearer ")[1];
+
       const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser();
       
-      if (!currentUser || currentUser.uid !== userId) {
-        throw new Error('User not authenticated or mismatch',currentUser, currentUser.uid,userId);
+      // console.log('\n~~~ storeTokens ~~~~\n', '\n~~~ currentUser ~~~~\n',currentUser.length, userId,'\n~~~ idTokens ~~~~\n',idToken )
+      // console.log('why no auth?')
+
+      if (!currentUser || !currentUser?.uid ) {
+        throw new Error('User not authenticated or mismatch',currentUser, currentUser.uid);
       }
   
       const db = getFirestore(firebaseServerApp);
-      const userTokensRef = doc(db, 'user_tokens', userId);
+      const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
       const expirationTime = Date.now() + 3600000; // 1 hour
-      const updateTime = moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm [CST]');
+      const updateTime = Date.now() + 0; 
+      const touchedTime = moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm [CST]');
   
       const tokenData = {
         accessToken: encrypt(accessToken),
         refreshToken: encrypt(refreshToken),
         expirationTime: expirationTime,
         updateTime: updateTime,
-        createdAt: updateTime
+        createdAt: updateTime,
+        touchedAt: touchedTime,
+        userEmail: currentUser.email
       };
   
       await setDoc(userTokensRef, tokenData, { merge: true });
   
-      return { success: true, message: 'Tokens stored successfully', updateTime: updateTime };
+      return { success: true, message: 'Tokens stored successfullly', updateTime: updateTime };
     } catch (error) {
       console.error('Error storing tokens:', error);
       return { success: false, error: error.message };
     }
   }
   
-
-export async function ensureFreshTokens() {
+export async function ensureFreshTokens(forceRefresh = false) {
   try {
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser();
     if (!currentUser) {
@@ -81,14 +89,13 @@ export async function ensureFreshTokens() {
     const refreshToken = decrypt(tokens.refreshToken);
     const expirationTime = tokens.expirationTime;
 
-    // Check if the access token is expired
-    if (Date.now() > expirationTime) {
-      console.log('Access token expired, refreshing...');
+    // Check if the access token is expired or if forceRefresh is true
+    if (forceRefresh || Date.now() > expirationTime) {
+      console.log('Refreshing access token...');
       const refreshResult = await refreshAccessToken(refreshToken);
       
       if (!refreshResult.success) {
         if (refreshResult.error === 'invalid_grant') {
-          // Delete the stored tokens as they are no longer valid
           await setDoc(userTokensRef, { tokens: null });
           throw new Error('REAUTH_REQUIRED');
         } else {
@@ -96,25 +103,27 @@ export async function ensureFreshTokens() {
         }
       }
       
-      const updateTime = moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm [CST]');
-      const newExpirationTime = Date.now() + 3600000; // 1 hour
+      const newAccessToken = refreshResult.tokens.access_token;
+      const newRefreshToken = refreshResult.tokens.refresh_token || refreshToken;
 
-      await setDoc(userTokensRef, {
-        accessToken: encrypt(refreshResult.tokens.access_token),
-        refreshToken: encrypt(refreshResult.tokens.refresh_token || refreshToken),
-        expirationTime: newExpirationTime,
-        updateTime: updateTime
-      }, { merge: true });
+      const storeResult = await storeTokens({
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken
+      });
 
-      console.log('Tokens refreshed and stored. Update time:', updateTime);
+      if (!storeResult.success) {
+        throw new Error('Failed to store refreshed tokens');
+      }
+
+      console.log('Tokens refreshed and stored. Update time:', storeResult.updateTime);
       return {
-        accessToken: refreshResult.tokens.access_token,
-        refreshToken: refreshResult.tokens.refresh_token || refreshToken,
-        expirationTime: newExpirationTime
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+        expirationTime: Date.now() + 3600000 // 1 hour, matching the logic in storeTokens
       };
     }
 
-    // If the token is still fresh, return the existing tokens
+    // If the token is still fresh and forceRefresh is false, return the existing tokens
     return { accessToken, refreshToken, expirationTime };
 
   } catch (error) {
@@ -125,7 +134,6 @@ export async function ensureFreshTokens() {
     throw new Error('An error occurred while refreshing tokens');
   }
 }
-
 async function refreshAccessToken(refreshToken) {
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
@@ -141,10 +149,15 @@ async function refreshAccessToken(refreshToken) {
     const { tokens } = await oauth2Client.refreshAccessToken();
     return { success: true, tokens };
   } catch (error) {
-    if (error.message === 'invalid_grant') {
-      return { success: false, error: 'invalid_grant' };
+    console.error('Error refreshing access token:', error);
+    if (error.response && error.response.data) {
+      // Log the full error response for debugging
+      console.error('Full error response:', error.response.data);
     }
-    throw error;
+    return { 
+      success: false, 
+      error: error.message || 'Unknown error occurred while refreshing token'
+    };
   }
 }
 

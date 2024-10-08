@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
-import { signInWithGoogle, signOut } from "@/src/lib/firebase/auth.js";
+import { signInWithGoogle, signOut } from "@/src/lib/firebase/firebaseAuth.js";
 import { useUser } from '@/src/contexts/UserContextProvider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/src/components/ui/dialog';
 import { Button } from '@/src/components/ui/button';

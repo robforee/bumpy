@@ -1,4 +1,4 @@
-// src/lib/firebase/auth.js
+// src/lib/firebase/firebaseAuth.js
 
 import {
   getAuth,
@@ -46,7 +46,6 @@ export async function signInWithGoogle() {
     // Call the server action to store tokens
     try {
       const response = await storeTokens({
-                                  userId: user.uid,
                                   accessToken,
                                   refreshToken
                                 });

@@ -4,7 +4,7 @@ import "@/src/app/styles.css";
 import Header from "@/src/components/Header.jsx";
 import { UserProvider } from '../contexts/UserContextProvider';
 
-export const dynamic = "force-dynamic";
+//export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Analyst Server",

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { storeTokens } from '../actions';
+import { storeTokens } from '../actions/auth-actions';
 import { auth } from '../../lib/firebase/clientApp';
 
 export default function CreateTokens() {
@@ -19,7 +19,6 @@ export default function CreateTokens() {
 
       const idToken = await user.getIdToken(true);  // Force token refresh
       const result = await storeTokens({
-        userId: user.uid,
         accessToken: idToken,
         refreshToken: user.refreshToken
       });

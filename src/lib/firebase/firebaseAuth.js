@@ -1,4 +1,4 @@
-// src/lib/firebase/auth.js
+// src/lib/firebase/firebaseAuth.js
 
 import {
   getAuth,

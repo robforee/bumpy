@@ -1,11 +1,9 @@
-// src/components/GmailInbox.js
-// InboxIntel
-
+// src/components/GmailInbox.jsx
 'use client';
 
 import React, { useState } from 'react';
 import { useUser } from '@/src/contexts/UserProvider';
-import { queryGmailInbox } from "@/src/app/actions.js";
+import { queryGmailInbox } from "@/src/app/actions/google-actions";
 
 const GmailComponent = () => {
   const { user } = useUser();
@@ -23,8 +21,7 @@ const GmailComponent = () => {
     setError(null);
 
     try {
-      const idToken = await user.getIdToken();
-      const emailDetails = await queryGmailInbox(idToken);
+      const emailDetails = await queryGmailInbox();
       setEmails(emailDetails);
     } catch (error) {
       console.error('Error fetching emails:', error);
@@ -33,20 +30,42 @@ const GmailComponent = () => {
       setIsLoading(false);
     }
   };
-  console.log('im here')
+
+  const handleClearEmails = () => {
+    setEmails([]);
+    setError(null);
+  };
+
   return (
     <div>
-      <button onClick={handleFetchEmails} disabled={isLoading}>
-        {isLoading ? 'Fetching...' : 'Fetch Recent Emails'}
-      </button>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      <ul>
-        {emails.map(email => (
-          <li key={email.id}>
-            <strong>{email.subject}</strong> from {email.from}
-          </li>
-        ))}
-      </ul>
+      <div className="flex space-x-2 mb-4">
+        <button 
+          onClick={handleFetchEmails} 
+          disabled={isLoading}
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
+        >
+          {isLoading ? 'Fetching...' : 'Fetch Recent Emails'}
+        </button>
+        <button 
+          onClick={handleClearEmails}
+          className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+        >
+          Clear Emails
+        </button>
+      </div>
+      {error && <p className="text-red-500 mb-4">{error}</p>}
+      {emails.length > 0 ? (
+        <ul className="space-y-2">
+          {emails.map(email => (
+            <li key={email.id} className="border-b pb-2">
+              <strong className="font-semibold">{email.subject}</strong> 
+              <span className="text-gray-600"> from {email.from}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-gray-500">No emails to display.</p>
+      )}
     </div>
   );
 };

@@ -32,11 +32,11 @@ export default function Dashboard() {
       </div>
       Use these to test connectivity
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
         <TokenInfo />
         <GmailInbox />
         <DriveFiles />
         <GoogleCalendar />
-
         <QueryOpenAi />
         <ScopeManager />
 

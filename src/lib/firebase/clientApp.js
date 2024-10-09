@@ -16,12 +16,6 @@ export const db_viaClient = getFirestore(firebaseApp);
 export const storage = getStorage(firebaseApp);
 export const functions = getFunctions(firebaseApp);
 
-if (process.env.NODE_ENV === 'development-x') {
-  connectFunctionsEmulator(functions, "localhost", 5001);
-  //connectFirestoreEmulator(db, 'localhost', 8080);
-  //connectAuthEmulator(auth, "http://localhost:9099");
-}
-
 // eg import { functions } from "./clientApp"
 
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {

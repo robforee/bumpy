@@ -6,8 +6,10 @@ import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { signInWithGoogle, signOut } from "@/src/lib/firebase/firebaseAuth.js";
 import { useUser } from '@/src/contexts/UserProvider';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/src/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/src/components/ui/dialog';
 import { Button } from '@/src/components/ui/button';
+import { X } from 'lucide-react';
+
 
 const Header = () => {
   const { user, userProfile, loading, refreshUserProfile } = useUser();
@@ -131,25 +133,32 @@ const Header = () => {
               </button>
 
               <Dialog open={showMenu} onOpenChange={setShowMenu}>
-                <DialogContent>
-                  <DialogHeader>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader className="sm:text-left">
                     <DialogTitle>User Menu</DialogTitle>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowMenu(false)}
+                      className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                      <span className="sr-only">Close</span>
+                    </Button>
                   </DialogHeader>
-                  <div className="py-4">
-                    <Button onClick={() => handleMenuItemClick(handleSignOut)} className="w-full mb-2">
+                  <div className="flex flex-col space-y-4 py-4">
+                    <Button onClick={() => handleMenuItemClick(handleSignOut)}>
                       Sign Out
                     </Button>
                     <Button 
-                      onClick={() => handleMenuItemClick(() => router.push('/admin'))} 
-                      className="w-full mb-2"
+                      onClick={() => handleMenuItemClick(() => router.push('/admin'))}
                     >
                       Admin
                     </Button>
                     <Button 
-                      onClick={() => handleMenuItemClick(() => router.push('/gmail-dashboard'))} 
-                      className="w-full"
+                      onClick={() => handleMenuItemClick(() => router.push('/dashboard'))}
                     >
-                      Gmail Dashboard
+                      Dashboard
                     </Button>
                   </div>
                 </DialogContent>

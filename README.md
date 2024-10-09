@@ -20,19 +20,19 @@
     
     Header
         handleSignIn                     src/components/Header
-            signInWithGoogle             src/lib/firebase/auth.js
-                provider.addScopes       src/lib/firebase/auth.js  
+            signInWithGoogle             src/lib/firebase/firebaseAuth.js
+                provider.addScopes       src/lib/firebase/firebaseAuth.js  
                    | change this to get scope list from /user_scopes
-                signInWithPopup          firebase/auth
+                signInWithPopup          firebase/firebaseAuth
                 
-                updateProfile(photo)     src/lib/firebase/auth.js
+                updateProfile(photo)     src/lib/firebase/firebaseAuth.js
 
-                sendTokensToBackend      src/lib/firebase/auth.js  ! db_viaClient      | change this
+                sendTokensToBackend      src/lib/firebase/firebaseAuth.js  ! db_viaClient      | change this
                     storeTokens          functions/index           via cloud function  |   to this
                         user_tokens      firestore/user_tokens
                         encrypt
 
-                storeUserScopes          src/lib/firebase/auth.js  db_viaClient
+                storeUserScopes          src/lib/firebase/firebaseAuth.js  db_viaClient
 
 
         useEffect()                      src/components/Header

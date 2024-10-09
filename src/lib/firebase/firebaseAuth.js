@@ -7,7 +7,7 @@ import {
   onAuthStateChanged as _onAuthStateChanged,
 } from "firebase/auth";
 import { auth } from "./clientApp";
-import { storeTokens } from '../../app/actions';
+import { storeTokens } from '../../app/actions/auth-actions';
 
 export function onAuthStateChanged(cb) {
   return _onAuthStateChanged(auth, cb);
@@ -46,7 +46,6 @@ export async function signInWithGoogle() {
     // Call the server action to store tokens
     try {
       await storeTokens({
-        userId: user.uid,
         accessToken,
         refreshToken
       });

@@ -13,7 +13,6 @@ import {useUser} from '@/src/lib/getUser'
 import RestaurantDetails from "@/src/components/restaurant/RestaurantDetails.jsx";
 import { updateRestaurantImage } from "@/src/lib/firebase/storage.js";
 
-const ReviewDialog = dynamic(() => import('@/src/components/restaurant/ReviewDialog.jsx'));
 
 export default function Restaurant({
   id,
@@ -70,15 +69,7 @@ export default function Restaurant({
         setIsOpen={setIsOpen}
         isOpen={isOpen}
       >{children}</RestaurantDetails>
-      {userId && <Suspense fallback={<p>Loading...</p>}><ReviewDialog
-        isOpen={isOpen}
-        handleClose={handleClose}
-        review={review}
-        onChange={onChange}
-        userId={userId}
-        userName={userName}
-        id={id}
-      /></Suspense>}
+
     </>
   );
 }

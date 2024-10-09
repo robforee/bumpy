@@ -1,4 +1,9 @@
-# Gmail Project
+# Rebuild Project
+ // dashboard with drive integration working
+ // token manager on dashboard page
+ // all firebase, drive, gpt queries as app/actions/*-actions
+ 
+
 
 ## about actions
 // src/app/actions.js

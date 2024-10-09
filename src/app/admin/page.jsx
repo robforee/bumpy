@@ -30,7 +30,7 @@ const AdminPage = () => {
   
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+      <h1 className="text-3xl font-bold mb-6">Admin Dashboard ~ admin group only</h1>
       <Link href="/dashboard" className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
         Dashboard
       </Link>

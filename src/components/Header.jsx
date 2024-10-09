@@ -42,9 +42,6 @@ const Header = () => {
           case 'DASHBOARD':
             router.push('/dashboard');
             break;
-          case 'CREATE_TOKENS':
-            router.push('/create-tokens');
-            break;
           default:
             console.error('Unexpected action:', result.action);
         }

@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { useUser } from '@/src/contexts/UserContext';
+import { useUser } from '@/src/contexts/UserProvider';
 
 const Dashboard = () => {
   const { user } = useUser();

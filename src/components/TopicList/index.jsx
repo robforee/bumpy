@@ -5,7 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { db_viaClient } from '@/src/lib/firebase/clientApp.js';
 import { devConfig } from '@/src/config/devConfig';
-import { useUser } from '@/src/contexts/UserContext';
+import { useUser } from '@/src/contexts/UserProvider';
 import { fetchTopicsByCategory, fetchRelationshipTopics, updateTopicTitle, onTopicsChange } from '@/src/lib/topicFirebaseOperations';
 import AddTopicModal from '../AddTopicModal';
 import { Dialog } from '@/src/components/ui/dialog';

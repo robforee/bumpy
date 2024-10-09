@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import MembersListing from "@/src/components/MembersListing";
-import { useUser } from '@/src/contexts/UserContext';
+import { useUser } from '@/src/contexts/UserProvider';
 
 export default function MembersPage() {
   const { user, loading } = useUser();

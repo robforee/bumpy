@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import MembersListing from "@/src/components/MembersListing";
-import { useUser } from '@/src/contexts/UserContext';
+import { useUser } from '@/src/contexts/UserProvider';
 
 const MembersComponent = () => {
   const { user, loading } = useUser();

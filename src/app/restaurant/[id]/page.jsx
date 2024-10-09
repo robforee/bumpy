@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { getRestaurantById } from "@/src/lib/firebase/firestore.js";
 import { getAuthenticatedAppForUser, getAuthenticatedAppForUser as getUser } from "@/src/lib/firebase/serverApp.js";
 
-import { useUser } from '@/src/contexts/UserContext';
+import { useUser } from '@/src/contexts/UserProvider';
 
 import ReviewsList, {
   ReviewsListSkeleton,

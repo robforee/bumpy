@@ -1,7 +1,7 @@
 // src/components/topicTableContainer.jsx
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useUser } from '@/src/contexts/UserContext';
+import { useUser } from '@/src/contexts/UserProvider';
 import { fetchTopicsByCategory, updateTopic, deleteTopic, fetchTopic } from '@/src/lib/topicFirebaseOperations';
 import TopicTable from './TopicTable';
 import TopicModals from './TopicModals';

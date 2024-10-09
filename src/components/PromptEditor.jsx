@@ -7,7 +7,7 @@ import { Input } from '@/src/components/ui/input';
 import { Textarea } from '@/src/components/ui/textarea';
 import { functions } from '@/src/lib/firebase/clientApp';
 import { httpsCallable } from 'firebase/functions';
-import { useUser } from '@/src/contexts/UserContext';
+import { useUser } from '@/src/contexts/UserProvider';
 import { updateDocument } from '@/src/lib/firebase/firestore';
 
 // Debounce function

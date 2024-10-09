@@ -1,7 +1,7 @@
 // src/app/layout.js
 import "@/src/app/styles.css";
 import Header from "@/src/components/Header.jsx";
-import { UserProvider } from '../contexts/UserContext';
+import { UserProvider } from '../contexts/UserProvider';
 
 export const dynamic = "force-dynamic";
 

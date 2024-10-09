@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getTopicById, addTopic } from '@/src/lib/firebase/firestore';
 import { db_viaClient } from '@/src/lib/firebase/clientApp';
-import { useUser } from '@/src/contexts/UserContext';
+import { useUser } from '@/src/contexts/UserProvider';
 import { devConfig } from '@/src/config/devConfig';
 
 import TopicTableContainer from '@/src/components/TopicTableContainer';

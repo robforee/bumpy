@@ -1,4 +1,4 @@
-// src/contexts/UserContext.js
+// src/contexts/UserProvider.js
 "use client";
 
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';

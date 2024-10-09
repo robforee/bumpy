@@ -6,7 +6,7 @@ import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { Textarea } from '@/src/components/ui/textarea';
 import { addTopic } from '@/src/lib/topicFirebaseOperations';
-import { useUser } from '@/src/contexts/UserContext';
+import { useUser } from '@/src/contexts/UserProvider';
 
 const AddTopicModal = ({ onClose, parentId, topicType, onTopicAdded }) => {
   const [title, setTitle] = useState('');

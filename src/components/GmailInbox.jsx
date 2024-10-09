@@ -4,7 +4,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useUser } from '@/src/contexts/UserContext';
+import { useUser } from '@/src/contexts/UserProvider';
 import { queryGmailInbox } from "@/src/app/actions.js";
 
 const GmailComponent = () => {

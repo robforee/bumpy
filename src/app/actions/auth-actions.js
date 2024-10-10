@@ -317,11 +317,9 @@ export async function ensureFreshTokens_fromClient(idToken, userId, forceRefresh
 }
 
 async function refreshAccessToken(refreshToken) {
-  // console.log(
-  //   process.env.GOOGLE_CLIENT_ID,
-  //   process.env.GOOGLE_CLIENT_SECRET.length,
-  //   process.env.GOOGLE_REDIRECT_URI
-  // )
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
+    throw new Error('Missing required Google OAuth environment variables');
+  }
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
@@ -336,10 +334,7 @@ async function refreshAccessToken(refreshToken) {
     const { tokens } = await oauth2Client.refreshAccessToken();
     return { success: true, tokens };
   } catch (error) {
-    //console.error('Error refreshing access token:', error);
     if (error.response && error.response.data) {
-      // Log the full error response for debugging
-      //console.error('Full error response:', error.response.data);
       console.error('Full error response:', error);
     }
     return { 

@@ -15,7 +15,9 @@ export async function runOpenAiQuery(queryData) {
     if (!currentUser) {
       throw new Error('User not authenticated');
     }
-
+    if (!process.env.OPENAI_API_KEY ) {
+      throw new Error('Missing required OPENAI_API_KEY environment variables');
+    }
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     const {

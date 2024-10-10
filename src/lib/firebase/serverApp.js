@@ -27,7 +27,23 @@ export async function getAuthenticatedAppForUser(idToken) {
 }
 
 export function getAdminApp() {
-  console.log(process.env)
+  const requiredEnvVars = [
+    'FIREBASE_PROJECT_ID',
+    'FIREBASE_PRIVATE_KEY_ID',
+    'FIREBASE_PRIVATE_KEY',
+    'FIREBASE_CLIENT_EMAIL',
+    'FIREBASE_CLIENT_ID',
+    'FIREBASE_AUTH_URI',
+    'FIREBASE_TOKEN_URI',
+    'FIREBASE_AUTH_PROVIDER_X509_CERT_URL',
+    'FIREBASE_CLIENT_X509_CERT_URL'
+  ];
+
+  const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+  if (missingEnvVars.length > 0) {
+    throw new Error(`Missing required Firebase environment variables: ${missingEnvVars.join(', ')}`);
+  }
   if (getApps().length === 0) {
     return initializeApp({
       credential: cert({

@@ -9,7 +9,9 @@ import { auth } from "@/src/lib/firebase/clientApp";
 
 export async function GeminiSummary({ restaurantId }) {
   // console.log('GGG GeminiSummary')
-  
+  if (!process.env.GEMINI_API_KEY ) {
+    throw new Error('Missing required GEMINI_API_KEY environment variables');
+  }  
   const idToken = await getIdToken(auth.currentUser);
   const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser();
   const reviews = await getReviewsByRestaurantId(

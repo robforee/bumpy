@@ -2,6 +2,7 @@
 ## configure
 apphosting.yaml - contains mapping from variable to secret-manager property
 N-gcloud - has commands to add and permission properties
+.env.local has all the testing properties
 ## documentation
     https://console.cloud.google.com/security/secret-manager?hl=en&project=analyst-server
     https://cloud.google.com/secret-manager/docs/create-secret-quickstart#secretmanager-quickstart-gcloud

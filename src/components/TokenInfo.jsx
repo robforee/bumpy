@@ -2,9 +2,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { getTokenInfo, ensureFreshTokens } from "@/src/app/actions/auth-actions";
+import { getTokenInfo, ensureFreshTokens_fromClient } from "@/src/app/actions/auth-actions";
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
+import { useUser } from '@/src/contexts/UserProvider';
+import { getAuth } from 'firebase/auth'; // vs firebase-admin/auth
+
 
 const TokenInfo = () => {
+  const { user } = useUser();
   const [tokenInfo, setTokenInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -13,7 +19,9 @@ const TokenInfo = () => {
     setIsLoading(true);
     setError(null);
     try {
-      const info = await getTokenInfo();
+      const idToken = await getIdToken(auth.currentUser);
+      const info = await getTokenInfo(idToken); // SERVER CALL
+
       setTokenInfo(info);
     } catch (err) {
       setError(err.message);
@@ -26,8 +34,13 @@ const TokenInfo = () => {
     setIsLoading(true);
     setError(null);
     try {
-      await ensureFreshTokens(true); // Pass true to force refresh
-      await fetchTokenInfo(); // Fetch updated token info after refreshing
+      const auth = getAuth();
+      const idToken = await auth.currentUser.getIdToken();
+      
+      const result  = await ensureFreshTokens_fromClient(idToken, user.uid, true); // SERVER CALL
+
+      //await fetchTokenInfo(); // Fetch updated token info after refreshing
+
     } catch (err) {
       console.error('Error during force refresh:', err);
       if (err.message === 'REAUTH_REQUIRED') {
@@ -41,7 +54,7 @@ const TokenInfo = () => {
   };
 
   useEffect(() => {
-    fetchTokenInfo();
+    //fetchTokenInfo(); // DONT FETCH BY DEFAULT
   }, []);
 
   if (isLoading) return <div>Loading token information...</div>;

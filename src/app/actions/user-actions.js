@@ -4,9 +4,12 @@
 import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';
 import { getFirestore, doc, getDoc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import moment from 'moment-timezone';
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
 
 export async function getUserInfo() {
-  const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser();//via header
+  const idToken = await getIdToken(auth.currentUser);
+  const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
   if (!currentUser) {
     return {success:false, error:'not logged in'}; 
   }  
@@ -43,7 +46,7 @@ export async function getUserInfo() {
 export async function getUserProfile() {
   console.log('getUserProfile')
   try {
-    const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser();//via header
+    const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
     
     if (!currentUser) {
       throw new Error('User not authenticated');
@@ -80,7 +83,7 @@ export async function getUserProfile() {
 export async function getTopicRoot(profile) {
   console.log('getTopicRoot')
   try {
-    const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser();
+    const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
     
     if (!currentUser) {
       throw new Error('User not authenticated');

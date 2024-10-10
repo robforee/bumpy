@@ -3,10 +3,14 @@
 
 import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';
 import OpenAI from 'openai';
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
+
 
 export async function runOpenAiQuery(queryData) {
   try {
-    const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser();
+    const idToken = await getIdToken(auth.currentUser);
+    const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
     
     if (!currentUser) {
       throw new Error('User not authenticated');

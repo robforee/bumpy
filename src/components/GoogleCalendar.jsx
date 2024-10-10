@@ -4,6 +4,8 @@
 import React, { useState } from 'react';
 import { useUser } from '@/src/contexts/UserProvider';
 import { queryGoogleCalendar } from "@/src/app/actions/google-actions";
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
 
 const GoogleCalendar = () => {
   const { user } = useUser();
@@ -21,7 +23,8 @@ const GoogleCalendar = () => {
     setError(null);
 
     try {
-      const calendarEvents = await queryGoogleCalendar();
+      const idToken = await getIdToken(auth.currentUser);
+      const calendarEvents = await queryGoogleCalendar(idToken);
       setEvents(calendarEvents);
     } catch (error) {
       console.error('Error fetching calendar events:', error);

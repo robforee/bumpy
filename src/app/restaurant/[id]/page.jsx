@@ -14,6 +14,8 @@ import {
 } from "@/src/components/restaurant/Reviews/ReviewSummary";
 // console.log('GGG page import GeminiSummary, GeminiSummarySkeleton')
 import { getFirestore } from "firebase/firestore";
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
 
 export default async function Home({ params }) {
   const { user, loading } = useUser();
@@ -23,8 +25,8 @@ export default async function Home({ params }) {
   // This is a server component, we can access URL
 	// parameters via Next.js and download the data
 	// we need for this page
-  const { currentUser } = await getUser();
-  const {firebaseServerApp} = await getAuthenticatedAppForUser();
+  const idToken = await getIdToken(auth.currentUser);
+  const {firebaseServerApp, currentUser} = await getAuthenticatedAppForUser(idToken);
   const restaurant = await getRestaurantById(getFirestore(firebaseServerApp), params.id);
 
   return (

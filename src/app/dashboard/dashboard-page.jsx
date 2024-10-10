@@ -6,10 +6,15 @@ import Link from 'next/link';
 import GmailInbox from '@/src/components/GmailInbox';
 import DriveFiles from '@/src/components/GoogleDriveFiles';
 import GoogleCalendar from '@/src/components/GoogleCalendar';
+import TopicChildren from '@/src/components/TopicChildren'; // Add this import
 
 import TokenInfo from '@/src/components/TokenInfo';
 import ScopeManager from '@/src/components/ScopeManager';
 import QueryOpenAi from '@/src/components/QueryOpenAi';
+
+// FOR SENDING AUTH TO SERVER
+import { storeTokens_fromClient } from '@/src/app/actions/auth-actions';
+import { getAuth } from 'firebase/auth'; // vs firebase-admin/auth
 
 export default function Dashboard() {
   const { user, userProfile } = useUser();
@@ -32,13 +37,13 @@ export default function Dashboard() {
       </div>
       Use these to test connectivity
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        
+        <TopicChildren /> 
         <TokenInfo />
         <GmailInbox />
         <DriveFiles />
         <GoogleCalendar />
         <QueryOpenAi />
-        <ScopeManager />
+        {/* <ScopeManager /> */}
 
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

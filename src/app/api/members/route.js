@@ -3,13 +3,16 @@ import { getAuthenticatedAppForUser } from "@/src/lib/firebase/serverApp.js";
 import { getFirestore } from "firebase/firestore";
 import { getMembers } from "@/src/lib/firebase/firestore.js";
 import { NextResponse } from 'next/server';
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get('category') || 'Member';
 
   try {
-    const { firebaseServerApp } = await getAuthenticatedAppForUser();  
+    const idToken = await getIdToken(auth.currentUser);
+    const { firebaseServerApp } = await getAuthenticatedAppForUser(idToken);  
     const db = getFirestore(firebaseServerApp);
     
     const filters = {

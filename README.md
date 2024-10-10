@@ -3,9 +3,9 @@
  // token manager on dashboard page
  // all firebase, drive, gpt queries as app/actions/*-actions
  
- remove src/lib/tokenManager.js
+ <!-- remove src/lib/tokenManager.js
  remove src/app/api/storeTokens/route.js
- remove src/app/actions.js
+ remove src/app/actions.js -->
  firebase deploy --only functions
 
 

@@ -9,7 +9,8 @@ import { useUser } from '@/src/contexts/UserProvider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/src/components/ui/dialog';
 import { Button } from '@/src/components/ui/button';
 import { X } from 'lucide-react';
-
+import { storeTokens_fromClient } from '@/src/app/actions/auth-actions';
+import { getAuth } from 'firebase/auth'; // vs firebase-admin/auth
 
 const Header = () => {
   const { user, userProfile, loading, refreshUserProfile } = useUser();
@@ -36,6 +37,18 @@ const Header = () => {
   const handleSignIn = async () => {
     try {
       const result = await signInWithGoogle();
+
+      const user = result.user;
+      const accessToken = result.tokens.accessToken;
+      const refreshToken = result.tokens.refreshToken;
+
+      const auth = getAuth();
+      const idToken = await auth.currentUser.getIdToken();
+      
+      const storeResult = await storeTokens_fromClient(user.uid, accessToken, refreshToken, idToken);
+
+      console.log('store result',storeResult);
+
       if (result.success) {
         await refreshUserProfile();
         switch (result.action) {
@@ -58,6 +71,7 @@ const Header = () => {
             console.error('Sign-in failed:', result.error);
         }
       }
+
     } catch (error) {
       console.error("Sign-in error:", error);
       router.push('/auth-error');

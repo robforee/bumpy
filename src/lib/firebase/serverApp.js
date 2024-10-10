@@ -1,5 +1,4 @@
 // src/lib/firebase/serverApp.js
-
 import "server-only";
 
 import { headers } from "next/headers";
@@ -10,10 +9,11 @@ import { getAuth } from "firebase/auth";
 import { initializeServerApp } from "firebase/app";
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
 
-export async function getAuthenticatedAppForUser() {
-  const idToken = headers().get("Authorization")?.split("Bearer ")[1];
-
+export async function getAuthenticatedAppForUser(idToken) {
+  
   const firebaseServerApp = initializeServerApp(
     firebaseConfig,
     idToken ? { authIdToken: idToken, }

@@ -1,7 +1,6 @@
 // app/actions/topic-actions.js
 'use server'
 
-import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';
 import { 
   getFirestore,
   collection, 
@@ -18,38 +17,15 @@ import {
   arrayRemove
 } from 'firebase/firestore';
 
-/**
- * Creates a new topic in the Firestore database.
- * 
- * @async
- * @function createTopic
- * @param {string|null} parentId - The ID of the parent topic. If null, the new topic will be a root topic.
- * @param {Object} topicData - The data for the new topic.
- * @param {string} [topicData.topic_type='default'] - The type of the topic.
- * @param {string} [topicData.title] - The title of the topic.
- * @param {string} [topicData.subtitle] - The subtitle of the topic.
- * @param {string} [topicData.text] - The main text content of the topic.
- * @param {string} [topicData.prompt] - Any prompt associated with the topic.
- * @throws {Error} Throws an error if the user is not authenticated.
- * @throws {Error} Throws an error if there's a problem adding the new topic to Firestore.
- * @returns {Promise<Object>} A promise that resolves to an object containing the new topic's data, including its auto-generated ID.
- * 
- * @example
- * const newTopicData = {
- *   title: "My New Topic",
- *   topic_type: "article",
- *   text: "This is the content of my new topic."
- * };
- * try {
- *   const result = await createTopic("parentTopicId", newTopicData);
- *   console.log("New topic created:", result);
- * } catch (error) {
- *   console.error("Failed to create topic:", error);
- * }
- */
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
+import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';
 
 export async function createTopic_viaServer(parentId, topicData) {
-  const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser();
+
+  const idToken = await getIdToken(auth.currentUser);
+  const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
+
   if (!currentUser) {
     throw new Error('User not authenticated');
   }
@@ -83,7 +59,8 @@ export async function createTopic_viaServer(parentId, topicData) {
 }
 
 export async function updateTopic(topicId, updatedData) {
-  const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser();
+  const idToken = await getIdToken(auth.currentUser);
+  const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
   if (!currentUser) {
     throw new Error('User not authenticated');
   }
@@ -119,7 +96,8 @@ export async function updateTopic(topicId, updatedData) {
 }
 
 export async function deleteTopic(topicId) {
-  const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser();
+  const idToken = await getIdToken(auth.currentUser);
+  const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
   if (!currentUser) {
     throw new Error('User not authenticated');
   }
@@ -153,8 +131,10 @@ export async function deleteTopic(topicId) {
   }
 }
 
-export async function fetchTopicsByCategory(categories, parentId) {
-  const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser();
+export async function fetchTopicsByCategory(categories, parentId, idToken) {
+
+  const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
+  
   if (!currentUser) {
     throw new Error('User not authenticated');
   }
@@ -171,14 +151,14 @@ export async function fetchTopicsByCategory(categories, parentId) {
         topicsRef,
         where('topic_type', '!=', 'topic'),
         where('parents', 'array-contains', parentId),
-        where('owner', '==', currentUser.uid)
+        //where('owner', '==', currentUser.uid)
       );
     } else {
       q = query(
         topicsRef,
         where('topic_type', 'in', categories),
         where('parents', 'array-contains', parentId),
-        where('owner', '==', currentUser.uid)
+        //where('owner', '==', currentUser.uid)
       );
     }
 

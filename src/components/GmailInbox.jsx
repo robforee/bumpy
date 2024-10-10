@@ -4,6 +4,8 @@
 import React, { useState } from 'react';
 import { useUser } from '@/src/contexts/UserProvider';
 import { queryGmailInbox } from "@/src/app/actions/google-actions";
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
 
 const GmailComponent = () => {
   const { user } = useUser();
@@ -21,7 +23,11 @@ const GmailComponent = () => {
     setError(null);
 
     try {
-      const emailDetails = await queryGmailInbox();
+
+      const idToken = await getIdToken(auth.currentUser);
+
+      const emailDetails = await queryGmailInbox(idToken);
+
       setEmails(emailDetails);
     } catch (error) {
       console.error('Error fetching emails:', error);

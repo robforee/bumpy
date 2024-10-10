@@ -6,9 +6,13 @@ import ReviewsListClient from "@/src/components/restaurant/Reviews/ReviewsListCl
 import { ReviewSkeleton } from "@/src/components/restaurant/Reviews/Review";
 import { getFirestore } from "firebase/firestore";
 import { getAuthenticatedAppForUser } from "@/src/lib/firebase/serverApp";
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
+
 
 export default async function ReviewsList({ restaurantId, userId }) {
-  const {firebaseServerApp} = await getAuthenticatedAppForUser();
+  const idToken = await getIdToken(auth.currentUser);
+  const {firebaseServerApp} = await getAuthenticatedAppForUser(idToken);
   const reviews = await getReviewsByRestaurantId(getFirestore(firebaseServerApp), restaurantId);
   console.log('%%% Reviews',reviews.length)
   

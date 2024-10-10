@@ -4,6 +4,8 @@
 import React, { useState } from 'react';
 import { useUser } from '@/src/contexts/UserProvider';
 import { queryRecentDriveFiles } from "@/src/app/actions/google-actions";
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
 
 const GoogleDriveFiles = () => {
   const { user } = useUser();
@@ -21,7 +23,8 @@ const GoogleDriveFiles = () => {
     setError(null);
 
     try {
-      const fileDetails = await queryRecentDriveFiles();
+      const idToken = await getIdToken(auth.currentUser);
+      const fileDetails = await queryRecentDriveFiles(idToken);
       setFiles(fileDetails);
     } catch (error) {
       console.error('Error fetching Drive files:', error);

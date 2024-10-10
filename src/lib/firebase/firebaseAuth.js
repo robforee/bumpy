@@ -1,13 +1,13 @@
 // src/lib/firebase/firebaseAuth.js
+// CLIENT SIDE FUNCTIONS, CANNOT DOT INTO CLIENT MODULE FROM SERVER
 
 import {
-  getAuth,
   GoogleAuthProvider,
   signInWithPopup,
   onAuthStateChanged as _onAuthStateChanged,
 } from "firebase/auth";
-import { auth } from "./clientApp";
-import { storeTokens } from '../../app/actions/auth-actions';
+
+import { auth } from "@/src/lib/firebase/clientApp";
 
 export function onAuthStateChanged(cb) {
   return _onAuthStateChanged(auth, cb);
@@ -43,17 +43,15 @@ export async function signInWithGoogle() {
     const accessToken = credential.accessToken;
     const refreshToken = user.refreshToken;
 
-    // Call the server action to store tokens
-    try {
-      await storeTokens({
-        accessToken,
-        refreshToken
-      });
-      return { success: true, user, action: 'DASHBOARD' };
-    } catch (tokenError) {
-      console.error("Error storing tokens:", tokenError);
-      return { success: false, error: tokenError, action: 'CREATE_TOKENS' };
-    }
+    // return the tokens TO THE CALLING COMPONENT (Header)
+    return { 
+      success: true, 
+      user, 
+      action: 'DASHBOARD',
+      tokens: { accessToken, refreshToken, userId: user.uid }
+    };
+    
+
   } catch (error) {
     console.error("Error signing in with Google", error);
     

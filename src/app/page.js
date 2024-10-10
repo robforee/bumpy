@@ -1,15 +1,15 @@
 // src/app/page.js
-// a server render
-import RestaurantListings from "@/src/components/restaurant/RestaurantListings.jsx";
+
 import { getRestaurants } from "@/src/lib/firebase/firestore.js";
 import { getAuthenticatedAppForUser } from "@/src/lib/firebase/serverApp.js";
 import { getFirestore } from "firebase/firestore";
+//import MembersComponent from '@/src/components/MembersComponent';
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
 import { default as dynamicImport } from 'next/dynamic';
-import AdminPage from "./admin/page";
-import MembersComponent from '@/src/components/MembersComponent';
+
 
 // Dynamically import ServerTime with no SSR
-const ServerTime = dynamicImport(() => import('@/src/components/ServerTime'), { ssr: false });
 const UnderConstruction = dynamicImport(() => import('@/src/components/UnderConstruction'), { ssr: false });
 
 
@@ -17,14 +17,16 @@ const UnderConstruction = dynamicImport(() => import('@/src/components/UnderCons
 export const dynamic = 'force-dynamic';
 
 export default async function Home({ searchParams }) {
-	const {firebaseServerApp} = await getAuthenticatedAppForUser();
+	
+	// const idToken = await getIdToken(auth.currentUser);	
+	// const {firebaseServerApp} = await getAuthenticatedAppForUser(idToken);
     
-	const filters = {
-        category: searchParams.category || "",
-        sortDirection: searchParams.sortDirection || ""
-    };
+	// const filters = {
+    //     category: searchParams.category || "",
+    //     sortDirection: searchParams.sortDirection || ""
+    // };
 
-	const restaurants = await getRestaurants(getFirestore(firebaseServerApp), filters);
+	// const restaurants = await getRestaurants(getFirestore(firebaseServerApp), filters);
 	
 	const isUnderConstruction = false; // Set this based on your app's state
 
@@ -35,7 +37,7 @@ export default async function Home({ searchParams }) {
 	return (
 		<main className="main__home">
 			<UnderConstruction />
-			<MembersComponent />
+			{/* <MembersComponent /> */}
 		</main>
 	);
 }

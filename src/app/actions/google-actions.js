@@ -4,17 +4,25 @@
 import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';
 import { google } from 'googleapis';
 import { ensureFreshTokens } from './auth-actions';
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
 
-export async function queryGmailInbox() {
+export async function queryGmailInbox(idToken) {
+
     try {
-        const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser();
+
+        const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
         
         if (!currentUser) {
+            console.log( 'USER not authenticated ~~~~~~', currentUser )
+            return [];
             throw new Error('User not authenticated');
+        }else{
+            console.log('USER AUTH authenticated ~~~~~~')
         }
 
         // Use ensureFreshTokens to get fresh tokens
-        const { accessToken } = await ensureFreshTokens();
+        const { accessToken } = await ensureFreshTokens(idToken);
 
         const oauth2Client = new google.auth.OAuth2();
         oauth2Client.setCredentials({ access_token: accessToken });
@@ -52,16 +60,16 @@ export async function queryGmailInbox() {
     }
 }
 
-export async function queryRecentDriveFiles(config = {}) {
+export async function queryRecentDriveFiles(idToken,config = {}) {
     try {
-        const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser();
+        const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
         
         if (!currentUser) {
             throw new Error('User not authenticated');
         }
 
         // Use ensureFreshTokens to get fresh tokens
-        const { accessToken } = await ensureFreshTokens();
+        const { accessToken } = await ensureFreshTokens(idToken);
 
         const oauth2Client = new google.auth.OAuth2();
         oauth2Client.setCredentials({ access_token: accessToken });
@@ -100,16 +108,16 @@ export async function queryRecentDriveFiles(config = {}) {
     }
 }
 
-export async function queryGoogleCalendar() {
+export async function queryGoogleCalendar(idToken) {
     try {
-        const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser();
+        const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
         
         if (!currentUser) {
             throw new Error('User not authenticated');
         }
 
         // Use ensureFreshTokens to get fresh tokens
-        const { accessToken } = await ensureFreshTokens();
+        const { accessToken } = await ensureFreshTokens(idToken);
 
         const oauth2Client = new google.auth.OAuth2();
         oauth2Client.setCredentials({ access_token: accessToken });

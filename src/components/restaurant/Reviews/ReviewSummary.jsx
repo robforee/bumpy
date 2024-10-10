@@ -2,10 +2,16 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 import { getReviewsByRestaurantId } from "@/src/lib/firebase/firestore.js";
 import { getAuthenticatedAppForUser } from "@/src/lib/firebase/serverApp";
 import { getFirestore } from "firebase/firestore";
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
+
+
 
 export async function GeminiSummary({ restaurantId }) {
   // console.log('GGG GeminiSummary')
-  const { firebaseServerApp } = await getAuthenticatedAppForUser();
+  
+  const idToken = await getIdToken(auth.currentUser);
+  const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser();
   const reviews = await getReviewsByRestaurantId(
     getFirestore(firebaseServerApp),
     restaurantId

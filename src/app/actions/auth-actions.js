@@ -14,30 +14,32 @@ import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';
 const encryptionKey = process.env.ENCRYPTION_KEY;
 
 function encrypt(text) {
-  console.warn('ek.length.e',encryptionKey.length)
-  console.warn('2',process.env.CHECK)
-  console.warn('3',process.env.NEXT_PUBLIC_CHECK)
-  console.warn('4',process.env.GOOGLE_CLIENT_ID)
-  console.warn('5',process.env.GOOGLE_REDIRECT_URI)
-    const key = crypto.scryptSync(encryptionKey, 'salt', 32);
-    const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-    let encrypted = cipher.update(text, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    return iv.toString('hex') + ':' + encrypted;
+  if (!process.env.ENCRYPTION_KEY) {
+    throw new Error('ENCRYPTION_KEY environment variable is missing');
   }
+  const encryptionKey = process.env.ENCRYPTION_KEY;
+  const key = crypto.scryptSync(encryptionKey, 'salt', 32);
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  return iv.toString('hex') + ':' + encrypted;
+}
 
 function decrypt(text) {
-  console.log('ek.length.d',encryptionKey.length)
-    const key = crypto.scryptSync(encryptionKey, 'salt', 32);
-    const [ivHex, encryptedHex] = text.split(':');
-    const iv = Buffer.from(ivHex, 'hex');
-    const encrypted = Buffer.from(encryptedHex, 'hex');
-    const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
+  if (!process.env.ENCRYPTION_KEY) {
+    throw new Error('ENCRYPTION_KEY environment variable is missing');
   }
+  const encryptionKey = process.env.ENCRYPTION_KEY;
+  const key = crypto.scryptSync(encryptionKey, 'salt', 32);
+  const [ivHex, encryptedHex] = text.split(':');
+  const iv = Buffer.from(ivHex, 'hex');
+  const encrypted = Buffer.from(encryptedHex, 'hex');
+  const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
+}
 
 // calls by
 //  auth-actions - server side (works)

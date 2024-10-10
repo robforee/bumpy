@@ -33,11 +33,11 @@ export const UserProvider = ({ children }) => {
       setLoading(true);
       
       if (authUser) {
-        console.log("Auth state changed:", process.env?.NODE_ENV);
+        console.log("Auth state changed:",process.env.NODE_ENV); //  
         setUser(authUser);
         await loadUserProfile(authUser.uid);
       } else {
-        console.log("Auth state changed:", process.env?.NODE_ENV);
+        console.log("Auth state changed:");
         setUser(null);
         setUserProfile(null);
       }

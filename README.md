@@ -1,3 +1,14 @@
+# SECRETS
+## configure
+apphosting.yaml - contains mapping from variable to secret-manager property
+N-gcloud - has commands to add and permission properties
+## documentation
+    https://console.cloud.google.com/security/secret-manager?hl=en&project=analyst-server
+    https://cloud.google.com/secret-manager/docs/create-secret-quickstart#secretmanager-quickstart-gcloud
+    https://cloud.google.com/sdk/docs/authorizing
+    https://firebase.google.com/docs/app-hosting/configure#secret-parameters
+
+
 # AUTH
 remove all mentions of lib/firebase/config.js
 

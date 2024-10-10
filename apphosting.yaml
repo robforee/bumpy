@@ -1,16 +1,51 @@
 env:
+
   # Get these values from the Firebase console
+
   - variable: NEXT_PUBLIC_FOREE
     value: "robert"
-  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    value: "AIzaSyCqiDvffTon_ivAqTY5gKOlNP9rb5_HeRY"
-  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-    value: "analyst-server.firebaseapp.com"
-  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    value: "analyst-server"
-  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    value: "analyst-server.appspot.com"
-  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-    value: "727308999536"
-  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
-    value: "1:727308999536:web:6b00195e963d9763a3cdb5"
+
+  - variable: ENCRYPTION_KEY
+    secret: projects/727308999536/secrets/ENCRYPTION_KEY
+
+  - variable: OPENAI_API_KEY
+    secret: projects/727308999536/secrets/OPENAI_API_KEY
+
+  - variable: GOOGLE_CLIENT_ID
+    secret: projects/727308999536/secrets/google_client_id
+
+  - variable: GOOGLE_CLIENT_SECRET
+    secret:  projects/727308999536/secrets/google_client_secret
+
+  - variable: GOOGLE_REDIRECT_URI
+    secret: projects/727308999536/secrets/google_redirect_uri
+
+  - variable: FIREBASE_PROJECT_ID
+    secret: projects/727308999536/secrets/firebase_project_id
+
+  - variable: FIREBASE_PRIVATE_KEY_ID 
+    secret: projects/727308999536/secrets/firebase_private_key_id
+
+  - variable: FIREBASE_PRIVATE_KEY
+    secret: projects/727308999536/secrets/FIREBASE_PRIVATE_KEY
+
+  - variable: FIREBASE_CLIENT_EMAIL
+    secret: projects/727308999536/secrets/firebase_client_email
+
+  - variable: FIREBASE_CLIENT_ID
+    secret: projects/727308999536/secrets/firebase_client_id
+
+  - variable: FIREBASE_AUTH_URI
+    secret: projects/727308999536/secrets/firebase_auth_uri
+
+  - variable: FIREBASE_TOKEN_URI
+    secret: projects/727308999536/secrets/firebase_token_uri
+
+  - variable: FIREBASE_AUTH_PROVIDER_X509_CERT_URL
+    secret: projects/727308999536/secrets/firebase_auth_provider_x509_cert_url
+
+  - variable: FIREBASE_CLIENT_X509_CERT_URL
+    secret: projects/727308999536/secrets/firebase_client_x509_cert_url
+
+  - variable: FIREBASE_SERVICE_ACCOUNT_KEY
+    secret: projects/727308999536/secrets/FIREBASE_SERVICE_ACCOUNT_KEY

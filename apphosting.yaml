@@ -1,5 +1,7 @@
 env:
   # Get these values from the Firebase console
+  - variable: NEXT_PUBLIC_FOREE
+    value: "robert"
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     value: "AIzaSyCqiDvffTon_ivAqTY5gKOlNP9rb5_HeRY"
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN

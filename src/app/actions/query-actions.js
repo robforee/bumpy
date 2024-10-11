@@ -7,9 +7,9 @@ import { getIdToken } from "firebase/auth";
 import { auth } from "@/src/lib/firebase/clientApp";
 
 
-export async function runOpenAiQuery(queryData) {
+export async function runOpenAiQuery(queryData, idToken) {
   try {
-    const idToken = await getIdToken(auth.currentUser);
+
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
     
     if (!currentUser) {

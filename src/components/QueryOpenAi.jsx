@@ -3,26 +3,38 @@
 
 import React, { useState, useEffect } from 'react';
 import { runOpenAiQuery } from "@/src/app/actions/query-actions";
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
+import { useUser } from '@/src/contexts/UserProvider';
 
 const QueryOpenAi = () => {
+  const { user } = useUser();
   const [prompt, setPrompt] = useState('');
   const [response, setResponse] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    
     // Set initial prompt based on current month
     const currentMonth = new Date().toLocaleString('default', { month: 'long' });
     setPrompt(`Write a few lines telling what big events typically go on in the world in mid ${currentMonth}.`);
   }, []);
 
   const handleSubmit = async (e) => {
+    if (!user) {
+      setError('No user logged in');
+      return;
+    }    
     e.preventDefault();
     setIsLoading(true);
     setError(null);
     setResponse('');
 
     try {
+
+      const idToken = await getIdToken(auth.currentUser);
+
       const queryData = {
         systemPrompt: "You are a helpful assistant providing information about world events.",
         userPrompts: [prompt],
@@ -31,7 +43,7 @@ const QueryOpenAi = () => {
         responseFormat: { type: "text" },
       };
 
-      const result = await runOpenAiQuery(queryData);
+      const result = await runOpenAiQuery(queryData, idToken);
 
       if (result.success) {
         setResponse(result.content);

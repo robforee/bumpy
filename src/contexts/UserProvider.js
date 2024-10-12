@@ -33,14 +33,16 @@ export const UserProvider = ({ children }) => {
       setLoading(true);
       
       if (authUser) {
-        console.log("Auth state changed:",process.env.NODE_ENV, 
-          process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID, 
-          process.env.NEXT_PUBLIC_FOREE
-        ); //  
+        if(process.env.NODE_ENV === 'development')
+          console.log("Auth state changed:",process.env.NODE_ENV, 
+            process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID, 
+            process.env.NEXT_PUBLIC_FOREE
+          ); //  
         setUser(authUser);
         await loadUserProfile(authUser.uid);
       } else {
-        console.log("Auth state changed:");
+        if(process.env.NODE_ENV === 'development')
+          console.log("Auth state changed:",);
         setUser(null);
         setUserProfile(null);
       }

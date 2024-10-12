@@ -95,7 +95,9 @@ export async function storeTokens({ accessToken, refreshToken, idToken }) {
 }
 
 // CALLED FROM HEADER
-export async function storeTokens_fromClient(userId, accessToken, refreshToken, idToken) {
+export async function storeTokens_fromClient(userId, accessToken, refreshToken, idToken, scopes) {
+
+  console.log('scopes.length',scopes)
 
   if (!userId || !accessToken || !refreshToken || !idToken) {
     console.error('Missing required parameters');
@@ -135,12 +137,14 @@ export async function storeTokens_fromClient(userId, accessToken, refreshToken, 
       updateTime: updateTime,
       createdAt: updateTime,
       touchedAt: touchedTime,
-      userEmail: currentUser.email
+      userEmail: currentUser.email,
+      scopes: scopes ? scopes : []
     };
+    //console.log('tokenData.scopes.length',tokenData.scopes.length)
 
     await setDoc(userTokensRef, tokenData, { merge: true });
 
-    console.log('Tokens stored successfully');
+    console.log('#\tTokens stored successfully');
     return { success: true, message: 'Tokens stored successfully', updateTime: updateTime };
 
   } catch (error) {
@@ -171,13 +175,14 @@ export async function ensureFreshTokens(idToken, userId, forceRefresh = false) {
     const tokens = userTokensSnap.data();
     const accessToken = decrypt(tokens.accessToken);
     const refreshToken = decrypt(tokens.refreshToken);
+    const scopes = tokens.scopes;
     const expirationTime = tokens.expirationTime;
 
     // Check if the access token is expired or if forceRefresh is true
     if (forceRefresh || Date.now() > expirationTime) {
       console.log('#\n#\t\tRefreshing access token...');
 
-      const refreshResult = await refreshAccessToken(refreshToken);
+      const refreshResult = await refreshAccessToken(refreshToken, scopes);
       
       if (!refreshResult.success) {
         console.log(refreshResult.error);
@@ -199,7 +204,8 @@ export async function ensureFreshTokens(idToken, userId, forceRefresh = false) {
       const storeResult = await storeTokens({
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,
-        idToken: idToken
+        idToken: idToken,
+        scopes: scopes
       });
 
       if (!storeResult.success) {
@@ -243,8 +249,6 @@ export async function ensureFreshTokens_fromClient(idToken, userId, forceRefresh
     const userTokensRef = doc(db, 'user_tokens', currentUser.uid); // ON SERVER
     const userTokensSnap = await getDoc(userTokensRef);
 
-    console.log('tokens currently exist')
-
     if (!userTokensSnap.exists()) {
       throw new Error('REAUTH_REQUIRED');
     }else{
@@ -255,30 +259,25 @@ export async function ensureFreshTokens_fromClient(idToken, userId, forceRefresh
     const accessToken = decrypt(tokens.accessToken);
     const refreshToken = decrypt(tokens.refreshToken);
     const expirationTime = tokens.expirationTime;
+    const storedScopes = tokens.scopes;
 
-    console.log(refreshToken.length,'refreshToken.length')
-    console.log(refreshToken.slice(-5),'refreshToken')
+    console.log('#\t', refreshToken.slice(-5),'refreshToken')
+    console.log('#\tforceRefresh',forceRefresh)
 
-
-    console.log('accessToken.length',accessToken.length)
-    console.log('refreshToken.length',refreshToken.length)
-    console.log('forceRefresh',forceRefresh)
 
     // Check if the access token is expired or if forceRefresh is true
     if (forceRefresh || Date.now() > expirationTime) {
 
-      console.log('#\n#\t\tRefreshing access token...');
+      console.log('#\tRefreshing access token...');
 
-      const refreshResult = await refreshAccessToken(refreshToken);
+      const refreshResult = await refreshAccessToken(refreshToken, storedScopes);
       
       if (!refreshResult.success) {
-        console.log(refreshResult.error);
+
         if (refreshResult.error === 'invalid_grant') {
 
           //await setDoc(userTokensRef, { msg: 'invalid_grant' });
           
-          //console.log(refreshResult.error)
-
           throw new Error('REAUTH_REQUIRED');
         } else {
           throw new Error('Failed to refresh token');
@@ -288,7 +287,7 @@ export async function ensureFreshTokens_fromClient(idToken, userId, forceRefresh
       const newAccessToken = refreshResult.tokens.access_token;
       const newRefreshToken = refreshResult.tokens.refresh_token || refreshToken;
 
-      const storeResult = await storeTokens_fromClient(userId, newAccessToken, newRefreshToken, idToken );
+      const storeResult = await storeTokens_fromClient(userId, newAccessToken, newRefreshToken, idToken, storedScopes );
 
       if (!storeResult.success) {
         throw new Error('Failed to store refreshed tokens');
@@ -316,7 +315,7 @@ export async function ensureFreshTokens_fromClient(idToken, userId, forceRefresh
   }
 }
 
-async function refreshAccessToken(refreshToken) {
+async function refreshAccessToken(refreshToken, storedScopes) {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
     throw new Error('Missing required Google OAuth environment variables');
   }
@@ -327,15 +326,18 @@ async function refreshAccessToken(refreshToken) {
   );
 
   oauth2Client.setCredentials({
-    refresh_token: refreshToken
-  });
+    refresh_token: refreshToken,
+    scope: storedScopes.join(' ') // Join scopes into a space-separated string
+  });  
 
   try {
-    const { tokens } = await oauth2Client.refreshAccessToken();
-    return { success: true, tokens };
+
+    const { tokens } = await oauth2Client.refreshAccessToken();    
+
+    return { success: true, tokens:tokens };
   } catch (error) {
     if (error.response && error.response.data) {
-      console.error('Full error response:', error);
+      //console.error('Full error response:', error);
     }
     return { 
       success: false, 

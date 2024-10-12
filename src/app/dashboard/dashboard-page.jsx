@@ -13,8 +13,6 @@ import ScopeManager from '@/src/components/ScopeManager';
 import QueryOpenAi from '@/src/components/QueryOpenAi';
 
 // FOR SENDING AUTH TO SERVER
-import { storeTokens_fromClient } from '@/src/app/actions/auth-actions';
-import { getAuth } from 'firebase/auth'; // vs firebase-admin/auth
 
 export default function Dashboard() {
   const { user, userProfile } = useUser();

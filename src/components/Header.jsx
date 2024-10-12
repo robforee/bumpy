@@ -35,17 +35,35 @@ const Header = () => {
   };
 
   const handleSignIn = async () => {
+
     try {
-      const result = await signInWithGoogle();
+      const scopes = [
+        'https://www.googleapis.com/auth/calendar',
+        'https://www.googleapis.com/auth/gmail.modify',
+        'https://www.googleapis.com/auth/gmail.compose',
+        'https://www.googleapis.com/auth/drive',
+        'https://www.googleapis.com/auth/drive.file',
+        'https://www.googleapis.com/auth/drive.appdata',
+        'https://www.googleapis.com/auth/chat.messages',
+        'https://www.googleapis.com/auth/chat.spaces',
+        'https://www.googleapis.com/auth/contacts'
+      ];    
+
+      const result = await signInWithGoogle(scopes);
 
       const user = result.user;
       const accessToken = result.tokens.accessToken;
       const refreshToken = result.tokens.refreshToken;
+      const authScopes = result.scopes;
+      
+      if(process.env.NODE_ENV === 'development')
+        console.log('result',result)
 
+      // auth for storing tokens
       const auth = getAuth();
       const idToken = await auth.currentUser.getIdToken();
       
-      const storeResult = await storeTokens_fromClient(user.uid, accessToken, refreshToken, idToken);
+      const storeResult = await storeTokens_fromClient(user.uid, accessToken, refreshToken, idToken, authScopes);
 
       console.log('store result',storeResult);
 

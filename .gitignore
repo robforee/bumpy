@@ -9,4 +9,5 @@ functions/.runtimeconfig.json
 .env.local
 .env.production
 scripts/token.json
+.vscode
 

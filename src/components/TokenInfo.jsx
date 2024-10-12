@@ -39,6 +39,7 @@ const TokenInfo = () => {
       
       const result  = await ensureFreshTokens_fromClient(idToken, user.uid, true); // SERVER CALL
 
+      //console.log(result);
       //await fetchTokenInfo(); // Fetch updated token info after refreshing
 
     } catch (err) {

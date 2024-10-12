@@ -13,21 +13,8 @@ export function onAuthStateChanged(cb) {
   return _onAuthStateChanged(auth, cb);
 }
 
-export async function signInWithGoogle() {
+export async function signInWithGoogle(scopes) {
   const provider = new GoogleAuthProvider();
-
-  // Add the required scopes
-  const scopes = [
-    'https://www.googleapis.com/auth/calendar',
-    'https://www.googleapis.com/auth/gmail.modify',
-    'https://www.googleapis.com/auth/gmail.compose',
-    'https://www.googleapis.com/auth/drive',
-    'https://www.googleapis.com/auth/drive.file',
-    'https://www.googleapis.com/auth/drive.appdata',
-    'https://www.googleapis.com/auth/chat.messages',
-    'https://www.googleapis.com/auth/chat.spaces',
-    'https://www.googleapis.com/auth/contacts'
-  ];
 
   scopes.forEach(scope => provider.addScope(scope));
 
@@ -37,7 +24,9 @@ export async function signInWithGoogle() {
   });
 
   try {
+    
     const result = await signInWithPopup(auth, provider);
+
     const user = result.user;
     const credential = GoogleAuthProvider.credentialFromResult(result);
     const accessToken = credential.accessToken;
@@ -48,7 +37,8 @@ export async function signInWithGoogle() {
       success: true, 
       user, 
       action: 'DASHBOARD',
-      tokens: { accessToken, refreshToken, userId: user.uid }
+      tokens: { accessToken, refreshToken, userId: user.uid },
+      scopes: scopes
     };
     
 

@@ -12,7 +12,7 @@ import {
   query, 
   where, 
   getDocs,
-  serverTimestamp,
+  serverTimestamp, Timestamp,
   arrayUnion,
   arrayRemove
 } from 'firebase/firestore';
@@ -21,9 +21,8 @@ import { getIdToken } from "firebase/auth";
 import { auth } from "@/src/lib/firebase/clientApp";
 import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';
 
-export async function createTopic_viaServer(parentId, topicData) {
+export async function createTopic(parentId, topicData, idToken) {
 
-  const idToken = await getIdToken(auth.currentUser);
   const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
 
   if (!currentUser) {
@@ -38,7 +37,6 @@ export async function createTopic_viaServer(parentId, topicData) {
       topic_type: topicData.topic_type || 'default',
       owner: currentUser.uid,
       parents: parentId ? [parentId] : [],
-      children: [],
       created_at: serverTimestamp(),
       updated_at: serverTimestamp()
     };
@@ -58,9 +56,9 @@ export async function createTopic_viaServer(parentId, topicData) {
   }
 }
 
-export async function updateTopic(topicId, updatedData) {
-  const idToken = await getIdToken(auth.currentUser);
+export async function updateTopic(topicId, updatedData, idToken) {
   const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
+
   if (!currentUser) {
     throw new Error('User not authenticated');
   }
@@ -75,7 +73,8 @@ export async function updateTopic(topicId, updatedData) {
       throw new Error('Topic not found');
     }
 
-    const updatableFields = ['title', 'subtitle', 'text', 'prompt', 'topic_type'];
+    const updatableFields = ['title', 
+      'subtitle', 'text', 'prompt', 'concept', 'concept_json', 'topic_type'];
 
     const dataToUpdate = updatableFields.reduce((acc, field) => {
       if (updatedData[field] !== undefined) {
@@ -88,16 +87,16 @@ export async function updateTopic(topicId, updatedData) {
 
     await updateDoc(topicRef, dataToUpdate);
 
-    return { id: topicId, ...dataToUpdate };
+    return { id: topicId, ...convertTimestamps(updatedData) };
   } catch (error) {
     console.error('Error updating topic:', error);
     throw error;
   }
 }
 
-export async function deleteTopic(topicId) {
-  const idToken = await getIdToken(auth.currentUser);
+export async function deleteTopic(topicId,idToken) {
   const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
+
   if (!currentUser) {
     throw new Error('User not authenticated');
   }
@@ -132,12 +131,12 @@ export async function deleteTopic(topicId) {
 }
 
 export async function fetchTopicsByCategory(categories, parentId, idToken) {
-
   const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
-  
+
   if (!currentUser) {
     throw new Error('User not authenticated');
   }
+
   
   const db = getFirestore(firebaseServerApp);
   
@@ -180,3 +179,48 @@ export async function fetchTopicsByCategory(categories, parentId, idToken) {
   }
 }
 
+function convertTimestamps(obj) {
+  const newObj = { ...obj };
+  for (const [key, value] of Object.entries(newObj)) {
+    if (value instanceof Timestamp) {
+      newObj[key] = value.toDate().toISOString();
+    } else if (typeof value === 'object' && value !== null) {
+      newObj[key] = convertTimestamps(value);
+    }
+  }
+  return newObj;
+}
+
+export async function fetchTopic(topicId, idToken) {
+  const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
+
+  if (!currentUser) {
+    throw new Error('User not authenticated');
+  }
+  
+  const db = getFirestore(firebaseServerApp);
+  
+  try {
+    const topicRef = doc(db, 'topics', topicId);
+    const topicSnap = await getDoc(topicRef);
+
+    if (!topicSnap.exists()) {
+      throw new Error('Topic not found');
+    }
+
+    const topicData = topicSnap.data();
+
+    // Check if the current user has permission to access this topic
+    if (topicData.owner !== currentUser.uid) {
+      throw new Error('User does not have permission to access this topic');
+    }
+
+    // Convert Timestamp objects to ISO strings
+    const convertedTopicData = convertTimestamps(topicData);
+
+    return { id: topicSnap.id, ...convertedTopicData };
+  } catch (error) {
+    console.error("Error fetching topic:", error);
+    throw error;
+  }
+}

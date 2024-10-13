@@ -11,7 +11,8 @@ const TopicParentRow = ({
   handleAddComment,
   handleAddPrompt,
   handleAddArtifact,
-  rowHeight
+  rowHeight,
+  handleAutoSubtopics
 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -49,6 +50,16 @@ const TopicParentRow = ({
         
         {isHovered && (
           <div className="ml-2 flex items-center">
+            {parentTopic.concept_json?.length ?
+            <button
+              onClick={() => handleAutoSubtopics( parentTopic.concept_json,parentTopic.id )}
+              className="ml-2 text-gray-500 hover:text-gray-700"
+              title="Auto Sub Topic" >
+              <FiEdit size={24} />
+            </button>
+            : 'none'
+            }
+
             <button
               onClick={() => handleEditTopic(parentTopic)}
               className="ml-2 text-gray-500 hover:text-gray-700"
@@ -77,7 +88,7 @@ const TopicParentRow = ({
       </div>
       {isParentTopicExpanded && (        
         <div className="pl-12 pr-6 py-2 bg-gray-100">
-          { !parentTopic.text.length ? <div className="px-0 py-2 text-red-800">no topic overview yet</div>
+          { !parentTopic.text?.length ? <div className="px-0 py-2 text-red-800">no topic overview yet</div>
             :
             <ReactMarkdown className="markdown-content text-blue-600 italic">
                 {parentTopic.text}

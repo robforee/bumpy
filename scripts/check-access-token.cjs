@@ -161,7 +161,7 @@ async function promptForAuthorizationCode(userId) {
   });
 
   return new Promise((resolve) => {
-    rl.question('Enter the authorization code: ', (code) => {
+    rl.question(`Enter the authorization code for ${userId}: `, (code) => {
       rl.close();
       resolve(code);
     });
@@ -242,7 +242,8 @@ async function checkAccessToken(userId, forceRefresh = false) {
 }
 
 async function main() {
-  const userUid = 'e660ZS3gfxTXZR06kqn5M23VCzl2'; // Replace with actual user ID
+  let userUid = 'e660ZS3gfxTXZR06kqn5M23VCzl2'; // Replace with actual user ID
+      userUid = 'CtAyzps80VXRzna32Kdy0NHYcPe2'
   await checkAccessToken(userUid, false);
   await admin.app().delete();
 }

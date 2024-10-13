@@ -23,7 +23,7 @@ const TopicChildren = () => {
     setError(null);
     try {
         const idToken = await getIdToken(auth.currentUser);
-        const fetchedTopics = await fetchTopicsByCategory(['topic'], 'qqIGRbzwrQSwpwn5UXt5', idToken);        
+        const fetchedTopics = await fetchTopicsByCategory(['topic'], 'qqIGRbzwrQSwpwn5UXt5', idToken);
         setTopics(fetchedTopics);
     } catch (err) {
       console.error('Error fetching topic children:', err);

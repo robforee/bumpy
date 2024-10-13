@@ -11,6 +11,7 @@ import TopicChildren from '@/src/components/TopicChildren'; // Add this import
 import TokenInfo from '@/src/components/TokenInfo';
 import ScopeManager from '@/src/components/ScopeManager';
 import QueryOpenAi from '@/src/components/QueryOpenAi';
+import PromptEditor from '@/src/components/PromptEditor';
 
 // FOR SENDING AUTH TO SERVER
 
@@ -40,10 +41,14 @@ export default function Dashboard() {
         <GmailInbox />
         <DriveFiles />
         <GoogleCalendar />
-        <QueryOpenAi />
         {/* <ScopeManager /> */}
 
       </div>
+      <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+        <QueryOpenAi />
+        {/* <PromptEditor /> */}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Link href="/admin" className="bg-green-500 text-white p-4 rounded hover:bg-green-600 transition">
           Admin Panel

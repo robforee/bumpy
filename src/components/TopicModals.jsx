@@ -1,3 +1,6 @@
+
+// src/components/TopicModals.jsx
+
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/src/components/ui/dialog';
 import { Button } from '@/src/components/ui/button';
@@ -7,7 +10,8 @@ import { addTopic } from '@/src/lib/firebase/firestore';
 import { db_viaClient } from '@/src/lib/firebase/clientApp';
 import { FiX } from 'react-icons/fi';
 import PromptEditModal from './PromptEditModal';
-import { runOpenAiQuery } from '@/src/lib/openai/openaiOperations';
+import { runOpenAiQuery } from '../app/actions/query-actions';
+import { getAuth } from 'firebase/auth'; // vs firebase-admin/auth
 
 const TopicModals = ({
   isAddModalOpen,
@@ -15,8 +19,8 @@ const TopicModals = ({
   editModalOpen,
   setEditModalOpen,
   editingTopic,
-  handleEditChange,
-  handleSaveTopic,
+  handleEditChange,handleSaveTopic,
+  handleSavePrompt, handleGptQuery, handleConceptQuery,
   parentId,
   topicType,
   onTopicAdded,
@@ -25,11 +29,13 @@ const TopicModals = ({
   const [newTopic, setNewTopic] = useState({ title: '', subtitle: '', text: '', prompt: '' });
 
   const handleAddTopicChange = (e) => {
+    console.log('handleAddTopicChange NOT being used in TopicTableContainer')
     const { name, value } = e.target;
     setNewTopic(prev => ({ ...prev, [name]: value }));
   };
 
   const handleAddTopicSubmit = async () => {
+    console.log('handleAddTopicSubmit NOT being used in TopicTableContainer')
     try {
       if (!userId) {
         throw new Error("User ID is required to create a topic");
@@ -47,27 +53,7 @@ const TopicModals = ({
     }
   };
 
-  const handleGptQuery = async (prompt) => {
-    try {
-      const result = await runOpenAiQuery({
-        systemPrompt: "You are a helpful assistant.",
-        userPrompts: [prompt],
-        model: "gpt-4o-mini", // or whichever model you prefer
-        temperature: 0.7,
-        responseFormat: { type: "text" },
-        owner: userId
-      });
-      return result.content;
-    } catch (error) {
-      console.error("Error in GPT query:", error);
-      throw error;
-    }
-  };
-
-  const handleSavePrompt = (updatedTopic) => {
-    handleSaveTopic(updatedTopic);
-  };
-
+  
   return (
     <>
       {/* Add Topic Modal */}
@@ -114,19 +100,20 @@ const TopicModals = ({
       </Dialog>
 
       {/* Edit Topic Modal */}
-      {editingTopic && editingTopic.topic_type === 'prompt' ? (
+      {editingTopic && editingTopic.topic_type !== 'x-prompt' ? (
         <PromptEditModal
           isOpen={editModalOpen}
           onClose={() => setEditModalOpen(false)}
           editingTopic={editingTopic}
           handleSaveTopic={handleSavePrompt}
           handleGptQuery={handleGptQuery}
+          handleConceptQuery={handleConceptQuery}
         />
       ) : (
         <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Edit Topic</DialogTitle>
+              <DialogTitle>Edit Topic:</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <Input

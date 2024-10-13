@@ -1,7 +1,11 @@
+
 // src/lib/openai/openaiOperations.js
+
 import { functions } from '../firebase/clientApp';
 import { httpsCallable } from 'firebase/functions';
 import { cleanForTask } from './utils.js';
+
+// src/app/actions/query-actions.js
 
 export const runOpenAiQuery = async ({
   systemPrompt,
@@ -11,9 +15,10 @@ export const runOpenAiQuery = async ({
   responseFormat = { type: "text" },
   owner
 }) => {
-  console.log('Running query:', userPrompts);
+  console.log('SHOULD NOT BE Running query:', userPrompts);
 
   try {
+
     const runOpenAiQueryFunction = httpsCallable(functions, 'runOpenAiQuery');
 
     const cleanedSystemPrompt = await cleanForTask(systemPrompt);

@@ -2,9 +2,13 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@/src/contexts/UserProvider';
-import { fetchTopicsByCategory, updateTopic, deleteTopic, fetchTopic } from '@/src/lib/topicFirebaseOperations';
+import { fetchTopic, updateTopic, creatTopic } from '@/src/app/actions/topic-actions.js';
+import { fetchTopicsByCategory, deleteTopic } from '@/src/app/actions/topic-actions.js';
 import TopicTable from './TopicTable';
 import TopicModals from './TopicModals';
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
+
 
 const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
   const { user } = useUser();
@@ -24,10 +28,12 @@ const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
   const loadTopicsAndParent = useCallback(async () => {
     try {
       setLoading(true);
+      const idToken = await getIdToken(auth.currentUser);
+
       const [fetchedTopics, fetchedTopicTypes, fetchedParentTopic] = await Promise.all([        
-        fetchTopicsByCategory([topic_type], parentId),
-        fetchTopicsByCategory('-topic', parentId),
-        fetchTopic(parentId)
+        fetchTopicsByCategory([topic_type], parentId, idToken),
+        fetchTopicsByCategory('-topic', parentId, idToken ),
+        fetchTopic( parentId, idToken)
       ]);
       const sortedTopics = fetchedTopics.sort((a, b) => a.title.localeCompare(b.title));
       const sortedTypes = fetchedTopicTypes.sort((a, b) => {
@@ -116,15 +122,21 @@ const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
         subtitle: updatedTopic.subtitle,
         text: updatedTopic.text,
         prompt: updatedTopic.prompt,
-        // Include any other fields that might be edited
+        promptResponse: updatedTopic.prompt_response,
+        concept: updatedTopic.concept,
+        concept_json: updatedTopic.concept_json,
+
       };
-  
+      
       // Remove undefined fields
       Object.keys(updatedFields).forEach(key => updatedFields[key] === undefined && delete updatedFields[key]);
   
       // Log the updated fields for debugging
-  
-      await updateTopic(updatedTopic.id, updatedFields);
+      //console.log(updatedFields)
+      const idToken = await getIdToken(auth.currentUser);
+
+      await updateTopic(updatedTopic.id, updatedFields, idToken);
+
       setEditModalOpen(false);
       loadTopicsAndParent();
     } catch (error) {
@@ -135,11 +147,79 @@ const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
 
   const handleDeleteTopic = async (topicId) => {
     try {
-      await deleteTopic(topicId);
+      const idToken = await getIdToken(auth.currentUser);
+
+      await deleteTopic(topicId,idToken);
       loadTopicsAndParent();
     } catch (error) {
       console.error("Error deleting topic:", error);
     }
+  };
+
+  const handleAutoSubtopics = async (jsonstring, parentId) => {
+    try {
+      const idToken = await getIdToken(auth.currentUser);
+      const json = JSON.parse(jsonstring);
+
+      console.log(JSON.stringify(json,null,2))
+
+      const arrayProperty = Object.values(json).find(Array.isArray);
+      if (arrayProperty) {
+        for (const item of arrayProperty) {
+          console.log(item.title + '\n' + item.concept);
+          //console.log(item.text);
+        //await createTopic(parentId, topicData, idToken);
+        console.log(parentId, topicData)          
+        }
+      }      
+      
+      loadTopicsAndParent();
+    } catch (error) {
+      console.error("Error creating subtopics:", error);
+    }
+  };
+
+  const handleConceptQuery = async (data) => {
+
+    // auth for sending query
+    const auth = getAuth();
+    const idToken = await auth.currentUser.getIdToken();
+  
+    try {
+      data.model = "gpt-4o-mini" // required
+      data.owner = userId; // required
+
+      console.log(JSON.stringify(data,null,2))
+      const result = await runOpenAiQuery(data,idToken);
+
+      return result.content;
+    } catch (error) {
+      console.error("Error in GPT query:", error);
+      throw error;
+    }
+  };
+
+  const handleGptQuery = async (prompt) => {
+    const idToken = await getIdToken(auth.currentUser);
+  
+    try {
+      const result = await runOpenAiQuery({
+        systemPrompt: "You are a helpful assistant.",
+        userPrompts: [prompt],
+        model: "gpt-4o-mini", // or whichever model you prefer
+        temperature: 0.7,
+        responseFormat: { type: "text" },
+        owner: userId
+      });
+      return result.content;
+    } catch (error) {
+      console.error("Error in GPT query:", error);
+      throw error;
+    }
+  };
+
+  const handleSavePrompt = (updatedTopic) => {
+    handleSaveTopic(updatedTopic);
   };
 
   if (loading) return <div>Loading topics...</div>;
@@ -162,6 +242,8 @@ const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
         handleAddPrompt={handleAddPrompt}
         handleAddArtifact={handleAddArtifact}
         handleDeleteTopic={handleDeleteTopic}
+        handleAutoSubtopics={handleAutoSubtopics}
+        
       />
 
       <TopicModals 
@@ -170,11 +252,16 @@ const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
         editModalOpen={editModalOpen}
         setEditModalOpen={setEditModalOpen}
         editingTopic={editingTopic}
-        handleEditChange={handleEditChange}
-        handleSaveTopic={handleSaveTopic}
         parentId={addingToTopicId || parentId}
         topicType={addingTopicType || topic_type}
         onTopicAdded={handleTopicAdded}
+        
+        handleEditChange={handleEditChange}
+        handleSaveTopic={handleSaveTopic}
+        handleSavePrompt={handleSavePrompt}
+        handleGptQuery={handleGptQuery}
+        handleConceptQuery={handleConceptQuery}
+
         userId={user?.uid}
       />
     </div>

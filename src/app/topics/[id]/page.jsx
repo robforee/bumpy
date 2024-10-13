@@ -4,13 +4,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { getTopicById, addTopic } from '@/src/lib/firebase/firestore';
-import { db_viaClient } from '@/src/lib/firebase/clientApp';
 import { useUser } from '@/src/contexts/UserProvider';
 import { devConfig } from '@/src/config/devConfig';
+import { fetchTopic } from '@/src/app/actions/topic-actions';
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
 
 import TopicTableContainer from '@/src/components/TopicTableContainer';
-import { updateTopic } from '@/src/lib/topicFirebaseOperations';
 
 import {topicTypes} from '@/src/lib/TopicTypes'
 
@@ -35,11 +35,7 @@ export default function TopicPage() {
   const [topic_parent, setParentTopic] = useState(null);
   const [error, setError] = useState(null);
   const params = useParams();
-  const router = useRouter();
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [addingTopicType, setAddingTopicType] = useState(null);
+
 
   const rowHeight = devConfig.topicList.rowHeight;
 
@@ -48,13 +44,17 @@ export default function TopicPage() {
   }, []);
 
   useEffect(() => {
-    async function fetchTopic() {
-      if (params.id) {
+    async function fetchTopicX() {
+      console.log('fetch',params.id, user.uid)
+      if (params.id && user) {
         try {
-          const topicData = await getTopicById(db_viaClient, params.id);
+          
+          const idToken = await getIdToken(auth.currentUser);
+          const topicData = await fetchTopic(params.id, idToken);
+
           setTopic(topicData);
           if (topicData.parents.length) {
-            const parentData = await getTopicById(db_viaClient, topicData.parents[0]);
+            const parentData = await fetchTopic(topicData.parents[0], idToken);
             setParentTopic(parentData);
           }
         } catch (error) {
@@ -63,7 +63,8 @@ export default function TopicPage() {
         }
       }
     }
-    fetchTopic();
+    fetchTopicX(params.id)
+
   }, [params.id]);
 
   const handleAddTopic = (topicType) => {

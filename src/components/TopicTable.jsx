@@ -4,6 +4,10 @@ import TopicRow from './TopicRow';
 import TopicParentRow from './TopicParentRow';
 
 const markdownStyles = `
+  .markdown-content h1 {
+    font-size: 36px;
+  }
+
   .markdown-content ul {
     list-style-type: disc;
     padding-left: 20px;
@@ -31,7 +35,8 @@ const TopicTable = ({
   handleAddComment,
   handleAddPrompt,
   handleAddArtifact,
-  handleDeleteTopic
+  handleDeleteTopic,
+  handleAutoSubtopics
 }) => {
   const [hoveredRow, setHoveredRow] = useState(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -64,6 +69,7 @@ const TopicTable = ({
         handleAddPrompt={handleAddPrompt}
         handleAddArtifact={handleAddArtifact}
         rowHeight={rowHeight}
+        handleAutoSubtopics={handleAutoSubtopics}
       />
 
       {/* LOOP THROUGH TOPICS */}

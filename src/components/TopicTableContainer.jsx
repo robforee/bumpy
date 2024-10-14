@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@/src/contexts/UserProvider';
 import { fetchTopic, updateTopic, creatTopic } from '@/src/app/actions/topic-actions.js';
 import { fetchTopicsByCategory, deleteTopic } from '@/src/app/actions/topic-actions.js';
+import { runOpenAiQuery } from '@/src/app/actions/query-actions';
 import TopicTable from './TopicTable';
 import TopicModals from './TopicModals';
 import { getIdToken } from "firebase/auth";
@@ -189,7 +190,6 @@ const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
       data.model = "gpt-4o-mini" // required
       data.owner = userId; // required
 
-      console.log(JSON.stringify(data,null,2))
       const result = await runOpenAiQuery(data,idToken);
 
       return result.content;
@@ -243,6 +243,8 @@ const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
         handleAddArtifact={handleAddArtifact}
         handleDeleteTopic={handleDeleteTopic}
         handleAutoSubtopics={handleAutoSubtopics}
+        handleSaveTopic={handleSaveTopic}
+        handleConceptQuery={handleConceptQuery}
         
       />
 

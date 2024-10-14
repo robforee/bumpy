@@ -5,7 +5,7 @@ import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { Textarea } from '@/src/components/ui/textarea';
 import { FiMaximize, FiMinimize, FiChevronUp, FiChevronDown } from 'react-icons/fi';
-import CodeBlock from './CodeBlock';
+
 
 const PromptEditor = ({
   editingTopic,
@@ -132,21 +132,6 @@ const PromptEditor = ({
   return (
     <div className="w-full h-full flex flex-col">
       <div className="first-letter:font-bold text-xl">Prompt Editor</div>
-      <CodeBlock>
-        {`insert-comments & sub-topics blocks
-modify TopicSearch so when an item is selected it has a light yellow background to indicate so.
-and make the results window 3 rows with more rows scrollable
-
-for CodeBlock, put it in a div 10 rows and scrollable
-top menu should be floating at top of window & 2nd row toggleable
-add sync sub-topics method and hide un-wanted in delted
-        `}
-      </CodeBlock>
-      <CodeBlock> 
-    
-    add sync sub-topics method that unwanted to parent deleted-topics
-
-      </CodeBlock>
       <div className="flex-shrink-0 mb-4">
         <h2 className="text-xl font-bold mb-2">Edit Topic</h2>
         <div className="flex justify-between items-center space-x-2">
@@ -184,17 +169,7 @@ add sync sub-topics method and hide un-wanted in delted
                   placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
                   className="resize-vertical overflow-auto h-16"
                 />
-              ) : field === 'comments'  ? (
-                <CodeBlock>
-associated comments, edit-able
-                </CodeBlock>
-
-              ): field === 'sub-topics'  ? (
-                <CodeBlock>
-associated sub-topics, edit-able
-                </CodeBlock>
-
-              ): field === 'title' || field === 'subtitle' ? (
+              ) : field === 'title' || field === 'subtitle' ? (
                 <Input
                   id={field}
                   name={field}

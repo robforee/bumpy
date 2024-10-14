@@ -36,7 +36,10 @@ const TopicTable = ({
   handleAddPrompt,
   handleAddArtifact,
   handleDeleteTopic,
-  handleAutoSubtopics
+  handleAutoSubtopics,
+  handleSaveTopic,
+  handleConceptQuery
+
 }) => {
   const [hoveredRow, setHoveredRow] = useState(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -70,6 +73,9 @@ const TopicTable = ({
         handleAddArtifact={handleAddArtifact}
         rowHeight={rowHeight}
         handleAutoSubtopics={handleAutoSubtopics}
+        handleSaveTopic={handleSaveTopic}
+        handleConceptQuery={handleConceptQuery}
+        
       />
 
       {/* LOOP THROUGH TOPICS */}
@@ -89,6 +95,7 @@ const TopicTable = ({
           openDeleteConfirm={openDeleteConfirm}
           hoveredRow={hoveredRow}
           setHoveredRow={setHoveredRow}
+          handleSaveTopic={handleSaveTopic}
         />
       ))}
 
@@ -109,6 +116,7 @@ const TopicTable = ({
           openDeleteConfirm={openDeleteConfirm}
           hoveredRow={hoveredRow}
           setHoveredRow={setHoveredRow}
+          handleSaveTopic={handleSaveTopic}
         />
       ))}
 

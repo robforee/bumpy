@@ -1,9 +1,12 @@
 // src/components/TopicRow.jsx
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { FiEdit, FiChevronRight, FiClock, FiPlusCircle, FiTrash2 } from 'react-icons/fi';
 import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import EditPropertyModal from './EditPropertyModal';
 
 const TopicRow = ({
   topic,
@@ -16,8 +19,37 @@ const TopicRow = ({
   handleAddArtifact,
   openDeleteConfirm,
   hoveredRow,
-  setHoveredRow
+  setHoveredRow,
+  handleSaveTopic
 }) => {
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [propertyToEdit, setPropertyToEdit] = useState('');
+  const [isTextExpanded, setIsTextExpanded] = useState(false);
+  const [isConceptExpanded, setIsConceptExpanded] = useState(false);
+
+  const markdownComponents = {
+    h1: ({node, ...props}) => <h1 className="text-2xl font-bold my-4 text-blue-600" {...props} />,
+    h2: ({node, ...props}) => <h2 className="text-xl font-semibold my-3 text-blue-500" {...props} />,
+    h3: ({node, ...props}) => <h3 className="text-lg font-medium my-2 text-blue-400" {...props} />,
+    code({node, inline, className, children, ...props}) {
+      const match = /language-(\w+)/.exec(className || '');
+      return !inline && match ? (
+        <SyntaxHighlighter
+          style={tomorrow}
+          language={match[1]}
+          PreTag="div"
+          {...props}
+        >
+          {String(children).replace(/\n$/, '')}
+        </SyntaxHighlighter>
+      ) : (
+        <code className={className} {...props}>
+          {children}
+        </code>
+      )
+    }
+  };
+
   const formatDate = (date) => {
     if (!(date instanceof Date)) return 'N/A';
     return date.toLocaleDateString('en-US', { 
@@ -30,6 +62,41 @@ const TopicRow = ({
     });
   };
 
+  const handleEditProperty = (property) => {
+    setPropertyToEdit(property);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveProperty = (topicId, property, value) => {
+    const updatedTopic = { ...topic, [property]: value };
+    handleSaveTopic(updatedTopic);
+  };
+
+  const renderContent = () => {
+    switch (topic.topic_type) {
+      case 'topic':
+      case 'comment':
+      case 'artifact':
+        return topic.text;
+      case 'concept':
+        return topic.concept;
+      case 'prompt':
+        return topic.prompt;
+      default:
+        return 'No content available';
+    }
+  };
+
+  const toggleTextExpansion = () => {
+    setIsTextExpanded(!isTextExpanded);
+    if (!isTextExpanded) setIsConceptExpanded(false);
+  };
+
+  const toggleConceptExpansion = () => {
+    setIsConceptExpanded(!isConceptExpanded);
+    if (!isConceptExpanded) setIsTextExpanded(false);
+  };
+
   return (
     <div className="TOPIC_ROW border-b border-gray-200">
       <div className="flex flex-col">
@@ -38,12 +105,20 @@ const TopicRow = ({
           onMouseEnter={() => setHoveredRow(topic.id)}
           onMouseLeave={() => setHoveredRow(null)}
         >
-          {/* expansion toggle chevron */}
-          <button onClick={() => toggleTopicExpansion(topic.id)} className="mr-2">
-            <FiChevronRight size={14} className={expandedTopicIds.has(topic.id) ? 'transform rotate-90' : ''} />
+          <button onClick={toggleTextExpansion} className="mr-2">
+            <FiChevronRight 
+              size={14} 
+              className={isTextExpanded ? 'transform rotate-90' : ''}
+            />
+          </button>
+          <button onClick={toggleConceptExpansion} className="mr-2">
+            <FiChevronRight 
+              size={14} 
+              className={`text-blue-500 ${isConceptExpanded ? 'transform rotate-90' : ''}`}
+            />
           </button>
           {/* tag for topic type */}
-          {topic.topic_type == 'topic' ? '' : <span>[{topic.topic_type}]</span>} &nbsp;
+          {topic.topic_type === 'topic' ? '' : <span>[{topic.topic_type}]</span>} &nbsp;
           {/* navigate to topic with title and subtitle */}
           <Link href={`/topics/${topic.id}`} className="font-medium flex-grow">
             <span className="font-bold">{topic.title}</span>
@@ -93,17 +168,66 @@ const TopicRow = ({
           )}
         </div>
 
-        {/* collapsable markdown content */}
-        {expandedTopicIds.has(topic.id) && (
-          <div className="pl-12 pr-6 py-2 bg-gray-200">
-            <div className="max-w-full overflow-x-auto px-4 bg-blue-200">
-              <ReactMarkdown className="markdown-content text-blue-600">
+        {/* Text content area */}
+        {isTextExpanded && (
+          <div 
+            className="pl-12 pr-6 py-2 bg-gray-100 cursor-pointer"
+            onClick={() => handleEditProperty('text')}
+          >
+            <h3 className="text-lg font-semibold mb-2">Text Content</h3>
+            {!topic.text ? (
+              <div className="px-0 py-2 text-red-800">No text content available</div>
+            ) : (
+              <ReactMarkdown 
+                components={markdownComponents}
+                className="markdown-content text-blue-600 italic"
+              >
                 {topic.text}
               </ReactMarkdown>
+            )}
+          </div>
+        )}
+
+        {/* Concept content area */}
+        {isConceptExpanded && (
+          <div className="pl-12 pr-6 py-2 bg-gray-100">
+            <div 
+              className="cursor-pointer mb-4"
+              onClick={() => handleEditProperty('concept')}
+            >
+              <h3 className="text-lg font-semibold mb-2">Concept</h3>
+              {!topic.concept ? (
+                <div className="px-0 py-2 text-red-800">No concept available</div>
+              ) : (
+                <ReactMarkdown 
+                  components={markdownComponents}
+                  className="markdown-content text-green-600 italic"
+                >
+                  {topic.concept}
+                </ReactMarkdown>
+              )}
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Concept JSON</h3>
+              {!topic.concept_json ? (
+                <div className="px-0 py-2 text-red-800">No concept JSON available</div>
+              ) : (
+                <pre className="bg-gray-200 p-2 rounded overflow-x-auto">
+                  {JSON.stringify(JSON.parse(topic.concept_json), null, 2)}
+                </pre>
+              )}
             </div>
           </div>
         )}
       </div>
+
+      <EditPropertyModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleSaveProperty}
+        topic={topic}
+        propertyToEdit={propertyToEdit}
+      />
     </div>
   );
 };

@@ -132,11 +132,9 @@ export async function deleteTopic(topicId,idToken) {
 
 export async function fetchTopicsByCategory(categories, parentId, idToken) {
   const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
-
   if (!currentUser) {
     throw new Error('User not authenticated');
   }
-
   
   const db = getFirestore(firebaseServerApp);
   
@@ -145,7 +143,13 @@ export async function fetchTopicsByCategory(categories, parentId, idToken) {
 
     let q;
     
-    if (categories === '-topic') {
+    if (categories === '-all') {
+      q = query(
+        topicsRef,
+        where('topic_type', '!=', 'a-setting'),
+        //where('owner', '==', currentUser.uid)
+      );
+    } else if (categories === '-topic') {
       q = query(
         topicsRef,
         where('topic_type', '!=', 'topic'),
@@ -160,6 +164,7 @@ export async function fetchTopicsByCategory(categories, parentId, idToken) {
         //where('owner', '==', currentUser.uid)
       );
     }
+    console.log('query',q)
 
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => {

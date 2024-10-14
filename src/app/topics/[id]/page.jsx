@@ -1,4 +1,4 @@
-// src/app/topics[id]/page.jsx
+// src/app/topics/[id]/page.jsx
 "use client";
 
 import { useEffect, useState, useCallback } from 'react';
@@ -34,8 +34,13 @@ export default function TopicPage() {
   const [topic, setTopic] = useState(null);
   const [topic_parent, setParentTopic] = useState(null);
   const [error, setError] = useState(null);
-  const params = useParams();
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [addingTopicType, setAddingTopicType] = useState(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
+  const params = useParams();
+  const router = useRouter();
 
   const rowHeight = devConfig.topicList.rowHeight;
 
@@ -45,10 +50,8 @@ export default function TopicPage() {
 
   useEffect(() => {
     async function fetchTopicX() {
-      console.log('fetch',params.id, user.uid)
       if (params.id && user) {
         try {
-          
           const idToken = await getIdToken(auth.currentUser);
           const topicData = await fetchTopic(params.id, idToken);
 
@@ -63,9 +66,10 @@ export default function TopicPage() {
         }
       }
     }
-    fetchTopicX(params.id)
-
-  }, [params.id]);
+    if (user) {
+      fetchTopicX();
+    }
+  }, [params.id, user, refreshTrigger]);
 
   const handleAddTopic = (topicType) => {
     setAddingTopicType(topicType);
@@ -86,8 +90,8 @@ export default function TopicPage() {
     setTopic(prev => ({ ...prev, [name]: value }));
   };
 
-  if (!user) return <div>Please sign in for access</div>;
   if (loading) return <div>Loading...</div>;
+  if (!user) return <div>Please sign in for access</div>;
   if (error) return <div>Error: {error}</div>;
   if (!topic) return <div>Topic not found</div>;
 

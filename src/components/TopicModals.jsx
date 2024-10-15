@@ -6,12 +6,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { Textarea } from '@/src/components/ui/textarea';
-import { addTopic } from '@/src/lib/firebase/firestore';
-import { db_viaClient } from '@/src/lib/firebase/clientApp';
-import { FiX } from 'react-icons/fi';
+import { createTopic } from '@/src/app/actions/topic-actions';
 import PromptEditModal from './PromptEditModal';
-import { runOpenAiQuery } from '../app/actions/query-actions';
-import { getAuth } from 'firebase/auth'; // vs firebase-admin/auth
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
 
 const TopicModals = ({
   isAddModalOpen,
@@ -29,23 +27,31 @@ const TopicModals = ({
   const [newTopic, setNewTopic] = useState({ title: '', subtitle: '', text: '', prompt: '' });
 
   const handleAddTopicChange = (e) => {
-    console.log('handleAddTopicChange NOT being used in TopicTableContainer')
+
     const { name, value } = e.target;
     setNewTopic(prev => ({ ...prev, [name]: value }));
   };
 
   const handleAddTopicSubmit = async () => {
-    console.log('handleAddTopicSubmit NOT being used in TopicTableContainer')
+    const idToken = await getIdToken(auth.currentUser);
+    
     try {
       if (!userId) {
         throw new Error("User ID is required to create a topic");
       }
-      await addTopic(db_viaClient, parentId, {
-        ...newTopic,
-        topic_type: topicType
-      }, userId);
+      const topicModel = {...newTopic, topic_type: topicType }
+      const cleanedData = Object.entries(topicModel).reduce((acc, [key, value]) => {
+        if (value !== undefined) {
+        acc[key] = value;
+        }
+        return acc;
+      }, {});
+
+      await createTopic(parentId,cleanedData, idToken);
+      
       setNewTopic({ title: '', subtitle: '', text: '', prompt: '' });
       setIsAddModalOpen(false);
+
       if (onTopicAdded) onTopicAdded();
     } catch (error) {
       console.error("Error adding new topic:", error);
@@ -56,7 +62,7 @@ const TopicModals = ({
   
   return (
     <>
-      {/* Add Topic Modal */}
+      {/* Add New Topic Modal */}
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
         <DialogContent>
           <DialogHeader>

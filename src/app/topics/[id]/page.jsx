@@ -55,8 +55,9 @@ export default function TopicPage() {
           const idToken = await getIdToken(auth.currentUser);
           const topicData = await fetchTopic(params.id, idToken);
 
+
           setTopic(topicData);
-          if (topicData.parents.length) {
+          if (topicData.parents[0]) {
             const parentData = await fetchTopic(topicData.parents[0], idToken);
             setParentTopic(parentData);
           }

@@ -6,7 +6,6 @@ import { Input } from '@/src/components/ui/input';
 import { Textarea } from '@/src/components/ui/textarea';
 import { FiMaximize, FiMinimize, FiChevronUp, FiChevronDown } from 'react-icons/fi';
 
-
 const PromptEditor = ({
   editingTopic,
   handleSaveTopic,
@@ -16,6 +15,8 @@ const PromptEditor = ({
   const [localTopic, setLocalTopic] = useState(editingTopic);
   const [isLoading, setIsLoading] = useState(false);
   const [expandedFields, setExpandedFields] = useState({
+    topic_type: true,
+    topic_sub_type: true,
     title: true,
     subtitle: true,
     prompt: true,
@@ -133,10 +134,10 @@ const PromptEditor = ({
     <div className="w-full h-full flex flex-col">
       <div className="first-letter:font-bold text-xl">Prompt Editor</div>
       <div className="flex-shrink-0 mb-4">
-        <h2 className="text-xl font-bold mb-2">Edit Topic</h2>
+        <h2 className="text-xl font-bold mb-2">Edit Topic {topic.title}</h2>
         <div className="flex justify-between items-center space-x-2">
           <Button variant="outline" size="sm" onClick={handlePromoteText}>
-            Promote Text to Prompt
+            Promote Text to Promptttt
           </Button>
           <Button variant="outline" size="sm" onClick={handleSubmitGptQuery} disabled={isLoading}>
             {isLoading ? 'Running...' : 'Submit to GPT'}
@@ -150,8 +151,9 @@ const PromptEditor = ({
           </Button>
         </div>
       </div>
+
       <div className="flex-grow grid gap-4 py-4 overflow-y-auto">
-        {['title', 'subtitle', 'prompt', 'concept', 'comments', 'concept_json','sub-topics', 'text'].map((field) => (
+        {['topic_type', 'topic_sub_type', 'title', 'subtitle', 'prompt', 'concept', 'comments', 'concept_json', 'sub-topics', 'text'].map((field) => (
           <div key={field} className="border p-2 rounded">
             <div className="flex justify-between items-center mb-2">
               <span className="font-bold">{`topic.${field}`}</span>
@@ -160,7 +162,15 @@ const PromptEditor = ({
               </Button>
             </div>
             {expandedFields[field] && (
-              field === 'prompt' ? (
+              ['topic_type', 'topic_sub_type', 'title', 'subtitle'].includes(field) ? (
+                <Input
+                  id={field}
+                  name={field}
+                  value={localTopic[field] || ''}
+                  onChange={handleLocalChange}
+                  placeholder={field.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                />
+              ) : field === 'prompt' ? (
                 <Textarea
                   id={field}
                   name={field}
@@ -168,14 +178,6 @@ const PromptEditor = ({
                   onChange={handleLocalChange}
                   placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
                   className="resize-vertical overflow-auto h-16"
-                />
-              ) : field === 'title' || field === 'subtitle' ? (
-                <Input
-                  id={field}
-                  name={field}
-                  value={localTopic[field] || ''}
-                  onChange={handleLocalChange}
-                  placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
                 />
               ) : (
                 <Textarea

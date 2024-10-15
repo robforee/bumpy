@@ -23,6 +23,7 @@ import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';
 
 export async function createTopic(parentId, topicData, idToken) {
 
+  return 'just kidding'
   const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
 
   if (!currentUser) {
@@ -36,6 +37,8 @@ export async function createTopic(parentId, topicData, idToken) {
       ...topicData,
       topic_type: topicData.topic_type || 'default',
       owner: currentUser.uid,
+      owner_email: currentUser.email,
+      owner_name: currentUser.displayName || 'unknown',
       parents: parentId ? [parentId] : [],
       created_at: serverTimestamp(),
       updated_at: serverTimestamp()
@@ -57,6 +60,10 @@ export async function createTopic(parentId, topicData, idToken) {
 }
 
 export async function updateTopic(topicId, updatedData, idToken) {
+
+  console.log('updatedData ggogg');
+  console.log(updatedData);
+
   const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
 
   if (!currentUser) {
@@ -73,7 +80,8 @@ export async function updateTopic(topicId, updatedData, idToken) {
       throw new Error('Topic not found');
     }
 
-    const updatableFields = ['title', 
+    // also cleaned in TopicTableContainer
+    const updatableFields = ['title', 'topic_type', 'topic_sub_type',
       'subtitle', 'text', 'prompt', 'concept', 'concept_json', 'topic_type'];
 
     const dataToUpdate = updatableFields.reduce((acc, field) => {

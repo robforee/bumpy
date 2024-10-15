@@ -11,18 +11,19 @@ import { getIdToken } from "firebase/auth";
 import { auth } from "@/src/lib/firebase/clientApp";
 
 
-const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
+const TopicTableContainer = ({ parentId: topicId, topic_type, rowHeight }) => {
   const { user } = useUser();
   const [topics, setTopics] = useState([]);
   const [topicTypes, setTopicTypes] = useState([]);
-  const [parentTopic, setParentTopic] = useState(null);
+  const [thisTopic, setThisTopic] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingTopic, setEditingTopic] = useState(null);
   const [expandedTopicIds, setExpandedTopicIds] = useState(new Set());
-  const [isParentTopicExpanded, setIsParentTopicExpanded] = useState(false);
+  const [isThisTopicExpanded, setIsThisTopicExpanded] = useState(false);
   const [addingTopicType, setAddingTopicType] = useState(null);
   const [addingToTopicId, setAddingToTopicId] = useState(null);
 
@@ -31,10 +32,10 @@ const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
       setLoading(true);
       const idToken = await getIdToken(auth.currentUser);
 
-      const [fetchedTopics, fetchedTopicTypes, fetchedParentTopic] = await Promise.all([        
-        fetchTopicsByCategory([topic_type], parentId, idToken),
-        fetchTopicsByCategory('-topic', parentId, idToken ),
-        fetchTopic( parentId, idToken)
+      const [fetchedTopics, fetchedTopicTypes, fetchedThisTopic] = await Promise.all([        
+        fetchTopicsByCategory([topic_type], topicId, idToken),
+        fetchTopicsByCategory('-topic', topicId, idToken ),
+        fetchTopic( topicId, idToken)
       ]);
       const sortedTopics = fetchedTopics.sort((a, b) => a.title.localeCompare(b.title));
       const sortedTypes = fetchedTopicTypes.sort((a, b) => {
@@ -46,24 +47,25 @@ const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
       });      
       setTopics(sortedTopics);
       setTopicTypes(sortedTypes)
-      setParentTopic(fetchedParentTopic);
+      setThisTopic(fetchedThisTopic);
       setLoading(false);
     } catch (err) {
       console.error("Error fetching data:", err);
       setError("Failed to load data. Please try again.");
       setLoading(false);
     }
-  }, [parentId, topic_type]);
+  }, [topicId, topic_type]);
+
 
   useEffect(() => {
     loadTopicsAndParent();
-    const savedExpandedIds = localStorage.getItem(`expandedTopics_${parentId}_${topic_type}`);
+    const savedExpandedIds = localStorage.getItem(`expandedTopics_${topicId}_${topic_type}`);
     if (savedExpandedIds) {
       setExpandedTopicIds(new Set(JSON.parse(savedExpandedIds)));
     }
-    const savedParentExpanded = localStorage.getItem(`parentTopicExpanded_${parentId}`);
-    setIsParentTopicExpanded(savedParentExpanded === 'true');
-  }, [parentId, topic_type, loadTopicsAndParent]);
+    const savedParentExpanded = localStorage.getItem(`thisTopicExpanded_${topicId}`);
+    setIsThisTopicExpanded(savedParentExpanded === 'true');
+  }, [topicId, topic_type, loadTopicsAndParent]);
 
   const toggleTopicExpansion = (topicId) => {
     setExpandedTopicIds(prev => {
@@ -73,20 +75,20 @@ const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
       } else {
         newSet.add(topicId);
       }
-      localStorage.setItem(`expandedTopics_${parentId}_${topic_type}`, JSON.stringify([...newSet]));
+      localStorage.setItem(`expandedTopics_${topicId}_${topic_type}`, JSON.stringify([...newSet]));
       return newSet;
     });
   };
 
-  const toggleParentTopicExpansion = () => {
-    setIsParentTopicExpanded(prev => {
+  const toggleThisTopicExpansion = () => {
+    setIsThisTopicExpanded(prev => {
       const newState = !prev;
-      localStorage.setItem(`parentTopicExpanded_${parentId}`, newState.toString());
+      localStorage.setItem(`thisTopicExpanded_${topicId}`, newState.toString());
       return newState;
     });
   };
 
-  const handleAddTopic = (topicType = topic_type, toTopicId = parentId) => {
+  const handleAddTopic = (topicType = topic_type, toTopicId = topicId) => {
     setAddingTopicType(topicType);
     setAddingToTopicId(toTopicId);
     setIsAddModalOpen(true);
@@ -112,14 +114,18 @@ const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
   };
 
   const handleSaveTopic = async (updatedTopic) => {
+    console.log('TopicTableContainer.handleSaveTopic')
     try {
       if (!updatedTopic || !updatedTopic.id) {
         throw new Error("Invalid topic data");
       }
       
       // Create an object with all fields that should be updated
+          // also cleaned in topic-actions
       const updatedFields = {
         title: updatedTopic.title,
+        topic_type: updatedTopic.topic_type,
+        topic_sub_type: updatedTopic.topic_sub_type,
         subtitle: updatedTopic.subtitle,
         text: updatedTopic.text,
         prompt: updatedTopic.prompt,
@@ -157,7 +163,7 @@ const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
     }
   };
 
-  const handleAutoSubtopics = async (jsonstring, parentId) => {
+  const handleAutoSubtopics = async (jsonstring, topicId) => {
     try {
       const idToken = await getIdToken(auth.currentUser);
       const json = JSON.parse(jsonstring);
@@ -169,8 +175,8 @@ const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
         for (const item of arrayProperty) {
           console.log(item.title + '\n' + item.concept);
           //console.log(item.text);
-        //await createTopic(parentId, topicData, idToken);
-        console.log(parentId, topicData)          
+        //await createTopic(thisId, topicData, idToken);
+        console.log(topicId, topicData)          
         }
       }      
       
@@ -218,6 +224,42 @@ const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
     }
   };
 
+  const handleFetchContext = async (data) => {
+    // auth for sending query
+    
+    const idToken = await auth.currentUser.getIdToken();
+    console.log(thisTopic.title)
+    console.log('topicTypes.length',topicTypes.length )
+
+    // get this concept
+    let textChunks = [];
+    textChunks.push("# parent is" + thisTopic.title)
+    textChunks.push("#" + thisTopic.concept)
+
+    const goodToKnowTopics = topicTypes.filter(topic => topic.topic_sub_type === 'good-to-know');
+
+    const commentChunks = goodToKnowTopics.map(t=>{
+      
+      const md = [];
+        md.push('## ' + t.title)
+        md.push('commentId ' + t.id)
+        md.push(t.concept ? t.concept : t.text);
+        md.push( "comment by: " + t.email ? t.email : t.owner )
+        md.push('')
+        return md;  
+      
+
+    })
+    
+
+    textChunks = [...textChunks, ...commentChunks];
+    // what comments to hide
+
+    console.log( JSON.stringify(textChunks,null,2) )
+
+    return textChunks;
+  }
+
   const handleSavePrompt = (updatedTopic) => {
     handleSaveTopic(updatedTopic);
   };
@@ -228,16 +270,17 @@ const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
   return (
     <div className="TOPIC_TABLE_CONTAINER overflow-x-auto">
       <TopicTable 
-        parentTopic={parentTopic}
+        thisTopic={thisTopic}
         topics={topics}
+
         topicTypes={topicTypes}
         rowHeight={rowHeight}
         handleAddTopic={handleAddTopic}
         handleEditTopic={handleEditTopic}
         expandedTopicIds={expandedTopicIds}
         toggleTopicExpansion={toggleTopicExpansion}
-        isParentTopicExpanded={isParentTopicExpanded}
-        toggleParentTopicExpansion={toggleParentTopicExpansion}
+        isParentTopicExpanded={isThisTopicExpanded}
+        toggleParentTopicExpansion={toggleThisTopicExpansion}
         handleAddComment={handleAddComment}
         handleAddPrompt={handleAddPrompt}
         handleAddArtifact={handleAddArtifact}
@@ -245,6 +288,7 @@ const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
         handleAutoSubtopics={handleAutoSubtopics}
         handleSaveTopic={handleSaveTopic}
         handleConceptQuery={handleConceptQuery}
+        handleFetchContext={handleFetchContext}
         
       />
 
@@ -254,7 +298,7 @@ const TopicTableContainer = ({ parentId, topic_type, rowHeight }) => {
         editModalOpen={editModalOpen}
         setEditModalOpen={setEditModalOpen}
         editingTopic={editingTopic}
-        parentId={addingToTopicId || parentId}
+        parentId={addingToTopicId || topicId}
         topicType={addingTopicType || topic_type}
         onTopicAdded={handleTopicAdded}
         

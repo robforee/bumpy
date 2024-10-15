@@ -8,7 +8,7 @@ import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import EditPropertyModal from './EditPropertyModal';
 
 const TopicParentRow = ({
-  parentTopic,
+  thisTopic,
   isParentTopicExpanded,
   toggleParentTopicExpansion,
   handleEditTopic,
@@ -19,7 +19,8 @@ const TopicParentRow = ({
   rowHeight,
   handleAutoSubtopics,
   handleSaveTopic,
-  handleConceptQuery
+  handleConceptQuery,
+  handleFetchContext
 
 }) => {
 
@@ -66,15 +67,15 @@ const TopicParentRow = ({
   };
 
   const renderContent = () => {
-    switch (parentTopic.topic_type) {
+    switch (thisTopic.topic_type) {
       case 'topic':
       case 'comment':
       case 'artifact':
-        return parentTopic.text;
+        return thisTopic.text;
       case 'concept':
-        return parentTopic.concept;
+        return thisTopic.concept;
       case 'prompt':
-        return parentTopic.prompt;
+        return thisTopic.prompt;
       default:
         return 'No content available';
     }
@@ -96,19 +97,23 @@ const TopicParentRow = ({
   };
 
   const handleSaveProperty = (topicId, property, value) => {
-    const updatedTopic = { ...parentTopic, [property]: value };
+    const updatedTopic = { ...thisTopic, [property]: value };
     handleSaveTopic(updatedTopic);
   };
 
   const handleSubmitConceptQuery = async () => {
     setIsLoading(true);
-    // get "process concept" topic.prompt (child or default)
-    // get  "good-to-know" [topic.text] all child, check valid?
+    
+    const response = handleFetchContext({});
+    
 
+    console.log('// get "process concept" topic.prompt (child or default)')
+    console.log('// get  "good-to-know" [topic.text] all child, check valid?')
+    return;
     try {
       const conceptQuery = {
         systemPrompt: "what are some important things to keep in mind about the following",
-        userPrompts: [parentTopic.prompt, parentTopic.concept],
+        userPrompts: [thisTopic.prompt, thisTopic.concept],
         model: "gpt-4o-mini", 
         temperature: 0.7,
         responseFormat: { type: "text" }
@@ -117,7 +122,7 @@ const TopicParentRow = ({
       const gptResponse = await handleConceptQuery(conceptQuery);
       const { text_response, json_response } = extractJson(gptResponse)
       const updatedTopic = { 
-        ...parentTopic, 
+        ...thisTopic, 
         text: text_response,
         concept_json: json_response.isValid 
           ? JSON.stringify(json_response.jsonObject) 
@@ -152,9 +157,9 @@ const TopicParentRow = ({
           />
         </button>
         <div className="font-medium flex-grow">
-          <span className="font-bold text-blue-800 text-4xl">{parentTopic.title}</span>
-          {parentTopic.subtitle && (
-            <span className="text-red-700 ml-2"> {parentTopic.subtitle}</span>
+          <span className="font-bold text-blue-800 text-4xl">{thisTopic.title}</span>
+          {thisTopic.subtitle && (
+            <span className="text-red-700 ml-2"> {thisTopic.subtitle}</span>
           )}
         </div>
         <div className="ml-2 flex items-center">
@@ -168,26 +173,26 @@ const TopicParentRow = ({
           </button>
 
           <button
-            onClick={() => handleEditTopic(parentTopic)}
+            onClick={() => handleEditTopic(thisTopic)}
             className="ml-2 text-gray-500 hover:text-gray-700"
             title="Edit Topic"
           >
             <FiEdit size={14} />
           </button>
 
-          <button onClick={() => handleAddTopic('topic', parentTopic.id)} className="ml-2" title="Add Sub-Topic">
+          <button onClick={() => handleAddTopic('topic', thisTopic.id)} className="ml-2" title="Add Sub-Topic">
             <FiPlusCircle size={14} />
           </button>
 
-          <button onClick={() => handleAddComment(parentTopic.id)} className="ml-2" title="Add Comment">
+          <button onClick={() => handleAddComment(thisTopic.id)} className="ml-2" title="Add Comment">
             <FiPlusCircle size={14} />
           </button>
 
-          <button onClick={() => handleAddPrompt(parentTopic.id)} className="ml-2" title="Add Prompt">
+          <button onClick={() => handleAddPrompt(thisTopic.id)} className="ml-2" title="Add Prompt">
             <FiPlusCircle size={14} />
           </button>
 
-          <button onClick={() => handleAddArtifact(parentTopic.id)} className="ml-2" title="Add Artifact">
+          <button onClick={() => handleAddArtifact(thisTopic.id)} className="ml-2" title="Add Artifact">
             <FiPlusCircle size={14} />
           </button>
         </div>
@@ -199,14 +204,14 @@ const TopicParentRow = ({
           onClick={() => handleEditProperty('text')}
         >
           <h3 className="text-lg font-semibold mb-2">Text Content</h3>
-          {!parentTopic.text ? (
+          {!thisTopic.text ? (
             <div className="px-0 py-2 text-red-800">No text content available</div>
           ) : (
 
             // components={markdownComponents} 
             <ReactMarkdown components={markdownComponents} 
                 className="markdown-content blue-green-600 italic">
-                  {parentTopic.text}
+                  {thisTopic.text}
             </ReactMarkdown>
           )}
         </div>
@@ -219,22 +224,22 @@ const TopicParentRow = ({
             onClick={() => handleEditProperty('concept')}
           >
             <h3 className="text-lg font-semibold mb-2">Concept</h3>
-            {!parentTopic.concept ? (
+            {!thisTopic.concept ? (
               <div className="px-0 py-2 text-red-800">No concept available</div>
             ) : (
               <ReactMarkdown  components={markdownComponents} 
                   className="markdown-content text-green-600 italic">
-                {parentTopic.concept}
+                {thisTopic.concept}
               </ReactMarkdown>
             )}
           </div>
           <div>
             <h3 className="text-lg font-semibold mb-2">Concept JSON</h3>
-            {!parentTopic.concept_json ? (
+            {!thisTopic.concept_json ? (
               <div className="px-0 py-2 text-red-800">No concept JSON available</div>
             ) : (
               <pre className="bg-gray-200 p-2 rounded overflow-x-auto">
-                {JSON.stringify(JSON.parse(parentTopic.concept_json), null, 2)}
+                {JSON.stringify(JSON.parse(thisTopic.concept_json), null, 2)}
               </pre>
             )}
           </div>
@@ -245,7 +250,7 @@ const TopicParentRow = ({
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onSave={handleSaveProperty}
-        topic={parentTopic}
+        topic={thisTopic}
         propertyToEdit={propertyToEdit}
       />
     </div>

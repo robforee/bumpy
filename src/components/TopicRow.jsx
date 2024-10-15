@@ -97,8 +97,17 @@ const TopicRow = ({
     if (!isConceptExpanded) setIsTextExpanded(false);
   };
 
+
   return (
-    <div className="TOPIC_ROW border-b border-gray-200">
+    <div className={`TOPIC_ROW border-b border-gray-200 ${
+      topic.topic_type === "artifact"
+        ? "bg-blue-100"
+        : topic.topic_type === "comment"
+        ? "bg-green-100"
+        : topic.topic_type === "prompt"
+        ? "bg-purple-100"
+        : "bg-gray-100"
+    }`}>
       <div className="flex flex-col">
         <div 
           className={`${rowHeight} px-10 py-2 hover:bg-gray-100 flex items-center`}
@@ -117,9 +126,7 @@ const TopicRow = ({
               className={`text-blue-500 ${isConceptExpanded ? 'transform rotate-90' : ''}`}
             />
           </button>
-          {/* tag for topic type */}
-          {topic.topic_type === 'topic' ? '' : <span>[{topic.topic_type}]</span>} &nbsp;
-          {/* navigate to topic with title and subtitle */}
+          {/* title and subtitle */}
           <Link href={`/topics/${topic.id}`} className="font-medium flex-grow">
             <span className="font-bold">{topic.title}</span>
             {topic.subtitle && (
@@ -127,6 +134,8 @@ const TopicRow = ({
             )}
           </Link>
           
+          {topic.topic_type === 'topic' ? '' : <span>[{topic.topic_type}]</span>} &nbsp;
+
           {hoveredRow === topic.id && (
             <div className="ml-2 flex items-center">
               {/* edit button */}
@@ -174,7 +183,7 @@ const TopicRow = ({
             className="pl-12 pr-6 py-2 bg-gray-100 cursor-pointer"
             onClick={() => handleEditProperty('text')}
           >
-            <h3 className="text-lg font-semibold mb-2">Text Content</h3>
+            <h3 className="text-lg font-semibold mb-2">topic.text of {topic.title} </h3>
             {!topic.text ? (
               <div className="px-0 py-2 text-red-800">No text content available</div>
             ) : (

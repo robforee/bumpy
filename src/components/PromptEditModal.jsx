@@ -19,10 +19,13 @@ const PromptEditModal = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isPromptExpanded, setIsPromptExpanded] = useState(false);
   const [expandedFields, setExpandedFields] = useState({
+    topic_type: true,
+    topic_sub_type: true,
     title: true,
     subtitle: true,
     prompt: true,
     concept: true,
+    concept_json: true,
     text: true
   });
   const dialogContentRef = useRef(null);
@@ -52,10 +55,7 @@ const PromptEditModal = ({
   };
 
   function extractJson(inputString) {
-    // Regular expression to match JSON object
     const jsonRegex = /```json\s*([\s\S]*?)\s*```/;
-    
-    // Try to extract JSON string
     const match = inputString.match(jsonRegex);
     
     let text_response = inputString;
@@ -68,15 +68,10 @@ const PromptEditModal = ({
   
     if (match && match[1]) {
       const jsonString = match[1];
-      
-      // Remove the JSON (including the ```json ``` tags) from the original string
       text_response = inputString.replace(match[0], '').trim();
       
       try {
-        // Try to parse the JSON string
         const jsonObject = JSON.parse(jsonString);
-        
-        // If parsing succeeds, it's valid JSON
         json_response = {
           isValid: true,
           jsonObject: jsonObject,
@@ -84,7 +79,6 @@ const PromptEditModal = ({
           error: null
         };
       } catch (error) {
-        // If parsing fails, it's not valid JSON
         json_response = {
           isValid: false,
           jsonObject: null,
@@ -93,12 +87,12 @@ const PromptEditModal = ({
         };
       }
     } else {
-      // If no JSON object is found
       json_response.error = "No JSON object found in the string";
     }
   
     return { text_response, json_response };
   }
+
   const handleSubmitConceptQuery = async () => {
     setIsLoading(true);
     try {
@@ -118,11 +112,9 @@ const PromptEditModal = ({
 
       if (json_response.isValid) {
         console.log("Valid JSON object:", json_response.jsonObject);
-        
         updatedTopic.concept_json = JSON.stringify(json_response.jsonObject);
-
       } else {
-        updatedTopic.concept_json = {err:json_response.error};
+        updatedTopic.concept_json = JSON.stringify({err: json_response.error});
         console.log("JSON error:", json_response.error);
         if (json_response.jsonString) {
           console.log("Invalid JSON string:", json_response.jsonString);
@@ -180,7 +172,7 @@ const PromptEditModal = ({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-full h-full flex flex-col" ref={dialogContentRef}>
         <DialogHeader className="flex-shrink-0">
-          <DialogTitle>Edit Topic</DialogTitle>
+          <DialogTitle>Edit Topic with PromptEditModal</DialogTitle>
           <div className="flex justify-between items-center space-x-2">
             <Button variant="outline" size="sm" onClick={handlePromoteText}>
               Promote Text to Prompt
@@ -201,7 +193,7 @@ const PromptEditModal = ({
           </div>
         </DialogHeader>
         <div className="flex-grow grid gap-4 py-4 overflow-y-auto">
-          {['title', 'subtitle', 'prompt', 'concept', 'concept_json', 'text'].map((field) => (
+          {['topic_type', 'topic_sub_type', 'title', 'subtitle', 'prompt', 'concept', 'concept_json', 'text'].map((field) => (
             <div key={field} className="border p-2 rounded">
               <div className="flex justify-between items-center mb-2">
                 <span className="font-bold">{`topic.${field}`}</span>
@@ -210,7 +202,15 @@ const PromptEditModal = ({
                 </Button>
               </div>
               {expandedFields[field] && (
-                field === 'prompt' ? (
+                ['topic_type', 'topic_sub_type', 'title', 'subtitle'].includes(field) ? (
+                  <Input
+                    id={field}
+                    name={field}
+                    value={localTopic[field] || ''}
+                    onChange={handleLocalChange}
+                    placeholder={field.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                  />
+                ) : field === 'prompt' ? (
                   <Textarea
                     id={field}
                     name={field}
@@ -218,14 +218,6 @@ const PromptEditModal = ({
                     onChange={handleLocalChange}
                     placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
                     className="resize-vertical overflow-auto h-16"
-                  />
-                ) : field === 'title' || field === 'subtitle' ? (
-                  <Input
-                    id={field}
-                    name={field}
-                    value={localTopic[field] || ''}
-                    onChange={handleLocalChange}
-                    placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
                   />
                 ) : (
                   <Textarea

@@ -1,29 +1,30 @@
+// src/components/TopicTable.jsx
+
 import React, { useState } from 'react';
 import { DeleteConfirmationDialog } from '@/src/components/ui/dialog';
 import TopicRow from './TopicRow';
-import TopicParentRow from './TopicParentRow';
+import TopicHeaderRow from './TopicHeaderRow';
 
 const TopicTable = ({ 
-  thisTopic,
+  currentTopic,
   topics, 
   topicTypes,
   rowHeight, 
-  expandedTopicIds, 
-  toggleTopicExpansion,
-  isParentTopicExpanded,
-  toggleParentTopicExpansion,
-
+  expandedSubTopicIds, 
+  toggleSubTopicExpansion,
+  isCurrentTopicExpanded,
+  toggleCurrentTopicExpansion,
+  
   handleAddTopic, 
+  handleSaveTopic,
   handleEditTopic, 
   handleAddComment,
   handleAddPrompt,
   handleAddArtifact,
   handleDeleteTopic,
   handleAutoSubtopics,
-  handleSaveTopic,
   handleConceptQuery,
   handleFetchContext
-
 }) => {
   const [hoveredRow, setHoveredRow] = useState(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -42,40 +43,38 @@ const TopicTable = ({
     }
   };
 
-
   return (
     <div className="min-w-full bg-white shadow-[0_0_10px_rgba(0,255,0,0.5)] border border-green-300">
       
-      <TopicParentRow
-        thisTopic={thisTopic}
-        isParentTopicExpanded={isParentTopicExpanded}
-        toggleParentTopicExpansion={toggleParentTopicExpansion}
+      <TopicHeaderRow
+        currentTopic={currentTopic}
+        isCurrentTopicExpanded={isCurrentTopicExpanded}
+        toggleCurrentTopicExpansion={toggleCurrentTopicExpansion}
 
+        handleSaveTopic={handleSaveTopic}
         handleEditTopic={handleEditTopic}
         handleAddTopic={handleAddTopic}
         handleAddComment={handleAddComment}
         handleAddPrompt={handleAddPrompt}
         handleAddArtifact={handleAddArtifact}
         handleAutoSubtopics={handleAutoSubtopics}
-        handleSaveTopic={handleSaveTopic}
         handleConceptQuery={handleConceptQuery}
         handleFetchContext={handleFetchContext}
 
         rowHeight={rowHeight}
-        
       />
 
       {/* LOOP THROUGH TOPICS */}
-      <div className="px-6">SUB-TOPICS of {thisTopic.title} </div>
-      {topics.length == 0 ? <div className="px-8 py-2 text-red-800">no sub-topics found</div> : ''}
+      <div className="px-6">SUB-TOPICS of {currentTopic.title} </div>
+      {topics.length === 0 ? <div className="px-8 py-2 text-red-800">no sub-topics found</div> : ''}
       
       {topics.slice(0, 100).map((topic) => (
         <TopicRow
           key={topic.id}
           topic={topic}
           rowHeight={rowHeight}
-          expandedTopicIds={expandedTopicIds}
-          toggleTopicExpansion={toggleTopicExpansion}
+          expandedSubTopicIds={expandedSubTopicIds}
+          toggleSubTopicExpansion={toggleSubTopicExpansion}
           handleEditTopic={handleEditTopic}
           handleAddComment={handleAddComment}
           handleAddPrompt={handleAddPrompt}
@@ -88,15 +87,15 @@ const TopicTable = ({
       ))}
 
       {/* LOOP THROUGH TOPIC TYPES */}
-      <div className="px-6"> ACTIONS for {thisTopic.title} </div>
-      {topicTypes.length == 0 ? <div className="px-8 py-2 text-red-800">no actions found</div> : ''}
+      <div className="px-6"> ACTIONS for {currentTopic.title} </div>
+      {topicTypes.length === 0 ? <div className="px-8 py-2 text-red-800">no actions found</div> : ''}
       {topicTypes.slice(0, 100).map((topic) => (
         <TopicRow
           key={topic.id}
           topic={topic}
           rowHeight={rowHeight}
-          expandedTopicIds={expandedTopicIds}
-          toggleTopicExpansion={toggleTopicExpansion}
+          expandedSubTopicIds={expandedSubTopicIds}
+          toggleSubTopicExpansion={toggleSubTopicExpansion}
           handleEditTopic={handleEditTopic}
           handleAddComment={handleAddComment}
           handleAddPrompt={handleAddPrompt}

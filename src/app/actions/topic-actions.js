@@ -23,7 +23,6 @@ import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';
 
 export async function createTopic(parentId, topicData, idToken) {
 
-  return 'just kidding'
   const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
 
   if (!currentUser) {
@@ -35,6 +34,7 @@ export async function createTopic(parentId, topicData, idToken) {
   try {
     const newTopic = {
       ...topicData,
+
       topic_type: topicData.topic_type || 'default',
       owner: currentUser.uid,
       owner_email: currentUser.email,
@@ -51,8 +51,8 @@ export async function createTopic(parentId, topicData, idToken) {
         children: arrayUnion(docRef.id)
       });
     }
-
-    return { id: docRef.id, ...newTopic };
+console.log('ME',{ id: docRef.id, ...newTopic })
+    return JSON.parse(JSON.stringify({ id: docRef.id, ...newTopic }));
   } catch (error) {
     console.error("Error adding new topic:", error);
     throw error;
@@ -60,9 +60,6 @@ export async function createTopic(parentId, topicData, idToken) {
 }
 
 export async function updateTopic(topicId, updatedData, idToken) {
-
-  console.log('updatedData ggogg');
-  console.log(updatedData);
 
   const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
 
@@ -81,6 +78,7 @@ export async function updateTopic(topicId, updatedData, idToken) {
     }
 
     // also cleaned in TopicTableContainer
+    console.log('clean inputs')
     const updatableFields = ['title', 'topic_type', 'topic_sub_type',
       'subtitle', 'text', 'prompt', 'concept', 'concept_json', 'topic_type'];
 
@@ -138,7 +136,7 @@ export async function deleteTopic(topicId,idToken) {
   }
 }
 
-export async function fetchTopicsByCategory(categories, parentId, idToken) {
+export async function fetchTopicsByCategory(categories, parentId, idToken, subType) {
   const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
   if (!currentUser) {
     throw new Error('User not authenticated');
@@ -164,7 +162,15 @@ export async function fetchTopicsByCategory(categories, parentId, idToken) {
         where('parents', 'array-contains', parentId),
         //where('owner', '==', currentUser.uid)
       );
-    } else {
+    } else if (subType !== undefined) {
+      q = query(
+        topicsRef,
+        where('topic_type', 'in', categories),
+        where('topic_sub_type', '==', subType),
+        where('parents', 'array-contains', parentId),
+        //where('owner', '==', currentUser.uid)
+      );
+    }else {
       q = query(
         topicsRef,
         where('topic_type', 'in', categories),
@@ -172,7 +178,6 @@ export async function fetchTopicsByCategory(categories, parentId, idToken) {
         //where('owner', '==', currentUser.uid)
       );
     }
-    console.log('query',q)
 
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => {
@@ -205,27 +210,48 @@ function convertTimestamps(obj) {
 }
 
 export async function fetchTopic(topicId, idToken) {
-  const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
 
-  if (!currentUser) {
-    throw new Error('User not authenticated');
+  // Handle 'none' case
+  if (topicId === 'none') {
+    return {
+      id: 'none',
+      title: 'No Parent',
+      text: '',
+      error: 'No parent topic exists'
+    };
   }
-  
-  const db = getFirestore(firebaseServerApp);
-  
+
   try {
+    const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
+
+    if (!currentUser) {
+      throw new Error('User not authenticated');
+    }
+    
+    const db = getFirestore(firebaseServerApp);
+    
     const topicRef = doc(db, 'topics', topicId);
     const topicSnap = await getDoc(topicRef);
 
     if (!topicSnap.exists()) {
-      throw new Error('Topic not found');
+      return {
+        id: topicId,
+        title: 'Not Found',
+        text: '',
+        error: 'Topic not found'
+      };
     }
 
     const topicData = topicSnap.data();
 
     // Check if the current user has permission to access this topic
     if (topicData.owner !== currentUser.uid) {
-      throw new Error('User does not have permission to access this topic');
+      return {
+        id: topicId,
+        title: 'Access Denied',
+        text: '',
+        error: 'User does not have permission to access this topic'
+      };
     }
 
     // Convert Timestamp objects to ISO strings
@@ -234,6 +260,11 @@ export async function fetchTopic(topicId, idToken) {
     return { id: topicSnap.id, ...convertedTopicData };
   } catch (error) {
     console.error("Error fetching topic:", error);
-    throw error;
+    return {
+      id: topicId,
+      title: 'Error',
+      text: '',
+      error: error.message || 'Failed to fetch topic'
+    };
   }
 }

@@ -1,4 +1,4 @@
-// src/components/TopicParentRow.jsx
+// src/components/TopicHeaderRow.jsx
 
 import React, { useState } from 'react';
 import { FiZap, FiEdit, FiChevronRight, FiClock, FiPlusCircle, FiPlus } from 'react-icons/fi';
@@ -7,10 +7,10 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import EditPropertyModal from './EditPropertyModal';
 
-const TopicParentRow = ({
-  thisTopic,
-  isParentTopicExpanded,
-  toggleParentTopicExpansion,
+const TopicHeaderRow = ({
+  currentTopic,
+  isCurrentTopicExpanded,
+  toggleCurrentTopicExpansion,
   handleEditTopic,
   handleAddTopic,
   handleAddComment,
@@ -54,33 +54,6 @@ const TopicParentRow = ({
     }
   };
 
-  const formatDate = (date) => {
-    if (!(date instanceof Date)) return 'N/A';
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'short', 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
-    });
-  };
-
-  const renderContent = () => {
-    switch (thisTopic.topic_type) {
-      case 'topic':
-      case 'comment':
-      case 'artifact':
-        return thisTopic.text;
-      case 'concept':
-        return thisTopic.concept;
-      case 'prompt':
-        return thisTopic.prompt;
-      default:
-        return 'No content available';
-    }
-  };  
-
   const toggleTextExpansion = () => {
     setIsTextExpanded(!isTextExpanded);
     if (!isTextExpanded) setIsConceptExpanded(false);
@@ -92,46 +65,81 @@ const TopicParentRow = ({
   };
 
   const handleEditProperty = (property) => {
+    console.log('TopicHeaderRow.handleEditProperty EditPropertyModal')
     setPropertyToEdit(property);
     setIsEditModalOpen(true);
   };
 
   const handleSaveProperty = (topicId, property, value) => {
-    const updatedTopic = { ...thisTopic, [property]: value };
+    const updatedTopic = { ...currentTopic, [property]: value };
     handleSaveTopic(updatedTopic);
   };
 
   const handleSubmitConceptQuery = async () => {
-    setIsLoading(true);
-    
-    const response = handleFetchContext({});
-    
+    setIsLoading(true);    
 
-    console.log('// get "process concept" topic.prompt (child or default)')
-    console.log('// get  "good-to-know" [topic.text] all child, check valid?')
-    return;
-    try {
-      const conceptQuery = {
-        systemPrompt: "what are some important things to keep in mind about the following",
-        userPrompts: [thisTopic.prompt, thisTopic.concept],
-        model: "gpt-4o-mini", 
-        temperature: 0.7,
-        responseFormat: { type: "text" }
-      }
+    try{
+      
+      // BUILD, RUN, RETURN QUERY; called by  TopicTableContainer
 
-      const gptResponse = await handleConceptQuery(conceptQuery);
-      const { text_response, json_response } = extractJson(gptResponse)
+      const completionObject = await handleConceptQuery({});
+      const { choices: [firstChoice, ...otherChoices], ...restOfCompletion } = completionObject;  
+      const choicesObject = firstChoice ;
+      const choicesObject2 = { choices: [firstChoice] };
+      const usageObject = { ...restOfCompletion, choices: otherChoices };
+        
+
+      // REPORT USAGE
+      console.log('usageObject\n',usageObject);
+      console.log('choicesObject\n',choicesObject)
+      console.log('choicesObject.message\n',choicesObject.message)
+      console.log('choicesObject.message.parsed',choicesObject.message.parsed)
+      //console.log('choicesObject.message.content',choicesObject.message.content)
+      //console.log('choicesObject.message.finish_reason',choicesObject.message.finish_reason)
+
+      // PRETTIFY PARSED STRUCTURED RESPONSE for TEXT FIELD
+      let textResponse = '';
+      Object.entries( choicesObject.message.parsed ).forEach(([key, value]) => {
+        if(key === 'topic_title') next;
+        if(key === 'topic_subtitle') next;
+        textResponse += '# ' + key + '\n';
+        textResponse += value + '\n\n';
+      });
+
+      let sections = [
+        'title', 'subtitle','concept', 'statement','subtopics','milestones','questions'
+      ]
+      let userConceptView = '';
+        userConceptView += '\n# this concept\n';
+        userConceptView += choicesObject.message.parsed.topic_concept;
+
+        userConceptView += '\n# Statement of purpose\n';
+        userConceptView += choicesObject.message.parsed.topic_statement;
+
+        userConceptView += '\n# Subtopics\n * ';
+        userConceptView += choicesObject.message.parsed.topic_subtopics.map(i=>{return i.subtopic}).join('\n * ') + '\n';//.slice(0, -2);
+
+        userConceptView += '\n# Milestones\n * ';
+        userConceptView += choicesObject.message.parsed.topic_milestones.map(i=>{return i.milestone}).join('\n * ') + '\n'; //.slice(0, -1);
+
+        userConceptView += '\n# Questions\n * ';
+        userConceptView += choicesObject.message.parsed.topic_questions.map(i=>{return i.question}).join('\n * ') + '\n'; //.slice(0, -1);
+
+      console.log('userConceptView',userConceptView)
+            
       const updatedTopic = { 
-        ...thisTopic, 
-        text: text_response,
-        concept_json: json_response.isValid 
-          ? JSON.stringify(json_response.jsonObject) 
-          : JSON.stringify({err: json_response.error})
+        ...currentTopic, 
+        // title: choicesObject.message.parsed.topic_title,
+        subtitle: choicesObject.message.parsed.topic_subtitle,
+        prompt: usageObject.prompt.messages.map(m=>{return m.content}).join('\n'),
+        concept: userConceptView,
+        concept_json: choicesObject.message.parsed
       };
 
-      handleSaveTopic(updatedTopic);
+      handleSaveTopic(updatedTopic);    
+
     } catch (error) {
-      console.error("Error submitting concept query:", error);
+      console.error("Error in ToicHeaderRow.handleSubmitConceptQuery:", error);
     } finally {
       setIsLoading(false);
     }
@@ -157,9 +165,9 @@ const TopicParentRow = ({
           />
         </button>
         <div className="font-medium flex-grow">
-          <span className="font-bold text-blue-800 text-4xl">{thisTopic.title}</span>
-          {thisTopic.subtitle && (
-            <span className="text-red-700 ml-2"> {thisTopic.subtitle}</span>
+          <span className="font-bold text-blue-800 text-4xl">{currentTopic.title}</span>
+          {currentTopic.subtitle && (
+            <span className="text-red-700 ml-2"> {currentTopic.subtitle}</span>
           )}
         </div>
         <div className="ml-2 flex items-center">
@@ -173,26 +181,26 @@ const TopicParentRow = ({
           </button>
 
           <button
-            onClick={() => handleEditTopic(thisTopic)}
+            onClick={() => handleEditTopic(currentTopic)}
             className="ml-2 text-gray-500 hover:text-gray-700"
             title="Edit Topic"
           >
             <FiEdit size={14} />
           </button>
 
-          <button onClick={() => handleAddTopic('topic', thisTopic.id)} className="ml-2" title="Add Sub-Topic">
+          <button onClick={() => handleAddTopic('topic', currentTopic.id)} className="ml-2" title="Add Sub-Topic">
             <FiPlusCircle size={14} />
           </button>
 
-          <button onClick={() => handleAddComment(thisTopic.id)} className="ml-2" title="Add Comment">
+          <button onClick={() => handleAddComment(currentTopic.id)} className="ml-2" title="Add Comment">
             <FiPlusCircle size={14} />
           </button>
 
-          <button onClick={() => handleAddPrompt(thisTopic.id)} className="ml-2" title="Add Prompt">
+          <button onClick={() => handleAddPrompt(currentTopic.id)} className="ml-2" title="Add Prompt">
             <FiPlusCircle size={14} />
           </button>
 
-          <button onClick={() => handleAddArtifact(thisTopic.id)} className="ml-2" title="Add Artifact">
+          <button onClick={() => handleAddArtifact(currentTopic.id)} className="ml-2" title="Add Artifact">
             <FiPlusCircle size={14} />
           </button>
         </div>
@@ -204,14 +212,14 @@ const TopicParentRow = ({
           onClick={() => handleEditProperty('text')}
         >
           <h3 className="text-lg font-semibold mb-2">Text Content</h3>
-          {!thisTopic.text ? (
+          {!currentTopic.text ? (
             <div className="px-0 py-2 text-red-800">No text content available</div>
           ) : (
 
             // components={markdownComponents} 
             <ReactMarkdown components={markdownComponents} 
                 className="markdown-content blue-green-600 italic">
-                  {thisTopic.text}
+                  {currentTopic.text}
             </ReactMarkdown>
           )}
         </div>
@@ -224,22 +232,22 @@ const TopicParentRow = ({
             onClick={() => handleEditProperty('concept')}
           >
             <h3 className="text-lg font-semibold mb-2">Concept</h3>
-            {!thisTopic.concept ? (
+            {!currentTopic.concept ? (
               <div className="px-0 py-2 text-red-800">No concept available</div>
             ) : (
               <ReactMarkdown  components={markdownComponents} 
                   className="markdown-content text-green-600 italic">
-                {thisTopic.concept}
+                {currentTopic.concept}
               </ReactMarkdown>
             )}
           </div>
           <div>
             <h3 className="text-lg font-semibold mb-2">Concept JSON</h3>
-            {!thisTopic.concept_json ? (
+            {!currentTopic.concept_json ? (
               <div className="px-0 py-2 text-red-800">No concept JSON available</div>
             ) : (
               <pre className="bg-gray-200 p-2 rounded overflow-x-auto">
-                {JSON.stringify(JSON.parse(thisTopic.concept_json), null, 2)}
+                {JSON.stringify(currentTopic.concept_json,null,2)}
               </pre>
             )}
           </div>
@@ -250,11 +258,11 @@ const TopicParentRow = ({
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onSave={handleSaveProperty}
-        topic={thisTopic}
+        topic={currentTopic}
         propertyToEdit={propertyToEdit}
       />
     </div>
   );
 };
 
-export default TopicParentRow;
+export default TopicHeaderRow;

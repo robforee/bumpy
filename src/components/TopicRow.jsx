@@ -63,6 +63,7 @@ const TopicRow = ({
   };
 
   const handleEditProperty = (property) => {
+    console.log('TopicRow.handleEditProperty EditPropertyModal')
     setPropertyToEdit(property);
     setIsEditModalOpen(true);
   };

@@ -32,7 +32,7 @@ const terms = topicTypes;
 export default function TopicPage() {
   const { user, loading } = useUser();
   const [topic, setTopic] = useState(null);
-  const [topic_parent, setParentTopic] = useState(null);
+  const [parentTopic, setParentTopic] = useState(null);
   const [error, setError] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [addingTopicType, setAddingTopicType] = useState(null);
@@ -49,12 +49,11 @@ export default function TopicPage() {
   }, []);
 
   useEffect(() => {
-    async function fetchTopicX() {
+    async function fetchTopicData() {
       if (params.id && user) {
         try {
           const idToken = await getIdToken(auth.currentUser);
           const topicData = await fetchTopic(params.id, idToken);
-
 
           setTopic(topicData);
           if (topicData.parents[0]) {
@@ -68,7 +67,7 @@ export default function TopicPage() {
       }
     }
     if (user) {
-      fetchTopicX();
+      fetchTopicData();
     }
   }, [params.id, user, refreshTrigger]);
 
@@ -101,25 +100,24 @@ export default function TopicPage() {
     <style jsx global>{markdownStyles}</style>
     <div className="min-h-screen bg-gray-100 py-8">
       <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
-
-{/*         
-        yellow header
-*/}
+        
+        {/* YELLOW BORDER ZONE */}
         <div className="TOPIC_PAGE px-6 py-4 bg-yellow-100 border-b border-yellow-200">
           <span className="TOPIC_TITLE text-1xl font-bold text-blue-500">
                 {
-                  topic_parent?.title 
-                  ? <Link href={`/topics/${topic_parent?.id}`} className="text-blue-600 hover:underline">
-                      {topic_parent?.title} 
+                  parentTopic?.title 
+                  ? <Link href={`/topics/${parentTopic?.id}`} className="text-blue-600 hover:underline">
+                      {parentTopic?.title} 
                     </Link> 
                   : topic.title
                 }
-                {topic_parent?.subtitle && (
-                  <span className="text-red-700 ">&nbsp;{topic_parent.subtitle}</span>
+                {parentTopic?.subtitle && (
+                  <span className="text-red-700 ">&nbsp;{parentTopic.subtitle}</span>
                 )}
           </span>
-          <TopicTableContainer className="TOPIC_TABLE_CONATINER"
-                parentId={topic.id}
+          <TopicTableContainer className="TOPIC_TABLE_CONTAINER"
+                parentId={parentTopic?.id ?? 'none'}
+                topicId={topic.id}
                 topic_type="topic"
                 rowHeight={rowHeight}
               />          

@@ -26,6 +26,23 @@ https://console.cloud.google.com/logs/query;query=resource.type%20%3D%20%22cloud
  remove src/app/actions.js -->
  firebase deploy --only functions
 
+## about context-query
+    handleSubmitConceptQuery 
+    Topic Header Row (ui handler)  
+        handleConceptQuery(  ){}
+        handleSaveTopic(){//TopicTableContainer}
+    Topic Table (Component Holder)=> 
+    Topic Table Container (Method holder)=> 
+        handleSaveTopic(){
+            updateTopic(){//server action}
+        }
+        handleConceptQuery(){
+            handleFetchContext()
+            handleFetchPrompts(){}
+            prepareStructuredQuery_forConceptAnalysis(){//server action}
+            runConceptQuery(){//server action}
+            return completionObject
+        }
 
 ## about actions
 // src/app/actions.js

@@ -7,14 +7,14 @@ import { Input } from '@/src/components/ui/input';
 import { Textarea } from '@/src/components/ui/textarea';
 import { FiX, FiMaximize, FiMinimize, FiChevronUp, FiChevronDown } from 'react-icons/fi';
 
-const PromptEditModal = ({
+const PromptEditModal = React.forwardRef(({
   isOpen,
   onClose,
   editingTopic,
   handleSaveTopic,
   handleGptQuery,
   handleConceptQuery
-}) => {
+}, ref) => {
   const [localTopic, setLocalTopic] = useState(editingTopic);
   const [isLoading, setIsLoading] = useState(false);
   const [isPromptExpanded, setIsPromptExpanded] = useState(false);
@@ -170,7 +170,7 @@ const PromptEditModal = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-full h-full flex flex-col" ref={dialogContentRef}>
+      <DialogContent className="w-full h-full flex flex-col" ref={ref}>
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Edit Topic with PromptEditModal</DialogTitle>
           <div className="flex justify-between items-center space-x-2">
@@ -236,6 +236,8 @@ const PromptEditModal = ({
       </DialogContent>
     </Dialog>
   );
-};
+});
+
+PromptEditModal.displayName = 'PromptEditModal';
 
 export default PromptEditModal;

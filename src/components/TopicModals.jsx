@@ -19,7 +19,7 @@ const TopicModals = ({
   editingTopic,
   handleEditChange,handleSaveTopic,
   handleSavePrompt, handleGptQuery, handleConceptQuery,
-  parentId,
+  topicId,
   topicType,
   onTopicAdded,
   userId
@@ -42,12 +42,12 @@ const TopicModals = ({
       const topicModel = {...newTopic, topic_type: topicType }
       const cleanedData = Object.entries(topicModel).reduce((acc, [key, value]) => {
         if (value !== undefined) {
-        acc[key] = value;
+          acc[key] = value;
         }
         return acc;
       }, {});
 
-      await createTopic(parentId,cleanedData, idToken);
+      await createTopic(topicId,cleanedData, idToken);
       
       setNewTopic({ title: '', subtitle: '', text: '', prompt: '' });
       setIsAddModalOpen(false);

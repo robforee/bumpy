@@ -10,14 +10,17 @@ export const metadata = {
   description: "Analyst Server provides secure communications monitoring and analysis",
 };
 
+// MAIN CLASSS WAS 
+const orig = 'flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8'
+const fulw = 'flex-grow w-full px-4 sm:px-6 lg:container lg:mx-auto lg:px-8 py-8'
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className="bg-gray-100">
         <UserProvider>
-          <div className="min-h-screen flex flex-col inside-user-provider">
+          <div className="LAYOUT min-h-screen flex flex-col inside-user-provider">
             <Header />
-            <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <main className={`${fulw}`}>
               {children}
             </main>
           </div>

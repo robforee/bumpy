@@ -95,14 +95,16 @@ export default function TopicPage() {
   if (error) return <div>Error: {error}</div>;
   if (!topic) return <div>Topic not found</div>;
 
+  const orig = 'max-w-4xl mx-auto bg-white rounded-lg shadow-md overflow-hidden'
+  const fulw = 'w-full bg-white rounded-lg shadow-md overflow-hidden;'
   return (
     <>
     <style jsx global>{markdownStyles}</style>
-    <div className="min-h-screen bg-gray-100 py-8">
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
+    <div className="TOPIC_PAGE min-h-screen bg-gray-100 py-8">
+      <div className={`${fulw}`}>
         
         {/* YELLOW BORDER ZONE */}
-        <div className="TOPIC_PAGE px-6 py-4 bg-yellow-100 border-b border-yellow-200">
+        <div className="YELLOW_BORDER px-1 py-4 bg-yellow-100 border-b border-yellow-200">
           <span className="TOPIC_TITLE text-1xl font-bold text-blue-500">
                 {
                   parentTopic?.title 

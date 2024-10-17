@@ -66,7 +66,7 @@ const QueryOpenAi = () => {
   }));
 
   const ExampleMessages = [
-    {name: 'ow can I solve 8x + 7 = -23',
+    {name: 'how can I solve 8x + 7 = -23',
       type: 'Chain of thought',
       messages:[
         { role: "system", content: "You are a helpful math tutor. Guide the user through the solution step by step." },

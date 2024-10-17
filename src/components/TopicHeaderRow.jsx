@@ -75,6 +75,89 @@ const TopicHeaderRow = ({
     handleSaveTopic(updatedTopic);
   };
 
+  function convertToMarkdown(topics) {
+    // Helper function to indent text based on level
+    const indent = (text, level) => '  '.repeat(level) + text;
+  
+    // Recursive function to transform a topic and its subtopics
+    function topicToMarkdown(topic, level = 0) {
+      let markdown = `${indent(`# ${topic.topic_title}`, level)}\n`;
+      markdown += `${indent(`**${topic.topic_subtitle}**`, level + 1)}\n\n`;
+      markdown += `${indent(`- **Concept:** ${topic.topic_concept}`, level + 1)}\n`;
+      markdown += `${indent(`- **Statement:** ${topic.topic_statement}`, level + 1)}\n`;
+  
+      // Process subtopics
+      if (topic.topic_subtopics && topic.topic_subtopics.length > 0) {
+        markdown += `\n${indent(`### Subtopics:`, level + 1)}\n`;
+        topic.topic_subtopics.forEach(subtopic => {
+          markdown += topicToMarkdown(subtopic, level + 1) + "\n";
+        });
+      }
+  
+      // Process milestones
+      if (topic.topic_milestones && topic.topic_milestones.length > 0) {
+        markdown += `\n${indent(`### Milestones:`, level + 1)}\n`;
+        topic.topic_milestones.forEach(milestone => {
+          markdown += `${indent(`- ${milestone.milestone}`, level + 2)}\n`;
+        });
+      }
+  
+      // Process questions
+      if (topic.topic_questions && topic.topic_questions.length > 0) {
+        markdown += `\n${indent(`### Questions:`, level + 1)}\n`;
+        topic.topic_questions.forEach(question => {
+          markdown += `${indent(`- ${question.question}`, level + 2)}\n`;
+        });
+      }
+  
+      return markdown;
+    }
+  
+    // Generate markdown for each top-level topic
+    return topics.map(topic => topicToMarkdown(topic)).join("\n");
+  }
+
+  function convertToMarkdown(topics) {
+    // Helper function to indent text based on level
+    const indent = (text, level) => '  '.repeat(level) + text;
+  
+    // Recursive function to transform a topic and its subtopics
+    function topicToMarkdown(topic, level = 0) {
+      let markdown = `${indent(`# ${topic.topic_title}`, level)}\n`;
+      markdown += `${indent(`**${topic.topic_subtitle}**`, level + 1)}\n\n`;
+      markdown += `${indent(`- **Concept:** ${topic.topic_concept}`, level + 1)}\n`;
+      markdown += `${indent(`- **Statement:** ${topic.topic_statement}`, level + 1)}\n`;
+  
+      // Process subtopics
+      if (topic.topic_subtopics && topic.topic_subtopics.length > 0) {
+        markdown += `\n${indent(`### Subtopics:`, level + 1)}\n`;
+        topic.topic_subtopics.forEach(subtopic => {
+          markdown += topicToMarkdown(subtopic, level + 1) + "\n";
+        });
+      }
+  
+      // Process milestones
+      if (topic.topic_milestones && topic.topic_milestones.length > 0) {
+        markdown += `\n${indent(`### Milestones:`, level + 1)}\n`;
+        topic.topic_milestones.forEach(milestone => {
+          markdown += `${indent(`- ${milestone.milestone}`, level + 2)}\n`;
+        });
+      }
+  
+      // Process questions
+      if (topic.topic_questions && topic.topic_questions.length > 0) {
+        markdown += `\n${indent(`### Questions:`, level + 1)}\n`;
+        topic.topic_questions.forEach(question => {
+          markdown += `${indent(`- ${question.question}`, level + 2)}\n`;
+        });
+      }
+  
+      return markdown;
+    }
+  
+    // Generate markdown for each top-level topic
+    return topics.map(topic => topicToMarkdown(topic)).join("\n");
+  }
   const handleSubmitConceptQuery = async () => {
     setIsLoading(true);    
 
@@ -90,9 +173,14 @@ const TopicHeaderRow = ({
         
 
       // REPORT USAGE
-      console.log('usageObject\n',usageObject);
+      console.log('usageObject.usage\n',usageObject.usage);
+      console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
+        'usageObject.prompt.messages\n',
+        usageObject.prompt.messages.map(m=>{return '~~~~~~~~\N' + m.role + ':\n\t' + m.content}).join('\n')
+
+      );
       console.log('choicesObject\n',choicesObject)
-      console.log('choicesObject.message\n',choicesObject.message)
+      //console.log('choicesObject.message\n',choicesObject.message)
       console.log('choicesObject.message.parsed',choicesObject.message.parsed)
       //console.log('choicesObject.message.content',choicesObject.message.content)
       //console.log('choicesObject.message.finish_reason',choicesObject.message.finish_reason)
@@ -106,18 +194,19 @@ const TopicHeaderRow = ({
         textResponse += value + '\n\n';
       });
 
+      // THE topic.CONCEPT ('concept', 'statement','subtopics','milestones','questions')
       let sections = [
         'title', 'subtitle','concept', 'statement','subtopics','milestones','questions'
       ]
       let userConceptView = '';
-        userConceptView += '\n# this concept\n';
+        userConceptView += '\n# THIS CONCEPT\n';
         userConceptView += choicesObject.message.parsed.topic_concept;
 
         userConceptView += '\n# Statement of purpose\n';
         userConceptView += choicesObject.message.parsed.topic_statement;
 
-        userConceptView += '\n# Subtopics\n * ';
-        userConceptView += choicesObject.message.parsed.topic_subtopics.map(i=>{return i.subtopic}).join('\n * ') + '\n';//.slice(0, -2);
+        userConceptView += '\n# Subtopics \n * ';
+        userConceptView += convertToMarkdown(choicesObject.message.parsed.topic_subtopics);
 
         userConceptView += '\n# Milestones\n * ';
         userConceptView += choicesObject.message.parsed.topic_milestones.map(i=>{return i.milestone}).join('\n * ') + '\n'; //.slice(0, -1);
@@ -125,7 +214,9 @@ const TopicHeaderRow = ({
         userConceptView += '\n# Questions\n * ';
         userConceptView += choicesObject.message.parsed.topic_questions.map(i=>{return i.question}).join('\n * ') + '\n'; //.slice(0, -1);
 
-      console.log('userConceptView',userConceptView)
+      console.log('\nuserConceptView\n',
+        userConceptView
+      )
             
       const updatedTopic = { 
         ...currentTopic, 
@@ -139,7 +230,7 @@ const TopicHeaderRow = ({
       handleSaveTopic(updatedTopic);    
 
     } catch (error) {
-      console.error("Error in ToicHeaderRow.handleSubmitConceptQuery:", error);
+      console.error("Error in TopicHeaderRow.handleSubmitConceptQuery:", error);
     } finally {
       setIsLoading(false);
     }

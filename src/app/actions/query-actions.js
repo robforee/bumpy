@@ -66,8 +66,18 @@ updateField('topic_questions', item => item.about.push('you may ask 3 to 5 quest
     topic_subtopics: z.array(Subtopic), 
     topic_milestones: z.array(Milestone), 
     topic_questions: z.array(Question)
-
   })  
+
+  const Topic = z.lazy(() => z.object({
+    topic_title: z.string(),  
+    topic_subtitle: z.string(),
+    topic_concept: z.string(), 
+    topic_statement: z.string(), 
+    topic_subtopics: z.array(Topic).optional(), 
+    topic_milestones: z.array(Milestone), 
+    topic_questions: z.array(Question)
+    
+  }))
   // system prompt
   const myMessages = [ { role: "system", content: "You are an expert process analyst" }]
 
@@ -83,8 +93,10 @@ updateField('topic_questions', item => item.about.push('you may ask 3 to 5 quest
   const queryData = {
     model: "gpt-4o-mini",
     messages: myMessages,
-    response_format: zodResponseFormat(Concept, "concept_analysis"),
+    response_format: zodResponseFormat(Topic, "topic_analysis"),    
   };
+  
+  //response_format: zodResponseFormat(Concept, "concept_analysis"),
   const queryString = JSON.stringify(queryData);
 
   console.log('passing queryData to TopicTableContainer ')

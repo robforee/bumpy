@@ -222,12 +222,21 @@ const TopicTableContainer = (
     }
   };
 
+
+
+
+  
   const handleFetchContext = async (data) => {
 
     let textChunks = [];
 
     textChunks.push("# this topic:\n" + currentTopic.title);
-    textChunks.push("# current concept description\n" + (currentTopic?.concept ?? currentTopic?.text ?? ''));
+    
+    if(data.useConcept){
+      textChunks.push("# current concept description\n" + (currentTopic?.concept ?? currentTopic?.text ?? ''));
+    }else{
+      textChunks.push("# current topic.text\n" + (currentTopic?.text ?? ''));
+    }
 
 
     if(parentTopic.id !== 'none'){
@@ -258,6 +267,12 @@ const TopicTableContainer = (
     console.log('concept/text,parent c/t, cmmts')
     return textChunks;
   };
+
+
+
+
+
+
 
   const handleFetchPrompts = async (data) => {
    const prompts = []
@@ -309,14 +324,14 @@ const TopicTableContainer = (
     try {
 
       // GET CONTEXT FROM TOPICS
-      const chunkyContextArray = await handleFetchContext({})
-      //console.log(chunkyContextArray.join('\n\n')); // all comments
-      console.log('chunkyContextArray created'); // all comments
+      const chunkyContextArray = await handleFetchContext({useConcept:false})
+      console.log('\nCHUNKY CONTEXT ARRAY \n\t from TopicTableContainer.handleFetchContext(){// reads gathered topics/subtopics}'); // all comments
+      console.log(chunkyContextArray.join('\n\n')); // all comments
 
       // GET PROMPT FROM COMMENTS
       const prompts = await handleFetchPrompts({subType:'concept-prompt'})
-      //console.log( prompts[0].prompt); // how to format output
-      console.log( 'prompts[0].prompt'); // how to format output
+      console.log( '~~~~~~~~~~ prompts[0].prompt.concept-prompt'); // how to format output
+      console.log( prompts[0].prompt); // how to format output
 
       // FORMAT QUERY
       const structuredQuery = await prepareStructuredQuery_forConceptAnalysis({ // ON SERVER

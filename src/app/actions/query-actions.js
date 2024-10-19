@@ -5,8 +5,9 @@ import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';
 import OpenAI from 'openai';
 import { z } from "zod";
 import { zodResponseFormat } from "openai/helpers/zod";
+import { updateTopic } from '@/src/app/actions/topic-actions';
 
-export async function prepareStructuredQuery_forConceptAnalysis(data){
+export async function structuredQuery_conceptAnalysis(data){
 
 
   console.log('\n\n prepareStructuredQuery_forConceptAnalysis \n')
@@ -73,7 +74,7 @@ updateField('topic_questions', item => item.about.push('you may ask 3 to 5 quest
     topic_subtitle: z.string(),
     topic_concept: z.string(), 
     topic_statement: z.string(), 
-    topic_subtopics: z.array(Topic).optional(), 
+    topic_subtopics: z.array(Topic), 
     topic_milestones: z.array(Milestone), 
     topic_questions: z.array(Question)
     
@@ -102,6 +103,139 @@ updateField('topic_questions', item => item.about.push('you may ask 3 to 5 quest
   console.log('passing queryData to TopicTableContainer ')
   return JSON.parse(JSON.stringify(queryData));
 }
+
+function convertToMarkdown(topics) {
+  // Helper function to indent text based on level
+  const indent = (text, level) => '  '.repeat(level) + text;
+
+  // Recursive function to transform a topic and its subtopics
+  function topicToMarkdown(topic, level = 0) {
+    let markdown = `${indent(`# ${topic.topic_title}`, level)}\n`;
+    markdown += `${indent(`**${topic.topic_subtitle}**`, level + 1)}\n\n`;
+    markdown += `${indent(`- **Concept:** ${topic.topic_concept}`, level + 1)}\n`;
+    markdown += `${indent(`- **Statement:** ${topic.topic_statement}`, level + 1)}\n`;
+
+    // Process subtopics
+    if (topic.topic_subtopics && topic.topic_subtopics.length > 0) {
+      markdown += `\n${indent(`### Subtopics:`, level + 1)}\n`;
+      topic.topic_subtopics.forEach(subtopic => {
+        markdown += topicToMarkdown(subtopic, level + 1) + "\n";
+      });
+    }
+
+    // Process milestones
+    if (topic.topic_milestones && topic.topic_milestones.length > 0) {
+      markdown += `\n${indent(`### Milestones:`, level + 1)}\n`;
+      topic.topic_milestones.forEach(milestone => {
+        markdown += `${indent(`- ${milestone.milestone}`, level + 2)}\n`;
+      });
+    }
+
+    // Process questions
+    if (topic.topic_questions && topic.topic_questions.length > 0) {
+      markdown += `\n${indent(`### Questions:`, level + 1)}\n`;
+      topic.topic_questions.forEach(question => {
+        markdown += `${indent(`- ${question.question}`, level + 2)}\n`;
+      });
+    }
+
+    return markdown;
+  }
+
+  // Generate markdown for each top-level topic
+  return topics.map(topic => topicToMarkdown(topic)).join("\n");
+}
+
+async function prettifyConceptResponse(choicesObject){
+      // PRETTIFY PARSED STRUCTURED RESPONSE for TEXT FIELD
+      // let textResponse = '';
+      // Object.entries( choicesObject.message.parsed ).forEach(([key, value]) => {
+      //   if(key === 'topic_title') next;
+      //   if(key === 'topic_subtitle') next;
+      //   textResponse += '# ' + key + '\n';
+      //   textResponse += value + '\n\n';
+      // });
+
+      // THE topic.CONCEPT ('concept', 'statement','subtopics','milestones','questions')
+      let sections = [
+        'title', 'subtitle','concept', 'statement','subtopics','milestones','questions'
+      ]
+      let userConceptView = '';
+        userConceptView += '\n# THIS CONCEPT\n';
+        userConceptView += choicesObject.message.parsed.topic_concept;
+
+        userConceptView += '\n# Statement of purpose\n';
+        userConceptView += choicesObject.message.parsed.topic_statement;
+
+        userConceptView += '\n# Subtopics \n * ';
+        userConceptView += convertToMarkdown(choicesObject.message.parsed.topic_subtopics);
+
+        userConceptView += '\n# Milestones\n * ';
+        userConceptView += choicesObject.message.parsed.topic_milestones.map(i=>{return i.milestone}).join('\n * ') + '\n'; //.slice(0, -1);
+
+        userConceptView += '\n# Questions\n * ';
+        userConceptView += choicesObject.message.parsed.topic_questions.map(i=>{return i.question}).join('\n * ') + '\n'; //.slice(0, -1);
+
+      //console.log('\nuserConceptView\n', userConceptView )  
+      return {userConceptView: userConceptView, }
+}
+
+
+
+
+// THE NEW SERVER SIDE one
+export async function processConceptQuery(data, idToken){
+  const { currentUser } = await getAuthenticatedAppForUser(idToken);
+    
+  if (!currentUser) {
+    throw new Error('User not authenticated');
+  }
+
+  if(!data.contextArray || !data.conceptQuery) { return 'missing contextArray or conceptQuery'}
+
+  // CREATE STRUCTURED QUERY
+  const structuredQuery = await structuredQuery_conceptAnalysis({ // ON SERVER
+    contextArray: data.contextArray,
+    conceptQuery: data.conceptQuery
+  });  
+
+  // RUN QUERY
+  const completionObject = await runConceptQuery(structuredQuery, idToken); // return an an object
+  const { choices: [firstChoice, ...otherChoices], ...restOfCompletion } = completionObject;  
+  const choicesObject = firstChoice ;
+  const usageObject = { ...restOfCompletion, choices: otherChoices };
+
+  usageObject.prompt = structuredQuery;
+  if(!choicesObject) return {error:'no choices object',completionObject}
+  if(!choicesObject.message) return {error:'no choicesObject.message',completionObject}
+  if(!usageObject) return {error:'no usageObject',completionObject}
+  if(!usageObject.prompt) return {error:'no usageObject.prompt',completionObject}
+  if(!usageObject.prompt.messages) return {error:'no usageObject.prompt.messages',structuredQuery}
+
+    // PRETTIFY RESPONSE
+    const pretty = await prettifyConceptResponse(choicesObject, usageObject);
+    // return { userConceptView  }
+
+    if(!pretty.userConceptView) return {error:'not pretty',pretty}
+
+
+  // SAVE RESULTS
+  const updatedTopic = { 
+    ...data.currentTopic, 
+    subtitle: choicesObject.message.parsed.topic_subtitle,
+    prompt: usageObject.prompt.messages.map(m=>{return m.content}).join('\n'),
+    concept: pretty.userConceptView,
+    concept_json: choicesObject.message.parsed
+  };
+
+  updateTopic(data.currentTopic.id, updatedTopic, idToken);
+  
+  return {structuredQuery, choicesObject, usageObject, updatedTopic}
+
+}
+
+
+
 
 export async function runConceptQuery(queryJson, idToken) {
   

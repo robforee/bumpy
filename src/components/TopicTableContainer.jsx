@@ -10,7 +10,7 @@ import {
   deleteTopic 
 } from '@/src/app/actions/topic-actions';
 
-import { runOpenAiQuery, runConceptQuery, prepareStructuredQuery_forConceptAnalysis } from '@/src/app/actions/query-actions';
+import { processConceptQuery, runOpenAiQuery, runConceptQuery, structuredQuery_conceptAnalysis } from '@/src/app/actions/query-actions';
 import TopicTable from './TopicTable';
 import TopicModals from './TopicModals';
 import { getIdToken } from "firebase/auth";
@@ -316,11 +316,22 @@ const TopicTableContainer = (
 
 
 
+/*
+  fetch context
+  fetch prompt
+  prep structured query
+  run concept query
+  prettify completions
+  save topic
 
+
+*/
 
   const handleConceptQuery = async (data) => {
+    
     const idToken = await getIdToken(auth.currentUser);
     console.log('handleConceptQuery()')
+
     try {
 
       // GET CONTEXT FROM TOPICS
@@ -330,60 +341,36 @@ const TopicTableContainer = (
 
       // GET PROMPT FROM COMMENTS
       const prompts = await handleFetchPrompts({subType:'concept-prompt'})
-      console.log( '~~~~~~~~~~ prompts[0].prompt.concept-prompt'); // how to format output
+      console.log( '~~~~~~~~~~ CONCEPT-ANALYSIS-PROMPT'); // how to format output
       console.log( prompts[0].prompt); // how to format output
 
-      // FORMAT QUERY
-      const structuredQuery = await prepareStructuredQuery_forConceptAnalysis({ // ON SERVER
+      return {error:'short out'}
+      // PROCESS ON SERVER
+      const response = await processConceptQuery({
         contextArray: chunkyContextArray,
-        conceptQuery: prompts[0].prompt
-      });
+        conceptQuery: prompts[0].prompt,
+        currentTopic: currentTopic
+      }, idToken)
+      // return {structuredQuery, choicesObject, usageObject, updatedTopic}
+      console.log('choicesObject',response.choicesObject)
 
-      // RUN QUERY
-      const completionObject = await runConceptQuery(structuredQuery, idToken); // return an an object
-      const resultFormat = {
-            "id": "chatcmpl-AIvxhDP6bzUsnQM2uLaf64NheMJQp",
-            "object": "chat.completion",
-            "created": 1729076073,
-            "model": "gpt-4o-mini-2024-07-18",
-            "choices": [
-                {
-                    "index": 0,
-                    "message": {
-                        "role": "assistant",
-                        "content": "{\"topic_title\":\"My Plan\",\"topic_subtitle\":\"Comprehensive Management of Personal and Professional Life\",\"topic_concept\":\"This plan outlines my comprehensive approach to managing various aspects of my life, including work, family, home maintenance, and community engagement. It encapsulates the commitment to improve my current circumstances through strategic planning and execution in all relevant areas.\",\"topic_statement\":\"I am attempting to create a sustainable and fulfilling lifestyle that effectively addresses my responsibilities, aspirations, and relationships while generating sufficient income through innovative projects like RedShirt.info.\",\"topic_subtopics\":\"1. Work & Income Management 2. Family Dynamics & Responsibilities 3. Asset Management & Maintenance 4. Community Engagement & Networking 5. Personal Development & Well-being\",\"topic_milestones\":\"1. Finalize the development of RedShirt.info within the next 3 months to kickstart income generation. 2. Establish a comprehensive schedule for family logistics updates to facilitate better communication and organization. 3. Initiate environment maintenance projects once a week to improve home conditions and relieve stress.\",\"topic_questions\":\"1. What specific features will RedShirt.info provide to meet market needs? 2. How can I better balance family responsibilities with work demands? 3. What are the most pressing maintenance issues with my real assets that need immediate attention?\"}",
-                        "refusal": null,
-                        "tool_calls": [],
-                        "parsed": {
-                            "topic_title": "My Plan",
-                            "topic_subtitle": "Comprehensive Management of Personal and Professional Life",
-                            "topic_concept": "This plan outlines my comprehensive approach to managing various aspects of my life, including work, family, home maintenance, and community engagement. It encapsulates the commitment to improve my current circumstances through strategic planning and execution in all relevant areas.",
-                            "topic_statement": "I am attempting to create a sustainable and fulfilling lifestyle that effectively addresses my responsibilities, aspirations, and relationships while generating sufficient income through innovative projects like RedShirt.info.",
-                            "topic_subtopics": "1. Work & Income Management 2. Family Dynamics & Responsibilities 3. Asset Management & Maintenance 4. Community Engagement & Networking 5. Personal Development & Well-being",
-                            "topic_milestones": "1. Finalize the development of RedShirt.info within the next 3 months to kickstart income generation. 2. Establish a comprehensive schedule for family logistics updates to facilitate better communication and organization. 3. Initiate environment maintenance projects once a week to improve home conditions and relieve stress.",
-                            "topic_questions": "1. What specific features will RedShirt.info provide to meet market needs? 2. How can I better balance family responsibilities with work demands? 3. What are the most pressing maintenance issues with my real assets that need immediate attention?"
-                        }
-                    },
-                    "logprobs": null,
-                    "finish_reason": "stop"
-                }
-            ],
-            "usage": {
-                "prompt_tokens": 639,
-                "completion_tokens": 264,
-                "total_tokens": 903,
-                "prompt_tokens_details": {
-                    "cached_tokens": 0
-                },
-                "completion_tokens_details": {
-                    "reasoning_tokens": 0
-                }
-            },
-            "system_fingerprint": "fp_e2bde53e6e"
-          }
 
-      completionObject.prompt = structuredQuery;
-      return completionObject; // TO HANDLE-C
+      if( response.error ){
+        console.log('error returned from server processConceptQuery',response)
+        return {error: response};
+      }
+        
+
+      // // DEBUG OUTPUT (ON SERVER? NO)
+      console.log('response.usageObject.usage\n',response.usageObject.usage);
+      console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
+        'response.usageObject.prompt.messages\n',
+        response.usageObject.prompt.messages.map(m=>{return '~~~~~~~~\N' + m.role + ':\n\t' + m.content}).join('\n')
+
+      );
+
+
+      return response; 
 
     } catch (error) {
       console.error("Error in concept query:", error);
@@ -414,6 +401,8 @@ const TopicTableContainer = (
         handleAddTopic={handleAddTopic}
         handleSaveTopic={handleSaveTopic}
 
+        handleConceptQuery={handleConceptQuery}
+
         handleAddComment={handleAddComment}
 
         handleEditTopic={handleEditTopic}
@@ -421,7 +410,6 @@ const TopicTableContainer = (
         handleAddArtifact={handleAddArtifact}
         handleDeleteTopic={handleDeleteTopic}
         handleAutoSubtopics={handleAutoSubtopics}
-        handleConceptQuery={handleConceptQuery}
         handleFetchContext={handleFetchContext}
       />
 

@@ -64,7 +64,7 @@ export async function updateTopic(topicId, updatedData, idToken) {
   const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
 
   if (!currentUser) {
-    throw new Error('User not authenticated');
+    throw new Error('User not authenticated',idToken);
   }
   
   const db = getFirestore(firebaseServerApp);
@@ -78,9 +78,12 @@ export async function updateTopic(topicId, updatedData, idToken) {
     }
 
     // also cleaned in TopicTableContainer
-    console.log('clean inputs')
+    console.log('clean inputs whhile updating topic on server')
     const updatableFields = ['title', 'topic_type', 'topic_sub_type',
       'subtitle', 'text', 'prompt', 'concept', 'concept_json', 'topic_type'];
+    
+    // warn if not in list
+    console.warn("Non-updatable fields:",Object.keys(updatedData).filter(key => !updatableFields.includes(key)));
 
     const dataToUpdate = updatableFields.reduce((acc, field) => {
       if (updatedData[field] !== undefined) {
@@ -92,6 +95,7 @@ export async function updateTopic(topicId, updatedData, idToken) {
     dataToUpdate.updated_at = serverTimestamp();
 
     await updateDoc(topicRef, dataToUpdate);
+    console.log('// updateTopic(',topicId,')',dataToUpdate);
 
     return { id: topicId, ...convertTimestamps(updatedData) };
   } catch (error) {

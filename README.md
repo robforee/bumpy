@@ -1,4 +1,52 @@
-# SECRETS
+# Class Heirarchy
+RootLayout
+    TopicPage
+        TopicTableContainer
+            TopicTable
+                TopicHeaderRow
+                TopicRow
+
+# Concept Query
+RootLayout{
+    TopicPage{
+        TopicTableContainer{
+            TopicTable{
+~~~~~~~~~~~~~~~
+TopicHeaderRow{ 
+    TopicTableContainer.handelContextQuery{
+        contextArray = ./handleFetchContext{ from state* }
+        conceptQuery = ./handleFetchPrompts( from state* )
+        ServerActions.query-actions.prepareStructuredQuery_forConceptAnalysis( contextArray, conceptQuery ){
+            StructuredQuery Classes
+            Concept, Topic, Question, Milestone, Subtopic
+            return gptQuery{}
+        }
+        ServerActions.query-actions.runConceptQuery
+        return completionObject()
+    }
+    prettify completionObject
+    ./convertToMarkdown
+    handleSaveTopic{
+        ServerActions.topic-actions.updateTopic{ sanitize inputs }
+    }
+}
+~~~~~~~~~~~~~~~
+                TopicRow{}
+            }
+            TopicModals{}
+        }
+    }
+}
+ServerActions{
+    topic-actions{}
+    query-actions{}
+}
+## concept query path
+* topic header row | handleSubmitConceptQuery{ 
+                        handleConceptQuery() runs on server
+                        process response convert_to_markdown( sub-topics, milestones, questions)
+                        handleSaveTopic(){// container(clean, updateTopic{server})}
+                        }
 ## configure
 apphosting.yaml - contains mapping from variable to secret-manager property
 N-gcloud - has commands to add and permission properties

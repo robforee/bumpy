@@ -53,19 +53,21 @@ const TopicTable = ({
 
         handleSaveTopic={handleSaveTopic}
         handleEditTopic={handleEditTopic}
+
+        handleFetchContext={handleFetchContext}
+        handleConceptQuery={handleConceptQuery}
+
         handleAddTopic={handleAddTopic}
         handleAddComment={handleAddComment}
         handleAddPrompt={handleAddPrompt}
         handleAddArtifact={handleAddArtifact}
         handleAutoSubtopics={handleAutoSubtopics}
-        handleConceptQuery={handleConceptQuery}
-        handleFetchContext={handleFetchContext}
 
         rowHeight={rowHeight}
       />
 
       {/* LOOP THROUGH TOPICS */}
-      <div className="px-6">SUB-TOPICS of {currentTopic.title} </div>
+      {/* <div className="px-6">SUB-TOPICS of {currentTopic.title} </div> */}
       {topics.length === 0 ? <div className="px-8 py-2 text-red-800">no sub-topics found</div> : ''}
       
       {topics.slice(0, 100).map((topic) => (

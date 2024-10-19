@@ -163,71 +163,17 @@ const TopicHeaderRow = ({
 
     try{
       
-      // BUILD, RUN, RETURN QUERY; called by  TopicTableContainer
+      // TopicTableContainer.handleConceptQuery
+      const response = await handleConceptQuery({});
 
-      const completionObject = await handleConceptQuery({});
-      const { choices: [firstChoice, ...otherChoices], ...restOfCompletion } = completionObject;  
-      const choicesObject = firstChoice ;
-      const choicesObject2 = { choices: [firstChoice] };
-      const usageObject = { ...restOfCompletion, choices: otherChoices };
-        
-
-      // REPORT USAGE
-      console.log('usageObject.usage\n',usageObject.usage);
-      console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
-        'usageObject.prompt.messages\n',
-        usageObject.prompt.messages.map(m=>{return '~~~~~~~~\N' + m.role + ':\n\t' + m.content}).join('\n')
-
-      );
-      console.log('choicesObject\n',choicesObject)
-      //console.log('choicesObject.message\n',choicesObject.message)
-      console.log('choicesObject.message.parsed',choicesObject.message.parsed)
-      //console.log('choicesObject.message.content',choicesObject.message.content)
-      //console.log('choicesObject.message.finish_reason',choicesObject.message.finish_reason)
-
-      // PRETTIFY PARSED STRUCTURED RESPONSE for TEXT FIELD
-      let textResponse = '';
-      Object.entries( choicesObject.message.parsed ).forEach(([key, value]) => {
-        if(key === 'topic_title') next;
-        if(key === 'topic_subtitle') next;
-        textResponse += '# ' + key + '\n';
-        textResponse += value + '\n\n';
-      });
-
-      // THE topic.CONCEPT ('concept', 'statement','subtopics','milestones','questions')
-      let sections = [
-        'title', 'subtitle','concept', 'statement','subtopics','milestones','questions'
-      ]
-      let userConceptView = '';
-        userConceptView += '\n# THIS CONCEPT\n';
-        userConceptView += choicesObject.message.parsed.topic_concept;
-
-        userConceptView += '\n# Statement of purpose\n';
-        userConceptView += choicesObject.message.parsed.topic_statement;
-
-        userConceptView += '\n# Subtopics \n * ';
-        userConceptView += convertToMarkdown(choicesObject.message.parsed.topic_subtopics);
-
-        userConceptView += '\n# Milestones\n * ';
-        userConceptView += choicesObject.message.parsed.topic_milestones.map(i=>{return i.milestone}).join('\n * ') + '\n'; //.slice(0, -1);
-
-        userConceptView += '\n# Questions\n * ';
-        userConceptView += choicesObject.message.parsed.topic_questions.map(i=>{return i.question}).join('\n * ') + '\n'; //.slice(0, -1);
-
-      console.log('\nuserConceptView\n',
-        userConceptView
-      )
-            
-      const updatedTopic = { 
-        ...currentTopic, 
-        // title: choicesObject.message.parsed.topic_title,
-        subtitle: choicesObject.message.parsed.topic_subtitle,
-        prompt: usageObject.prompt.messages.map(m=>{return m.content}).join('\n'),
-        concept: userConceptView,
-        concept_json: choicesObject.message.parsed
-      };
-
-      handleSaveTopic(updatedTopic);    
+      if(response.error){
+        console.log('error here',JSON.stringify(response,null,2))
+        return <div>Error: {response.error}</div>
+      }
+      // return {structuredQuery, choicesObject, usageObject, updatedTopic}
+      console.log('RESPONSE FROM HANDLE CONCEPT QUERY')
+      console.log(response.structuredQuery.messages) // the query
+      console.log(response.choicesObject.message.parsed) // the response
 
     } catch (error) {
       console.error("Error in TopicHeaderRow.handleSubmitConceptQuery:", error);
@@ -265,7 +211,7 @@ const TopicHeaderRow = ({
           <button
             onClick={handleSubmitConceptQuery}
             className="ml-2 text-gray-500 hover:text-gray-700"
-            title="Propose structure" 
+            title="GO ~ GO ~ GO" 
             disabled={isLoading}
           >
             <FiZap size={24} />

@@ -59,9 +59,13 @@ N-gcloud - has commands to add and permission properties
 
 
 # AUTH
-remove all mentions of lib/firebase/config.js
+See [README-auth.md](./README-auth.md) for detailed documentation on:
+- Authentication flow and user management
+- Token storage and refresh mechanisms
+- Scope management and authorization
+- Available auth-related functions
 
-# Hosting Error Logs
+## Hosting Error Logs
 https://console.cloud.google.com/logs/query;query=resource.type%20%3D%20%22cloud_run_revision%22%0Aresource.labels.service_name%20%3D%20%22bumpy-roads%22%0Aresource.labels.location%20%3D%20%22us-central1%22%0A%20severity%3E%3DDEFAULT;storageScope=project;cursorTimestamp=2024-10-10T15:01:45.133489Z;duration=PT1H?authuser=0&chat=true&hl=en&project=analyst-server
 
 # Rebuild Project

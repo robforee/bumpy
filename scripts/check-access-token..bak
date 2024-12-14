@@ -6,8 +6,6 @@ const debug = false; // show operationss  details
 const showMsgs = false;  // show gmail results
 let expireTime = '' // info for peep
 let userScopes = []
-const reauthOnScopeMismatch = true;
-
 // required for use in generateAuthUrl();
 const defaultScopes = [
   'https://www.googleapis.com/auth/calendar',
@@ -103,15 +101,9 @@ async function getTokenInfo(accessToken) {
 async function getUserEmail(accessToken) {
   const oauth2Client = getOAuth2Client();
   oauth2Client.setCredentials({ access_token: accessToken });
-  
-  try {
-    const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
-    const { data } = await oauth2.userinfo.get();
-    return data.email;
-  } catch (error) {
-    console.error('Error getting user email:', error);
-    throw error;
-  }
+  const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+  const { data } = await oauth2.userinfo.get();
+  return data.email;
 }
 
 async function storeTokens(userId, accessToken, refreshToken, expiryDate, email) {
@@ -139,7 +131,10 @@ async function storeTokens(userId, accessToken, refreshToken, expiryDate, email)
 }
 
 async function refreshTokenIfNeeded(userId, forceRefresh = false) {
+  
+  
   if(!silent) console.log('   db.collection(user_tokens).doc(userId)')
+
   const userTokensRef = db.collection('user_tokens').doc(userId);
   const tokenDoc = await userTokensRef.get();
   
@@ -149,14 +144,13 @@ async function refreshTokenIfNeeded(userId, forceRefresh = false) {
   }
   
   const { accessToken, refreshToken, expirationTime, scopes } = tokenDoc.data();
+
   userScopes = scopes;
 
-  const someMinutes = 60000 * 5;
+  const someMinutes = 60000 * 5;// minute
   if(!silent) console.log('   if( forceRefresh || date >  expirationTime ')
-  
-  let currentAccessToken;
-  
   if (forceRefresh || Date.now() >= expirationTime - someMinutes) {
+
     if(!silent) console.log('      REFRESH TOKEN')
     const oauth2Client = getOAuth2Client();
     if(!silent) console.log('      decrypt(refreshToken)');
@@ -183,99 +177,19 @@ async function refreshTokenIfNeeded(userId, forceRefresh = false) {
       );
 
       expireTime = credentials.expiry_date;
-      currentAccessToken = credentials.access_token;
+      return credentials.access_token;
+      
+      // GaxiosError: invalid_grant
     } catch (error) {
       console.error('Error refreshing token:', error);
       return null;
     }
-  } else {
+  }else{
     if(!silent) console.log('   valid token')
     expireTime = expirationTime;
-    currentAccessToken = decrypt(accessToken);
   }
   
-  // Verify token scopes after refresh or retrieval
-  try {
-    if(!silent) console.log('   Verifying token scopes');
-    const tokenInfo = await checkTokenScopes(currentAccessToken);
-    
-    // Check for missing required scopes
-    const missingScopes = defaultScopes.filter(scope => 
-      !tokenInfo.scopes.includes(scope)
-    );
-    
-    if (missingScopes.length > 0) {
-      console.warn('Warning: Missing required scopes:', missingScopes.join(', '));
-      
-      if (reauthOnScopeMismatch) {
-        if(!silent) console.log('Scope mismatch detected - initiating reauthorization');
-        // Delete existing token to force reauth
-        await userTokensRef.delete();
-        return null; // This will trigger reauth flow in checkAccessToken
-      }
-    }
-
-    if(!silent) {
-      console.log('Token scope verification:');
-      console.log('- Available scopes:', tokenInfo.scopes.join(', '));
-      console.log('- Expires in:', tokenInfo.expiresIn, 'seconds');
-    }
-  } catch (error) {
-    console.error('Error verifying token scopes:', error);
-    if (reauthOnScopeMismatch) {
-      return null; // Trigger reauth on verification error
-    }
-  }
-  
-  return currentAccessToken;
-}
-
-async function checkTokenScopes(accessToken) {
-  const url = `https://oauth2.googleapis.com/tokeninfo`;
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error(`Token validation failed: ${response.status}`);
-  }
-
-  const tokenInfo = await response.json();
-  return {
-    scopes: tokenInfo.scope ? tokenInfo.scope.split(' ') : [],
-    expiresIn: tokenInfo.expires_in,
-    email: tokenInfo.email,
-    userId: tokenInfo.sub,
-    issuedTo: tokenInfo.issued_to
-  };
-}
-
-async function verifyTokenAfterRefresh(userId, accessToken) {
-  try {
-    const tokenInfo = await checkTokenScopes(accessToken);
-    
-    // Compare against defaultScopes
-    const missingScopes = defaultScopes.filter(scope => 
-      !tokenInfo.scopes.includes(scope)
-    );
-
-    if (missingScopes.length > 0) {
-      console.log('Warning: Token is missing the following scopes:', missingScopes);
-    }
-
-    console.log(`Token verification for ${userId}:`);
-    console.log('- Scopes:', tokenInfo.scopes.join('\n  '));
-    console.log('- Expires in:', tokenInfo.expiresIn, 'seconds');
-    console.log('- Email:', tokenInfo.email);
-    
-    return tokenInfo;
-  } catch (error) {
-    console.error('Token verification failed:', error.message);
-    return null;
-  }
+  return decrypt(accessToken);
 }
 
 async function promptForAuthorizationCode(userId) {
@@ -298,28 +212,14 @@ async function promptForAuthorizationCode(userId) {
 async function saveNewTokens(userId, code) {
   try {
     const oauth2Client = getOAuth2Client();
+    
     const { tokens } = await oauth2Client.getToken(code);
-    
-    // Set credentials before making any API calls
-    oauth2Client.setCredentials(tokens);
-    
-    // Now get user email with proper authentication
     const email = await getUserEmail(tokens.access_token);
-    
-    // Store tokens with email
-    await storeTokens(
-      userId, 
-      tokens.access_token, 
-      tokens.refresh_token, 
-      tokens.expiry_date, 
-      email
-    );
-    
-    if (!silent) console.log('New tokens obtained and stored successfully');
+    await storeTokens(userId, tokens.access_token, tokens.refresh_token, tokens.expiry_date, email);
+    console.log('New tokens obtained and stored successfully');
 
-    // Get token info after storing
-    const tokenInfo = await getTokenInfo(tokens.access_token);
-    if (!silent) console.log('New token info:', tokenInfo);
+    const newTokenInfo = await getTokenInfo(tokens.access_token);
+    console.log('New token info:', newTokenInfo);
 
     return tokens;
   } catch (tokenError) {
@@ -344,9 +244,7 @@ async function checkAccessToken(userId, forceRefresh = false) {
     const newTokens = await saveNewTokens(userId, authorizationCode);
     refreshedAccessToken = newTokens.access_token;
   }
-  
-  //if(givePeep) console.log(`valid token for\n\t ${userId}\n\t expires ${new Date(expireTime).toLocaleString()}`);
-  if(givePeep) console.log(`valid token for\n\t ${userId}\n\t expires ${expireTime}`);
+  if(givePeep) console.log(`valid token for\n\t ${userId} expires\n\t ${new Date(expireTime).toLocaleString()}`);
 
 
   try {
@@ -404,7 +302,7 @@ async function checkAccessToken(userId, forceRefresh = false) {
 
 async function main() {
   let userUid = 'e660ZS3gfxTXZR06kqn5M23VCzl2'; // robert@redshirt.info
-      //userUid = 'CtAyzps80VXRzna32Kdy0NHYcPe2'; // robforee@gmail.com
+      userUid = 'CtAyzps80VXRzna32Kdy0NHYcPe2'; // robforee@gmail.com
   await checkAccessToken(userUid, false);
   await admin.app().delete();
 }

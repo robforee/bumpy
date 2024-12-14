@@ -13,10 +13,12 @@ export function onAuthStateChanged(cb) {
   return _onAuthStateChanged(auth, cb);
 }
 
-export async function signInWithGoogle(scopes) {
+export async function signInWithGoogle(scopes = []) {
   const provider = new GoogleAuthProvider();
 
-  scopes.forEach(scope => provider.addScope(scope));
+  if (scopes.length > 0) {
+    scopes.forEach(scope => provider.addScope(scope));
+  }
 
   // Add these parameters to force account selection
   provider.setCustomParameters({

@@ -29,3 +29,20 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
+/*
+structured queries
+
+
+authentication
+
+
+data storage
+
+
+prompt passing
+
+
+
+
+
+*/

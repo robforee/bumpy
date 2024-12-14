@@ -184,7 +184,7 @@ const TopicRow = ({
             className="pl-12 pr-6 py-2 bg-gray-100 cursor-pointer"
             onClick={() => handleEditProperty('text')}
           >
-            <h3 className="text-lg font-semibold mb-2">topic.text of {topic.title} </h3>
+            {/* <h3 className="text-lg font-semibold mb-2">topic.text of {topic.title} </h3> */}
             {!topic.text ? (
               <div className="px-0 py-2 text-red-800">No text content available</div>
             ) : (

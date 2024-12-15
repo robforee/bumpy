@@ -4,32 +4,34 @@
 
 ### Sign In Flow (`handleSignIn` in `Header.jsx`)
 1. User clicks sign in button
-2. `handleSignIn` in `Header.jsx` initiates the flow with required scopes:
-   - calendar
-   - gmail.modify
-   - gmail.compose
-   - drive
-   - drive.file
-   - drive.appdata
-   - chat.messages
-   - chat.spaces
-   - contacts
 
-3. `signInWithGoogle` (`firebaseAuth.js`)
-   - Creates GoogleAuthProvider with scopes
-   - Sets `prompt: 'select_account'` parameter
-   - Calls `signInWithPopup` from Firebase Auth
-     1. Opens Google account selection popup
-     2. User selects account
-     3. Google OAuth checks if app needs authorization:
-        - First time: Shows consent screen for all scopes
-        - Returning user: Shows consent only for new/unauthorized scopes
-        - Fully authorized: Proceeds directly
-     4. Google OAuth creates/refreshes tokens
-   - Returns tokens (accessToken, refreshToken) and user info
+2. Initial Sign-in (`signInWithGoogle` without scopes)
+   - Creates GoogleAuthProvider without scopes
+   - Calls `signInWithPopup` from Firebase Auth for identification only
+   - User selects account from popup
+   - Returns initial tokens and user info
 
-4. Token Storage (`auth-actions.js`)
-   - `storeTokens_fromClient` called with (userId, accessToken, refreshToken, idToken, scopes)
+3. Scope Resolution
+   - Retrieves user's ID token
+   - Calls `getScopes()` to fetch previously authorized scopes from Firestore
+   - If fetch fails, proceeds with empty scope list
+
+4. Scoped Sign-in (if needed)
+   - If user has previously authorized scopes:
+     - Calls `signInWithGoogle` again with those scopes
+     - Google OAuth may show consent screen for any new/unauthorized scopes
+     - Returns new tokens with proper scope access
+   - If user has no scopes (new user):
+     - Proceeds with initial tokens
+     - No additional authorization needed
+
+5. Token Storage (`auth-actions.js`)
+   - `storeTokens_fromClient` called with:
+     - userId
+     - accessToken
+     - refreshToken
+     - idToken
+     - authorized scopes (empty array for new users)
    - Encrypts tokens using AES-256-CBC
    - Stores in Firestore `/user_tokens` collection with:
      - Encrypted access token
@@ -39,7 +41,7 @@
      - Creation time
      - User email
 
-5. User Profile Management
+6. User Profile Management
    - `refreshUserProfile` from `UserProvider.js` is called
    - Triggers `loadUserProfile` which:
      - Calls `userService.getUserProfile(uid)`
@@ -48,7 +50,7 @@
        - Creates new user document in Firestore `/users`
        - Initializes topic root for new user
 
-6. Post-Authentication
+7. Post-Authentication
    - On success: Redirects to dashboard
    - On failure: Handles various error cases
      - Popup blocked: Redirects to enable-popups
@@ -86,24 +88,102 @@
    - Profile updates
    - Stored in Firestore `/users` collection
 
+## Client/Server Request Architecture
+
+### Directory Structure
+- `src/app/actions/`: Server-side actions (Next.js Server Actions)
+- `src/lib/firebase/`: Client/server Firebase initialization and utilities
+  - `clientApp.js`: Client-side Firebase initialization (for auth only)
+  - `serverApp.js`: Server-side Firebase initialization
+  - `firebaseAuth.js`: Client-side auth operations
+
+### Request Rules
+1. All Firebase Data Operations
+   - ALWAYS use server actions in `auth-actions.js`
+   - Benefits:
+     - Consistent data validation
+     - Rate limiting capability
+     - Audit trail of operations
+     - Additional security layer
+     - Easier debugging
+   - Example: `storeTokens_fromClient()` in `auth-actions.js`
+
+2. Client-Side Auth Only
+   - Use `firebaseAuth.js` ONLY for:
+     - Google sign-in popup
+     - Auth state management
+     - Token retrieval
+   - Never use for direct data operations
+
+3. Naming Conventions
+   - Server actions: Base name (e.g., `storeTokens`)
+   - Client-to-server bridges: Base name + `_fromClient` (e.g., `storeTokens_fromClient`)
+   - Auth operations: In `firebaseAuth.js` (e.g., `signInWithGoogle`)
+
+4. Security Requirements
+   - Never expose service account credentials to client
+   - All Firebase data operations must go through server actions
+   - Validate all data on server before storage
+   - Use Firebase Security Rules as backup, not primary security
+
 ## Scope Management
 
 ### Authorization States
-- First-time login: Google will ask for authorization for all requested scopes
-- Subsequent logins: 
-  - If previously authorized all scopes: Only account selection needed
-  - If new scopes added or some scopes not authorized: Will prompt for authorization again
-- Authorization state is managed by Google OAuth, not the application
-- Tokens are still refreshed and stored even when no re-authorization is needed
+- First-time users start with no scopes
+- Returning users:
+  - First authenticate without scopes for identification
+  - Then re-authenticate with their previously authorized scopes
+  - Only see consent screen for new/unauthorized scopes
+- Authorization state is managed by both:
+  - Google OAuth (for consent and token generation)
+  - Firestore `/user_scopes` collection (for persistence)
 
 ### Scope Storage
 - Authorized scopes are stored in Firestore `/user_scopes` collection
-- Each user document contains their authorized scopes
+- Each user document contains their authorized scopes array
+- Scopes are fetched during sign-in to ensure proper authorization
+
+### Available Google API Scopes
+
+These are the Google API scopes that can be requested through the server actions. Add these as needed when implementing new Google API features:
+
+```javascript
+const AVAILABLE_SCOPES = [
+  'https://www.googleapis.com/auth/calendar',      // Calendar access
+  'https://www.googleapis.com/auth/gmail.modify',  // Read/write Gmail
+  'https://www.googleapis.com/auth/gmail.compose', // Compose Gmail
+  'https://www.googleapis.com/auth/drive',         // Full Drive access
+  'https://www.googleapis.com/auth/drive.file',    // Limited Drive access
+  'https://www.googleapis.com/auth/drive.appdata', // App-specific Drive data
+  'https://www.googleapis.com/auth/chat.messages', // Chat messages
+  'https://www.googleapis.com/auth/chat.spaces',   // Chat spaces
+  'https://www.googleapis.com/auth/contacts'       // Contacts access
+];
+```
+
+### Scope Usage Guidelines
+1. Start users with no scopes on initial sign-in
+2. Request specific scopes through server actions as needed
+3. Store authorized scopes in Firestore
+4. Re-authenticate with stored scopes on subsequent sign-ins
+
+### Adding New Scopes
+1. Add the scope to the server actions that need it
+2. Update Firestore security rules if needed
+3. Document the new scope's purpose and usage
+4. Test the scope with the Google OAuth consent screen
 
 ### Available Functions (`auth-actions.js`)
 - `getScopes()`: Retrieve current user's authorized scopes
+  - Used during sign-in flow
+  - Returns empty array for new users
 - `addScope(scope)`: Request additional authorization for a new scope
+  - Validates scope against allowed list
+  - Updates user's scope list in Firestore
+  - User will need to re-authenticate to authorize new scope
 - `deleteScope(scope)`: Remove authorization for a scope
+  - Updates user's scope list in Firestore
+  - Next sign-in will not request removed scope
 
 ### Valid Scopes
 ```
@@ -119,13 +199,40 @@
 ```
 
 ### Adding New Scopes
-- Call `addScope()` with the desired scope
-- User will need to re-authenticate to authorize the new scope
-- After authorization, the new scope is stored in `/user_scopes`
-- Subsequent sign-ins will request all stored scopes
+1. Check current scopes via `getScopes()`
+2. Call `addScope()` with the desired new scope
+3. User signs out
+4. On next sign-in:
+   - Initial authentication identifies user
+   - Scoped authentication includes new scope
+   - User authorizes new scope via Google consent screen
+   - New scope is available after authorization
 
-**Note:** When a user needs additional scopes:
-1. First sign-in identifies the user
-2. Check authorized scopes via `getScopes()`
-3. Request additional scopes via `addScope()`
-4. User re-authenticates to approve new scopes
+## Scope Management UI
+
+The application provides a user-friendly interface for managing Google API scopes through the Settings page:
+
+### Accessing Settings
+- Click on your profile picture in the header
+- Select "Settings" from the user menu
+- The settings page shows both current and available scopes
+
+### Features
+- View currently authorized scopes with descriptions
+- Add new scopes from available options
+- Remove existing scopes
+- Automatic re-authentication when scopes change
+- Clear error handling and loading states
+
+### Implementation Details
+- Located at `/settings` route
+- Uses server actions for scope management
+- Maintains scope state in Firestore
+- Updates authentication tokens after scope changes
+- Provides real-time feedback on operations
+
+### Best Practices
+1. Add scopes incrementally as needed
+2. Remove unused scopes for better security
+3. Review scope descriptions before adding
+4. Check for successful re-authentication after changes

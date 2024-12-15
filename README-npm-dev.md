@@ -1,3 +1,13 @@
+npm run dev
+
+\# npm run emulators we are not using emulators
+
+# test and deploy
+rm -rf .next
+npm run build
+git push 
+
+
 ### Friendly Eats with Next.js + Firebase
 
 The codelab has the full instructions, but as a quick start, you can do this.

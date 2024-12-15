@@ -141,76 +141,89 @@ export async function deleteTopic(topicId,idToken) {
 }
 
 export async function fetchTopicsByCategory(categories, parentId, idToken, subType) {
+  // Input validation
+  if (!idToken) {
+    throw new Error('Authentication token is required');
+  }
+
   const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
   if (!currentUser) {
     throw new Error('User not authenticated');
+  }
+
+  // Validate categories parameter
+  if (!categories && categories !== '-all' && categories !== '-topic') {
+    throw new Error('Categories parameter is required');
+  }
+
+  // If categories is an array, ensure it's not empty
+  if (Array.isArray(categories) && categories.length === 0) {
+    throw new Error('Categories array cannot be empty');
   }
   
   const db = getFirestore(firebaseServerApp);
   
   try {
     const topicsRef = collection(db, 'topics');
-
     let q;
     
     if (categories === '-all') {
+      // For -all category, we don't need parentId
       q = query(
         topicsRef,
-        where('topic_type', '!=', 'a-setting'),
-        //where('owner', '==', currentUser.uid)
+        where('topic_type', '!=', 'a-setting')
       );
     } else if (categories === '-topic') {
+      // For -topic category, we need parentId
+      if (!parentId) {
+        // Return empty array instead of throwing error
+        return [];
+      }
       q = query(
         topicsRef,
         where('topic_type', '!=', 'topic'),
-        where('parents', 'array-contains', parentId),
-        //where('owner', '==', currentUser.uid)
+        where('parents', 'array-contains', parentId)
       );
-    } else if (subType !== undefined) {
+    } else if (subType !== undefined && subType !== null) {
+      if (!parentId) {
+        // Return empty array instead of throwing error
+        return [];
+      }
       q = query(
         topicsRef,
-        where('topic_type', 'in', categories),
+        where('topic_type', 'in', Array.isArray(categories) ? categories : [categories]),
         where('topic_sub_type', '==', subType),
-        where('parents', 'array-contains', parentId),
-        //where('owner', '==', currentUser.uid)
+        where('parents', 'array-contains', parentId)
       );
-    }else {
-      q = query(
-        topicsRef,
-        where('topic_type', 'in', categories),
-        where('parents', 'array-contains', parentId),
-        //where('owner', '==', currentUser.uid)
-      );
+    } else {
+      if (!parentId) {
+        // For regular categories without parentId, just filter by topic_type
+        q = query(
+          topicsRef,
+          where('topic_type', 'in', Array.isArray(categories) ? categories : [categories])
+        );
+      } else {
+        // If parentId is provided, include it in the query
+        q = query(
+          topicsRef,
+          where('topic_type', 'in', Array.isArray(categories) ? categories : [categories]),
+          where('parents', 'array-contains', parentId)
+        );
+      }
     }
 
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => {
       const data = doc.data();
-      // Convert Firestore Timestamp to JavaScript Date if necessary
-      if (data.updated_at) {
-        data.updated_at = data.updated_at.toDate();
-      }
-      if (data.created_at) {
-        data.created_at = data.created_at.toDate();
-      }
-      return { id: doc.id, ...data };
+      return {
+        id: doc.id,
+        ...convertTimestamps(data)
+      };
     });
   } catch (error) {
     console.error('Error fetching topics:', error);
-    throw error;
+    throw new Error(`Failed to fetch topics: ${error.message}`);
   }
-}
-
-function convertTimestamps(obj) {
-  const newObj = { ...obj };
-  for (const [key, value] of Object.entries(newObj)) {
-    if (value instanceof Timestamp) {
-      newObj[key] = value.toDate().toISOString();
-    } else if (typeof value === 'object' && value !== null) {
-      newObj[key] = convertTimestamps(value);
-    }
-  }
-  return newObj;
 }
 
 export async function fetchTopic(topicId, idToken) {
@@ -271,4 +284,16 @@ export async function fetchTopic(topicId, idToken) {
       error: error.message || 'Failed to fetch topic'
     };
   }
+}
+
+function convertTimestamps(obj) {
+  const newObj = { ...obj };
+  for (const [key, value] of Object.entries(newObj)) {
+    if (value instanceof Timestamp) {
+      newObj[key] = value.toDate().toISOString();
+    } else if (typeof value === 'object' && value !== null) {
+      newObj[key] = convertTimestamps(value);
+    }
+  }
+  return newObj;
 }

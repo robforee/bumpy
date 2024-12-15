@@ -108,19 +108,50 @@
      - Easier debugging
    - Example: `storeTokens_fromClient()` in `auth-actions.js`
 
-2. Client-Side Auth Only
+2. Client/Server Authentication Pattern
+   - Always handle Firebase Authentication on the client side
+   - Never try to access Firebase Auth's `currentUser` on the server
+   - Follow this pattern:
+     ```javascript
+     // Client Component
+     async function handleClientAction() {
+       // 1. Get authentication info on client side
+       const auth = getAuth();
+       if (!auth.currentUser) {
+         throw new Error('Not authenticated');
+       }
+       const idToken = await auth.currentUser.getIdToken();
+
+       // 2. Pass only the idToken to server
+       const result = await serverAction(idToken);
+     }
+
+     // Server Action
+     export async function serverAction(idToken) {
+       // 3. Verify token and get user info on server
+       const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
+       // Perform secure operations...
+     }
+     ```
+   - Key Points:
+     - Client side handles: auth state, idToken generation, auth UI
+     - Server side handles: token verification, user info retrieval, secure operations
+     - Never "dot into" client modules from server components
+     - Always pass idToken as a parameter to server actions
+
+3. Client-Side Auth Only
    - Use `firebaseAuth.js` ONLY for:
      - Google sign-in popup
      - Auth state management
      - Token retrieval
    - Never use for direct data operations
 
-3. Naming Conventions
+4. Naming Conventions
    - Server actions: Base name (e.g., `storeTokens`)
    - Client-to-server bridges: Base name + `_fromClient` (e.g., `storeTokens_fromClient`)
    - Auth operations: In `firebaseAuth.js` (e.g., `signInWithGoogle`)
 
-4. Security Requirements
+5. Security Requirements
    - Never expose service account credentials to client
    - All Firebase data operations must go through server actions
    - Validate all data on server before storage

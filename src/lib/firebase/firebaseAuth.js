@@ -26,48 +26,52 @@ export async function signInWithGoogle(scopes = []) {
   });
 
   try {
-    
     const result = await signInWithPopup(auth, provider);
-
     const user = result.user;
     const credential = GoogleAuthProvider.credentialFromResult(result);
+
+    if (!credential) {
+      return {
+        success: false,
+        error: 'No credential returned'
+      };
+    }
+
     const accessToken = credential.accessToken;
     const refreshToken = user.refreshToken;
 
-    // return the tokens TO THE CALLING COMPONENT (Header)
-    return { 
-      success: true, 
-      user, 
-      action: 'DASHBOARD',
-      tokens: { accessToken, refreshToken, userId: user.uid },
-      scopes: scopes
+    if (!accessToken) {
+      return {
+        success: false,
+        error: 'No access token returned'
+      };
+    }
+
+    return {
+      success: true,
+      user,
+      tokens: {
+        accessToken,
+        refreshToken
+      }
     };
-    
 
   } catch (error) {
-    console.error("Error signing in with Google", error);
-    
-    if (error.code === 'auth/popup-closed-by-user') {
-      console.log("Popup closed by user");
-      return { success: false, error, action: 'STAY' };
-    } else if (error.code === 'auth/cancelled-popup-request') {
-      console.log("Auth cancelled");
-      return { success: false, error, action: 'STAY' };
-    } else if (error.code === 'auth/popup-blocked') {
-      return { success: false, error, action: 'ENABLE_POPUPS' };
-    } else {
-      return { success: false, error, action: 'AUTH_ERROR' };
-    }
+    console.error('Error in signInWithGoogle:', error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
 }
 
 export async function signOut() {
   try {
     await auth.signOut();
-    return { success: true, action: 'HOME' };
+    return true;
   } catch (error) {
-    console.error("Error signing out with Google", error);
-    return { success: false, error, action: 'AUTH_ERROR' };
+    console.error('Error signing out:', error);
+    return false;
   }
 }
 

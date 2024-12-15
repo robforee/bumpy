@@ -1,11 +1,13 @@
-// src/components/AddTopicModal.jsx]
+// src/components/AddTopicModal.jsx
 "use client"
 
 import React, { useState } from 'react';
 import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { Textarea } from '@/src/components/ui/textarea';
-import { addTopic } from '@/src/lib/topicFirebaseOperations';
+import { addTopic_fromClient } from '@/src/app/actions/topic-client-actions';
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
 import { useUser } from '@/src/contexts/UserProvider';
 
 const AddTopicModal = ({ onClose, parentId, topicType, onTopicAdded }) => {
@@ -20,10 +22,15 @@ const AddTopicModal = ({ onClose, parentId, topicType, onTopicAdded }) => {
     }
 
     try {
-      const result = await addTopic(user.uid, parentId, { topic_type: topicType, title, text });
-      console.log('New topic added:', result.id);
-      onClose();
-      onTopicAdded();
+      const idToken = await getIdToken(auth.currentUser);
+      const result = await addTopic_fromClient(parentId, { topic_type: topicType, title, text }, idToken);
+      if (result.success) {
+        console.log('New topic added:', result.id);
+        onClose();
+        onTopicAdded();
+      } else {
+        console.error("Error adding new topic:", result.error);
+      }
     } catch (error) {
       console.error("Error adding new topic:", error);
     }

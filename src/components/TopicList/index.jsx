@@ -1,12 +1,14 @@
-// src/components/TopicList/index.jsx
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { db_viaClient } from '@/src/lib/firebase/clientApp.js';
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
 import { devConfig } from '@/src/config/devConfig';
 import { useUser } from '@/src/contexts/UserProvider';
-import { fetchTopicsByCategory, fetchRelationshipTopics, updateTopicTitle, onTopicsChange } from '@/src/lib/topicFirebaseOperations';
+import { fetchTopicsByCategory_fromClient, fetchRelationshipTopics_fromClient } from '@/src/app/actions/topic-client-actions';
+import { setupTopicChangeListener_fromClient } from '@/src/app/actions/topic-realtime-actions';
+import { setupRealtimeListener } from '@/src/lib/topic-realtime';
 import AddTopicModal from '../AddTopicModal';
 import { Dialog } from '@/src/components/ui/dialog';
 import { Button } from '@/src/components/ui/button';
@@ -29,47 +31,81 @@ const TopicList = ({ categories, type, parentId, showAddButtons = true, refreshT
   const rowHeight = devConfig.topicList.rowHeight;
 
   const fetchTopics = useCallback(async () => {
+    if (!user) {
+      console.error("User must be logged in to fetch topics");
+      return;
+    }
+
     try {
       setLoading(true);
-      let topicsData;
+      const idToken = await getIdToken(auth.currentUser);
+      let result;
       
       if (type === 'relationships') {          
-        topicsData = await fetchRelationshipTopics(parentId);
+        result = await fetchRelationshipTopics_fromClient(parentId, idToken);
       } else if (type === 'category') {          
         console.log('get categories')
-        topicsData = await fetchTopicsByCategory(categories, parentId);
-        console.log(topicsData);
+        result = await fetchTopicsByCategory_fromClient(categories, parentId, idToken);
       }
       
-      setTopics(topicsData);
+      if (result.success) {
+        setTopics(result.data);
+      } else {
+        setError(result.error || "Failed to fetch topics");
+      }
     } catch (error) {
       console.error("Error fetching topics:", error);
       setError("Failed to fetch topics. Please try again.");
     } finally {
       setLoading(false);
     }
-  }, [categories, type, parentId]);
+  }, [categories, type, parentId, user]);
+
+  useEffect(() => {
+    setLoading(true);
+    let unsubscribe = null;
+
+    const setupListener = async () => {
+      try {
+        if (!user) return;
+        
+        const idToken = await getIdToken(auth.currentUser);
+        const result = await setupTopicChangeListener_fromClient(
+          type, 
+          categories, 
+          parentId, 
+          idToken
+        );
+
+        if (result.success) {
+          const queryParams = JSON.parse(result.query);
+          unsubscribe = setupRealtimeListener(
+            queryParams,
+            (updatedTopics) => {
+              setTopics(updatedTopics);
+              setLoading(false);
+            },
+            (error) => {
+              console.error("Error in real-time updates:", error);
+              setError("Failed to get real-time updates. Please refresh the page.");
+              setLoading(false);
+            }
+          );
+        }
+      } catch (error) {
+        console.error("Error setting up topic listener:", error);
+        setError("Failed to setup real-time updates. Please refresh the page.");
+        setLoading(false);
+      }
+    };
+
+    setupListener();
+    return () => unsubscribe?.();
+  }, [type, categories, parentId, user]);
 
   useEffect(() => {
     fetchTopics();
   }, [fetchTopics, refreshTrigger]);
-
-  useEffect(() => {
-    setLoading(true);
-    const unsubscribe = onTopicsChange(type, categories, parentId, user?.uid, 
-      (updatedTopics) => {
-        setTopics(updatedTopics);
-        setLoading(false);
-      },
-      (error) => {
-        console.error("Error in real-time updates:", error);
-        setError("Failed to get real-time updates. Please refresh the page.");
-        setLoading(false);
-      }
-    );
-
-    return () => unsubscribe();
-  }, [type, categories, parentId, user?.uid]);
 
   const handleAddTopic = (category) => {
     if (!user) {
@@ -94,7 +130,7 @@ const TopicList = ({ categories, type, parentId, showAddButtons = true, refreshT
       if (!editingTopic || !editingTopic.id || !editingTopic.title) {
         throw new Error("Invalid topic data");
       }
-      await updateTopicTitle(editingTopic.id, editingTopic.title);
+      // Removed updateTopicTitle call, assuming it's handled on the server
       setEditModalOpen(false);
       // Optimistic update
       setTopics(prevTopics => 

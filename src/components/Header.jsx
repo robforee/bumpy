@@ -5,11 +5,11 @@ import React, { useState } from 'react';
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { signInWithGoogle, signOut } from "@/src/lib/firebase/firebaseAuth.js";
+import { storeTokens_fromClient, getScopes_fromClient } from '@/src/app/actions/auth-actions';
 import { useUser } from '@/src/contexts/UserProvider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/src/components/ui/dialog';
 import { Button } from '@/src/components/ui/button';
 import { X } from 'lucide-react';
-import { storeTokens_fromClient } from '@/src/app/actions/auth-actions';
 import { getAuth } from 'firebase/auth'; // vs firebase-admin/auth
 
 const Header = () => {
@@ -35,64 +35,61 @@ const Header = () => {
   };
 
   const handleSignIn = async () => {
-
     try {
-      const scopes = [
-        'https://www.googleapis.com/auth/calendar',
-        'https://www.googleapis.com/auth/gmail.modify',
-        'https://www.googleapis.com/auth/gmail.compose',
-        'https://www.googleapis.com/auth/drive',
-        'https://www.googleapis.com/auth/drive.file',
-        'https://www.googleapis.com/auth/drive.appdata',
-        'https://www.googleapis.com/auth/chat.messages',
-        'https://www.googleapis.com/auth/chat.spaces',
-        'https://www.googleapis.com/auth/contacts'
-      ];    
-
-      const result = await signInWithGoogle(scopes);
-
-      const user = result.user;
-      const accessToken = result.tokens.accessToken;
-      const refreshToken = result.tokens.refreshToken;
-      const authScopes = result.scopes;
+      // First sign-in without scopes, just to identify the user
+      const initialResult = await signInWithGoogle();
       
-      if(process.env.NODE_ENV === 'development')
-        console.log('result',result)
+      if (!initialResult.success) {
+        handleSignInError(initialResult);
+        return;
+      }
 
-      // auth for storing tokens
+      // Get user's previously authorized scopes
       const auth = getAuth();
       const idToken = await auth.currentUser.getIdToken();
-      
-      const storeResult = await storeTokens_fromClient(user.uid, accessToken, refreshToken, idToken, authScopes);
-
-      console.log('store result',storeResult);
-
-      if (result.success) {
-        await refreshUserProfile();
-        switch (result.action) {
-          case 'DASHBOARD':
-            router.push('/dashboard');
-            break;
-          default:
-            console.error('Unexpected action:', result.action);
-        }
-      } else {
-        switch (result.action) {
-          case 'ENABLE_POPUPS':
-            router.push('/enable-popups');
-            break;
-          case 'AUTH_ERROR':
-            router.push('/auth-error');
-            break;
-          case 'STAY':
-          default:
-            console.error('Sign-in failed:', result.error);
-        }
+      let authorizedScopes = [];
+      try {
+        authorizedScopes = await getScopes_fromClient(auth.currentUser.uid, idToken);
+      } catch (error) {
+        console.warn('Failed to fetch scopes, proceeding with empty scope list:', error);
       }
+
+      // If user has authorized scopes, sign in again with those scopes
+      if (authorizedScopes.length > 0) {
+        const scopedResult = await signInWithGoogle(authorizedScopes);
+        if (!scopedResult.success) {
+          handleSignInError(scopedResult);
+          return;
+        }
+
+        const { user, tokens: { accessToken, refreshToken } } = scopedResult;
+        await storeTokens_fromClient(user.uid, accessToken, refreshToken, idToken, authorizedScopes);
+      } else {
+        // For new users or users without scopes, store the initial tokens
+        const { user, tokens: { accessToken, refreshToken } } = initialResult;
+        await storeTokens_fromClient(user.uid, accessToken, refreshToken, idToken, []);
+      }
+
+      await refreshUserProfile();
+      router.push('/dashboard');
 
     } catch (error) {
       console.error("Sign-in error:", error);
       router.push('/auth-error');
+    }
+  };
+
+  const handleSignInError = (result) => {
+    switch (result.action) {
+      case 'ENABLE_POPUPS':
+        router.push('/enable-popups');
+        break;
+      case 'AUTH_ERROR':
+        router.push('/auth-error');
+        break;
+      case 'STAY':
+      default:
+        console.error('Sign-in failed:', result.error);
     }
   };
 
@@ -188,6 +185,11 @@ const Header = () => {
                       onClick={() => handleMenuItemClick(() => router.push('/dashboard'))}
                     >
                       Dashboard
+                    </Button>
+                    <Button 
+                      onClick={() => handleMenuItemClick(() => router.push('/settings'))}
+                    >
+                      Settings
                     </Button>
                   </div>
                 </DialogContent>

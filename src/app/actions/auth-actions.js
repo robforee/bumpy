@@ -2,7 +2,7 @@
 "use server";
 
 import { google } from 'googleapis';// oauth
-import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import moment from 'moment-timezone';
 import crypto from 'crypto';
 import { headers } from "next/headers";
@@ -379,6 +379,24 @@ export async function getTokenInfo(idToken) {
   }
 }
 
+export async function getScopes_fromClient(userId, idToken) {
+  try {
+    const { firebaseServerApp } = await getAuthenticatedAppForUser(idToken);
+    const db = getFirestore(firebaseServerApp);
+    const userScopesRef = doc(db, 'user_scopes', userId);
+    const userScopesSnap = await getDoc(userScopesRef);
+
+    if (!userScopesSnap.exists()) {
+      return [];
+    }
+
+    return userScopesSnap.data().scopes || [];
+  } catch (error) {
+    console.error('Error in getScopes_fromClient:', error);
+    throw new Error('An error occurred while fetching user scopes');
+  }
+}
+
 export async function getScopes() {
   try {
     const idToken = await getIdToken(auth.currentUser);
@@ -402,9 +420,12 @@ export async function getScopes() {
   }
 }
 
-export async function addScope(scope) {
+export async function addScope(scope, idToken) {
   try {
-    const idToken = await getIdToken(auth.currentUser);
+    if (!idToken) {
+      throw new Error('Authentication token is required');
+    }
+
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
     if (!currentUser) {
       throw new Error('User not authenticated');
@@ -414,6 +435,7 @@ export async function addScope(scope) {
       "https://www.googleapis.com/auth/calendar",
       "https://www.googleapis.com/auth/gmail.modify",
       "https://www.googleapis.com/auth/gmail.compose",
+      "https://www.googleapis.com/auth/gmail.labels",
       "https://www.googleapis.com/auth/drive",
       "https://www.googleapis.com/auth/drive.file",
       "https://www.googleapis.com/auth/drive.appdata",
@@ -436,7 +458,7 @@ export async function addScope(scope) {
     return { success: true, message: 'Scope added successfully' };
   } catch (error) {
     console.error('Error in addScope:', error);
-    throw new Error('An error occurred while adding the scope');
+    throw error;
   }
 }
 
@@ -461,4 +483,3 @@ export async function deleteScope(scope) {
     throw new Error('An error occurred while deleting the scope');
   }
 }
-

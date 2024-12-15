@@ -1056,7 +1056,7 @@
     }
   };
 
-  // node_modules/idb/build/wrap-idb-value.js
+  // node_modules/@firebase/app/node_modules/idb/build/wrap-idb-value.js
   var instanceOfAny = (object, constructors) => constructors.some((c) => object instanceof c);
   var idbProxyableTypes;
   var cursorAdvanceMethods;
@@ -1199,7 +1199,7 @@
   }
   var unwrap = (value) => reverseTransformCache.get(value);
 
-  // node_modules/idb/build/index.js
+  // node_modules/@firebase/app/node_modules/idb/build/index.js
   function openDB(name5, version5, { blocked, upgrade, blocking, terminated } = {}) {
     const request = indexedDB.open(name5, version5);
     const openPromise = wrap(request);
@@ -7392,6 +7392,213 @@
     /* ClientPlatform.BROWSER */
   );
 
+  // node_modules/@firebase/installations/node_modules/idb/build/wrap-idb-value.js
+  var instanceOfAny2 = (object, constructors) => constructors.some((c) => object instanceof c);
+  var idbProxyableTypes2;
+  var cursorAdvanceMethods2;
+  function getIdbProxyableTypes2() {
+    return idbProxyableTypes2 || (idbProxyableTypes2 = [
+      IDBDatabase,
+      IDBObjectStore,
+      IDBIndex,
+      IDBCursor,
+      IDBTransaction
+    ]);
+  }
+  function getCursorAdvanceMethods2() {
+    return cursorAdvanceMethods2 || (cursorAdvanceMethods2 = [
+      IDBCursor.prototype.advance,
+      IDBCursor.prototype.continue,
+      IDBCursor.prototype.continuePrimaryKey
+    ]);
+  }
+  var cursorRequestMap2 = /* @__PURE__ */ new WeakMap();
+  var transactionDoneMap2 = /* @__PURE__ */ new WeakMap();
+  var transactionStoreNamesMap2 = /* @__PURE__ */ new WeakMap();
+  var transformCache2 = /* @__PURE__ */ new WeakMap();
+  var reverseTransformCache2 = /* @__PURE__ */ new WeakMap();
+  function promisifyRequest2(request) {
+    const promise = new Promise((resolve, reject) => {
+      const unlisten = () => {
+        request.removeEventListener("success", success);
+        request.removeEventListener("error", error);
+      };
+      const success = () => {
+        resolve(wrap2(request.result));
+        unlisten();
+      };
+      const error = () => {
+        reject(request.error);
+        unlisten();
+      };
+      request.addEventListener("success", success);
+      request.addEventListener("error", error);
+    });
+    promise.then((value) => {
+      if (value instanceof IDBCursor) {
+        cursorRequestMap2.set(value, request);
+      }
+    }).catch(() => {
+    });
+    reverseTransformCache2.set(promise, request);
+    return promise;
+  }
+  function cacheDonePromiseForTransaction2(tx) {
+    if (transactionDoneMap2.has(tx))
+      return;
+    const done = new Promise((resolve, reject) => {
+      const unlisten = () => {
+        tx.removeEventListener("complete", complete);
+        tx.removeEventListener("error", error);
+        tx.removeEventListener("abort", error);
+      };
+      const complete = () => {
+        resolve();
+        unlisten();
+      };
+      const error = () => {
+        reject(tx.error || new DOMException("AbortError", "AbortError"));
+        unlisten();
+      };
+      tx.addEventListener("complete", complete);
+      tx.addEventListener("error", error);
+      tx.addEventListener("abort", error);
+    });
+    transactionDoneMap2.set(tx, done);
+  }
+  var idbProxyTraps2 = {
+    get(target, prop, receiver) {
+      if (target instanceof IDBTransaction) {
+        if (prop === "done")
+          return transactionDoneMap2.get(target);
+        if (prop === "objectStoreNames") {
+          return target.objectStoreNames || transactionStoreNamesMap2.get(target);
+        }
+        if (prop === "store") {
+          return receiver.objectStoreNames[1] ? void 0 : receiver.objectStore(receiver.objectStoreNames[0]);
+        }
+      }
+      return wrap2(target[prop]);
+    },
+    set(target, prop, value) {
+      target[prop] = value;
+      return true;
+    },
+    has(target, prop) {
+      if (target instanceof IDBTransaction && (prop === "done" || prop === "store")) {
+        return true;
+      }
+      return prop in target;
+    }
+  };
+  function replaceTraps2(callback) {
+    idbProxyTraps2 = callback(idbProxyTraps2);
+  }
+  function wrapFunction2(func) {
+    if (func === IDBDatabase.prototype.transaction && !("objectStoreNames" in IDBTransaction.prototype)) {
+      return function(storeNames, ...args) {
+        const tx = func.call(unwrap2(this), storeNames, ...args);
+        transactionStoreNamesMap2.set(tx, storeNames.sort ? storeNames.sort() : [storeNames]);
+        return wrap2(tx);
+      };
+    }
+    if (getCursorAdvanceMethods2().includes(func)) {
+      return function(...args) {
+        func.apply(unwrap2(this), args);
+        return wrap2(cursorRequestMap2.get(this));
+      };
+    }
+    return function(...args) {
+      return wrap2(func.apply(unwrap2(this), args));
+    };
+  }
+  function transformCachableValue2(value) {
+    if (typeof value === "function")
+      return wrapFunction2(value);
+    if (value instanceof IDBTransaction)
+      cacheDonePromiseForTransaction2(value);
+    if (instanceOfAny2(value, getIdbProxyableTypes2()))
+      return new Proxy(value, idbProxyTraps2);
+    return value;
+  }
+  function wrap2(value) {
+    if (value instanceof IDBRequest)
+      return promisifyRequest2(value);
+    if (transformCache2.has(value))
+      return transformCache2.get(value);
+    const newValue = transformCachableValue2(value);
+    if (newValue !== value) {
+      transformCache2.set(value, newValue);
+      reverseTransformCache2.set(newValue, value);
+    }
+    return newValue;
+  }
+  var unwrap2 = (value) => reverseTransformCache2.get(value);
+
+  // node_modules/@firebase/installations/node_modules/idb/build/index.js
+  function openDB2(name5, version5, { blocked, upgrade, blocking, terminated } = {}) {
+    const request = indexedDB.open(name5, version5);
+    const openPromise = wrap2(request);
+    if (upgrade) {
+      request.addEventListener("upgradeneeded", (event) => {
+        upgrade(wrap2(request.result), event.oldVersion, event.newVersion, wrap2(request.transaction), event);
+      });
+    }
+    if (blocked) {
+      request.addEventListener("blocked", (event) => blocked(
+        // Casting due to https://github.com/microsoft/TypeScript-DOM-lib-generator/pull/1405
+        event.oldVersion,
+        event.newVersion,
+        event
+      ));
+    }
+    openPromise.then((db) => {
+      if (terminated)
+        db.addEventListener("close", () => terminated());
+      if (blocking) {
+        db.addEventListener("versionchange", (event) => blocking(event.oldVersion, event.newVersion, event));
+      }
+    }).catch(() => {
+    });
+    return openPromise;
+  }
+  var readMethods2 = ["get", "getKey", "getAll", "getAllKeys", "count"];
+  var writeMethods2 = ["put", "add", "delete", "clear"];
+  var cachedMethods2 = /* @__PURE__ */ new Map();
+  function getMethod2(target, prop) {
+    if (!(target instanceof IDBDatabase && !(prop in target) && typeof prop === "string")) {
+      return;
+    }
+    if (cachedMethods2.get(prop))
+      return cachedMethods2.get(prop);
+    const targetFuncName = prop.replace(/FromIndex$/, "");
+    const useIndex = prop !== targetFuncName;
+    const isWrite = writeMethods2.includes(targetFuncName);
+    if (
+      // Bail if the target doesn't exist on the target. Eg, getAll isn't in Edge.
+      !(targetFuncName in (useIndex ? IDBIndex : IDBObjectStore).prototype) || !(isWrite || readMethods2.includes(targetFuncName))
+    ) {
+      return;
+    }
+    const method = async function(storeName, ...args) {
+      const tx = this.transaction(storeName, isWrite ? "readwrite" : "readonly");
+      let target2 = tx.store;
+      if (useIndex)
+        target2 = target2.index(args.shift());
+      return (await Promise.all([
+        target2[targetFuncName](...args),
+        isWrite && tx.done
+      ]))[0];
+    };
+    cachedMethods2.set(prop, method);
+    return method;
+  }
+  replaceTraps2((oldTraps) => ({
+    ...oldTraps,
+    get: (target, prop, receiver) => getMethod2(target, prop) || oldTraps.get(target, prop, receiver),
+    has: (target, prop) => !!getMethod2(target, prop) || oldTraps.has(target, prop)
+  }));
+
   // node_modules/@firebase/installations/dist/esm/index.esm2017.js
   var name4 = "@firebase/installations";
   var version4 = "0.6.8";
@@ -7592,7 +7799,7 @@
   var dbPromise2 = null;
   function getDbPromise2() {
     if (!dbPromise2) {
-      dbPromise2 = openDB(DATABASE_NAME, DATABASE_VERSION, {
+      dbPromise2 = openDB2(DATABASE_NAME, DATABASE_VERSION, {
         upgrade: (db, oldVersion) => {
           switch (oldVersion) {
             case 0:

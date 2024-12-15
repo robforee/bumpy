@@ -180,9 +180,6 @@ async function prettifyConceptResponse(choicesObject){
       return {userConceptView: userConceptView, }
 }
 
-
-
-
 // THE NEW SERVER SIDE one
 export async function processConceptQuery(data, idToken){
   const { currentUser } = await getAuthenticatedAppForUser(idToken);
@@ -233,9 +230,6 @@ export async function processConceptQuery(data, idToken){
   return {structuredQuery, choicesObject, usageObject, updatedTopic}
 
 }
-
-
-
 
 export async function runConceptQuery(queryJson, idToken) {
   

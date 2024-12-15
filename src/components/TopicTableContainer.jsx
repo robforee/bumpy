@@ -2,19 +2,19 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@/src/contexts/UserProvider';
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
 import { 
-  fetchTopic, 
+  createTopic, 
   updateTopic, 
-  createTopic,
   fetchTopicsByCategory, 
+  fetchTopic,
   deleteTopic 
 } from '@/src/app/actions/topic-actions';
 
 import { processConceptQuery, runOpenAiQuery, runConceptQuery, structuredQuery_conceptAnalysis } from '@/src/app/actions/query-actions';
 import TopicTable from './TopicTable';
 import TopicModals from './TopicModals';
-import { getIdToken } from "firebase/auth";
-import { auth } from "@/src/lib/firebase/clientApp";
 
 const TopicTableContainer = (
   { topicId, 
@@ -222,10 +222,6 @@ const TopicTableContainer = (
     }
   };
 
-
-
-
-  
   const handleFetchContext = async (data) => {
 
     let textChunks = [];
@@ -268,64 +264,44 @@ const TopicTableContainer = (
     return textChunks;
   };
 
-
-
-
-
-
-
   const handleFetchPrompts = async (data) => {
-   const prompts = []
-   topicTypes.forEach(t=>{
-      if(t?.topic_sub_type){
-        if(data?.subType === t?.topic_sub_type){
-          console.log('## ',t.topic_type,t.title,t.prompt?.length);
-          prompts.push( t )
-        }  
-      }
-   })
-
-   if(!prompts.length && data?.subType){
-    console.log('no topic prompt ',data?.subType)
-    const idToken = await getIdToken(auth.currentUser);
+    if (!data) return [];
     
-    // does parent have prompt?
-    if(parentId && idToken){      
-      const parentPrompts = await fetchTopicsByCategory(['prompt'],parentId, idToken, data.subType);
-      console.log('parentPrompts',parentPrompts.length)
-      parentPrompts.forEach(p=>{prompts.push(p)})
-      
-    }else{
-      console.log('no parent prompt')
-    }
-    // does parent parent have prompt
-    if(prompts.length == 0){
-      if(parentTopic.parents[0]){
-        console.log('parentParentPrompts')
-        const parentParentPrompts = await fetchTopicsByCategory(['prompt'],parentTopic.parents[0], idToken, data.subType)
-        console.log('parentParentPrompts',parentParentPrompts.length)
-        parentParentPrompts.forEach(p=>{prompts.push(p)})
+    const prompts = [];
+    
+    try {
+      // Check current topics for matching prompts
+      topics.forEach(t => {
+        if (t.topic_type === 'prompt') {
+          if (data?.subType === t?.topic_sub_type) {
+            prompts.push(t);
+          }
+        }
+      });
 
-      }else{
-        console.log('no grand parent prompt')
+      // If no prompts found and we have a subType, look in parent topics
+      if (!prompts.length && data?.subType) {
+        const idToken = await getIdToken(auth.currentUser);
+        
+        // Check parent prompts
+        if (parentId) {
+          const parentPrompts = await fetchTopicsByCategory(['prompt'], parentId, idToken, data.subType);
+          prompts.push(...parentPrompts);
+        }
+        
+        // If still no prompts and we have a parent with parents, check grandparent
+        if (prompts.length === 0 && parentTopic?.parents?.length > 0) {
+          const parentParentPrompts = await fetchTopicsByCategory(['prompt'], parentTopic.parents[0], idToken, data.subType);
+          prompts.push(...parentParentPrompts);
+        }
       }
+      
+      return prompts;
+    } catch (error) {
+      console.error('Error fetching prompts:', error);
+      throw new Error('Failed to fetch prompts');
     }
-   }
-   return prompts;
-  }
-
-
-
-/*
-  fetch context
-  fetch prompt
-  prep structured query
-  run concept query
-  prettify completions
-  save topic
-
-
-*/
+  };
 
   const handleConceptQuery = async (data) => {
     

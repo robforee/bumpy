@@ -30,10 +30,11 @@ const markdownStyles = `
 const terms = topicTypes;
 
 export default function TopicPage() {
-  const { user, loading } = useUser();
+  const { user, loading: userLoading } = useUser();
   const [topic, setTopic] = useState(null);
   const [parentTopic, setParentTopic] = useState(null);
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [addingTopicType, setAddingTopicType] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -50,82 +51,99 @@ export default function TopicPage() {
 
   useEffect(() => {
     async function fetchTopicData() {
-      if (params.id && user) {
-        try {
-          const idToken = await getIdToken(auth.currentUser);
-          const topicData = await fetchTopic(params.id, idToken);
+      if (!params.id || !user) return;
 
-          setTopic(topicData);
-          if (topicData.parents[0]) {
-            const parentData = await fetchTopic(topicData.parents[0], idToken);
-            setParentTopic(parentData);
-          }
-        } catch (error) {
-          console.error("Error fetching topic:", error);
-          setError("Failed to fetch topic. Please try again.");
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const idToken = await getIdToken(auth.currentUser);
+        const topicData = await fetchTopic(params.id, idToken);
+        console.log('topicData',topicData);
+
+        if (!topicData) {
+          setError("Topic not found");
+          return;
         }
+
+        setTopic(topicData);
+
+        // Only fetch parent if it exists
+        if (topicData.parents && topicData.parents.length > 0) {
+          const parentData = await fetchTopic(topicData.parents[0], idToken);
+          setParentTopic(parentData);
+        }
+      } catch (error) {
+        console.error("Error fetching topic:", error);
+        setError("Failed to fetch topic. Please try again.");
+      } finally {
+        setLoading(false);
       }
     }
-    if (user) {
-      fetchTopicData();
-    }
+
+    fetchTopicData();
   }, [params.id, user, refreshTrigger]);
 
-  const handleAddTopic = (topicType) => {
-    setAddingTopicType(topicType);
-    setIsAddModalOpen(true);
-  };
+  if (userLoading) {
+    return <div className="animate-pulse">Loading user data...</div>;
+  }
 
-  const handleTopicAdded = () => {
-    refreshTopics();
-    setIsAddModalOpen(false);
-  };
+  if (!user) {
+    return <div>Please sign in to view topics</div>;
+  }
 
-  const handleEditTopic = () => {
-    setEditModalOpen(true);
-  };
+  if (loading) {
+    return (
+      <div className="animate-pulse p-4">
+        <div className="h-8 bg-gray-200 rounded w-3/4 mb-4"></div>
+        <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+        <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+      </div>
+    );
+  }
 
-  const handleEditChange = (e) => {
-    const { name, value } = e.target;
-    setTopic(prev => ({ ...prev, [name]: value }));
-  };
+  if (error) {
+    return (
+      <div className="text-red-500 p-4 rounded-md bg-red-50">
+        <p className="font-semibold">Error</p>
+        <p className="text-sm">{error}</p>
+      </div>
+    );
+  }
 
-  if (loading) return <div>Loading...</div>;
-  if (!user) return <div>Please sign in for access</div>;
-  if (error) return <div>Error: {error}</div>;
-  if (!topic) return <div>Topic not found</div>;
+  if (!topic) {
+    return <div className="text-gray-600">Topic not found</div>;
+  }
 
-  const orig = 'max-w-4xl mx-auto bg-white rounded-lg shadow-md overflow-hidden'
-  const fulw = 'w-full bg-white rounded-lg shadow-md overflow-hidden;'
   return (
-    <>
-    <style jsx global>{markdownStyles}</style>
-    <div className="TOPIC_PAGE min-h-screen bg-gray-100 py-8">
-      <div className={`${fulw}`}>
-        
-        {/* YELLOW BORDER ZONE */}
-        <div className="YELLOW_BORDER px-1 py-4 bg-yellow-100 border-b border-yellow-200">
-          <span className="TOPIC_TITLE text-1xl font-bold text-blue-500">
-                {
-                  parentTopic?.title 
-                  ? <Link href={`/topics/${parentTopic?.id}`} className="text-blue-600 hover:underline">
-                      {parentTopic?.title} 
-                    </Link> 
-                  : topic.title
-                }
-                {parentTopic?.subtitle && (
-                  <span className="text-red-700 ">&nbsp;{parentTopic.subtitle}</span>
-                )}
-          </span>
-          <TopicTableContainer className="TOPIC_TABLE_CONTAINER"
-                parentId={parentTopic?.id ?? 'none'}
-                topicId={topic.id}
-                topic_type="topic"
-                rowHeight={rowHeight}
-              />          
+    <div className="space-y-6">
+      <style jsx global>{markdownStyles}</style>
+      
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="mb-4">
+          {parentTopic && (
+            <Link href={`/topics/${parentTopic.id}`} className="text-blue-500 hover:underline">
+              ← Back to {parentTopic.title}
+            </Link>
+          )}
         </div>
+
+        <h1 className="text-2xl font-bold mb-4">{topic.title}</h1>
+        
+        <TopicTableContainer
+          topicId={params.id}
+          parentId={topic?.parents?.[0] || null}
+          topic_type={topic?.topic_type || 'default'}
+          rowHeight={rowHeight}
+          terms={terms}
+          addingTopicType={addingTopicType}
+          setAddingTopicType={setAddingTopicType}
+          isAddModalOpen={isAddModalOpen}
+          setIsAddModalOpen={setIsAddModalOpen}
+          editModalOpen={editModalOpen}
+          setEditModalOpen={setEditModalOpen}
+        />
       </div>
     </div>
-    </>
   );
 }

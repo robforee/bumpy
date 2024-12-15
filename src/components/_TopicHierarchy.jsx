@@ -3,8 +3,10 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { db_viaClient } from '@/src/lib/firebase/clientApp';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { getIdToken } from "firebase/auth";
+import { auth } from "@/src/lib/firebase/clientApp";
+import { fetchTopicWithChildren_fromClient } from '@/src/app/actions/topic-hierarchy-actions';
+import { useUser } from '@/src/contexts/UserProvider';
 
 const TopicItem = ({ topic, depth = 0 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -34,74 +36,51 @@ const TopicHierarchy = ({ rootTopicId }) => {
   const [topicModel, setTopicModel] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const fetchTopic = async (topicId) => {
-    const docRef = doc(db_viaClient, 'topics', topicId);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data(), children: [] };
-    }
-    return null;
-  };
-
-  const fetchChildren = async (parentId) => {
-    const q = query(
-      collection(db_viaClient, 'topics'), 
-      where('parents', 'array-contains', parentId),
-      where('topic_type', '==', 'topic') // Filter by category
-    );
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), children: [] }));
-  };
-
-  const buildTopicModel = async (topicId) => {
-    const topic = await fetchTopic(topicId);
-    if (!topic) return null;
-
-    const children = await fetchChildren(topicId);
-    for (let child of children) {
-      child.children = await buildTopicModel(child.id);
-    }
-    topic.children = children;
-
-    return topic;
-  };
+  const { user } = useUser();
 
   useEffect(() => {
-    const loadTopicModel = async () => {
+    const fetchHierarchy = async () => {
+      if (!user || !rootTopicId) {
+        setLoading(false);
+        return;
+      }
+
       try {
-        const model = await buildTopicModel(rootTopicId);
-        setTopicModel(model);
+        const idToken = await getIdToken(auth.currentUser);
+        const result = await fetchTopicWithChildren_fromClient(rootTopicId, idToken);
+        
+        if (result.success) {
+          setTopicModel(result.data);
+        } else {
+          setError(result.error || 'Failed to fetch topic hierarchy');
+        }
       } catch (error) {
-        console.error("Error building topic model:", error);
-        setError("Failed to load topic hierarchy. Please try again.");
+        console.error('Error fetching topic hierarchy:', error);
+        setError('Failed to load topic hierarchy');
       } finally {
         setLoading(false);
       }
     };
 
-    loadTopicModel();
-  }, [rootTopicId]);
+    fetchHierarchy();
+  }, [rootTopicId, user]);
 
   if (loading) {
     return <div>Loading topic hierarchy...</div>;
   }
 
   if (error) {
-    return <div>Error: {error}</div>;
+    return <div className="text-red-500">Error: {error}</div>;
   }
 
   if (!topicModel) {
-    return <div>Root topic not found</div>;
+    return <div>No topic found</div>;
   }
 
   return (
     <div className="bg-white p-4 rounded shadow">
       <h2 className="text-xl font-bold mb-4">Topic Hierarchy</h2>
       <TopicItem topic={topicModel} />
-      {/* <pre className="mt-4 p-2 bg-gray-100 rounded overflow-auto">
-        {JSON.stringify(topicModel, null, 2)}
-      </pre> */}
     </div>
   );
 };

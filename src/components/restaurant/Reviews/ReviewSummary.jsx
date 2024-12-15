@@ -45,8 +45,8 @@ export function GeminiSummary({ restaurantId }) {
           Here are the reviews: ${reviews.map(review => review.text).join(reviewSeparator)}
         `;
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
+        const generatedResult = await model.generateContent(prompt);
+        const response = await generatedResult.response;
         setSummary(response.text());
       } catch (error) {
         console.error('Error generating summary:', error);

@@ -41,6 +41,25 @@ function decrypt(text) {
   return decrypted;
 }
 
+function getFormattedTimestamp() {
+  try {
+    const options = {
+      timeZone: 'America/Chicago',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hour12: true
+    };
+    return new Date().toLocaleString('en-US', options);
+  } catch (error) {
+    console.error('Error formatting timestamp:', error);
+    return new Date().toISOString(); // fallback to ISO format
+  }
+}
+
 // calls by
 //  auth-actions - server side (works)
 //  firebaseAuth - client side (broken)
@@ -81,7 +100,8 @@ export async function storeTokens({ accessToken, refreshToken, idToken }) {
       updateTime: updateTime,
       createdAt: updateTime,
       touchedAt: touchedTime,
-      userEmail: currentUser.email
+      userEmail: currentUser.email,
+      lastUpdated: getFormattedTimestamp()
     };
 
     await setDoc(userTokensRef, tokenData, { merge: true });
@@ -138,7 +158,8 @@ export async function storeTokens_fromClient(userId, accessToken, refreshToken, 
       createdAt: updateTime,
       touchedAt: touchedTime,
       userEmail: currentUser.email,
-      scopes: scopes ? scopes : []
+      scopes: scopes ? scopes : [],
+      lastUpdated: getFormattedTimestamp()
     };
     //console.log('tokenData.scopes.length',tokenData.scopes.length)
 
@@ -381,6 +402,13 @@ export async function getTokenInfo(idToken) {
 
 export async function getScopes_fromClient(userId, idToken) {
   try {
+    if (!idToken) {
+      throw new Error('Authentication token is required');
+    }
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+
     const { firebaseServerApp } = await getAuthenticatedAppForUser(idToken);
     const db = getFirestore(firebaseServerApp);
     const userScopesRef = doc(db, 'user_scopes', userId);
@@ -393,30 +421,7 @@ export async function getScopes_fromClient(userId, idToken) {
     return userScopesSnap.data().scopes || [];
   } catch (error) {
     console.error('Error in getScopes_fromClient:', error);
-    throw new Error('An error occurred while fetching user scopes');
-  }
-}
-
-export async function getScopes() {
-  try {
-    const idToken = await getIdToken(auth.currentUser);
-    const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
-    if (!currentUser) {
-      throw new Error('User not authenticated');
-    }
-
-    const db = getFirestore(firebaseServerApp);
-    const userScopesRef = doc(db, 'user_scopes', currentUser.uid);
-    const userScopesSnap = await getDoc(userScopesRef);
-
-    if (!userScopesSnap.exists()) {
-      return [];
-    }
-
-    return userScopesSnap.data().scopes || [];
-  } catch (error) {
-    console.error('Error in getScopes:', error);
-    throw new Error('An error occurred while fetching user scopes');
+    throw error; // Pass through the original error
   }
 }
 
@@ -452,7 +457,8 @@ export async function addScope(scope, idToken) {
     const userScopesRef = doc(db, 'user_scopes', currentUser.uid);
 
     await setDoc(userScopesRef, {
-      scopes: arrayUnion(scope)
+      scopes: arrayUnion(scope),
+      lastUpdated: getFormattedTimestamp()
     }, { merge: true });
 
     return { success: true, message: 'Scope added successfully' };
@@ -462,9 +468,12 @@ export async function addScope(scope, idToken) {
   }
 }
 
-export async function deleteScope(scope) {
+export async function deleteScope(scope, idToken) {
   try {
-    const idToken = await getIdToken(auth.currentUser);
+    if (!idToken) {
+      throw new Error('Authentication token is required');
+    }
+
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
     if (!currentUser) {
       throw new Error('User not authenticated');
@@ -474,12 +483,13 @@ export async function deleteScope(scope) {
     const userScopesRef = doc(db, 'user_scopes', currentUser.uid);
 
     await setDoc(userScopesRef, {
-      scopes: arrayRemove(scope)
+      scopes: arrayRemove(scope),
+      lastUpdated: getFormattedTimestamp()
     }, { merge: true });
 
     return { success: true, message: 'Scope deleted successfully' };
   } catch (error) {
     console.error('Error in deleteScope:', error);
-    throw new Error('An error occurred while deleting the scope');
+    throw error; // Pass through the original error
   }
 }

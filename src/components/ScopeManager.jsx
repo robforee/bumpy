@@ -2,7 +2,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { getScopes, addScope, deleteScope } from "@/src/app/actions/auth-actions";
+import { getAuth } from "firebase/auth";
+import { getScopes_fromClient, addScope, deleteScope } from "@/src/app/actions/auth-actions";
 
 const availableScopes = [
   "https://www.googleapis.com/auth/calendar",
@@ -23,19 +24,24 @@ const ScopeManager = () => {
   const [error, setError] = useState(null);
 
   const fetchScopes = async () => {
-    setIsLoading(true);
-    setError(null);
     try {
-      const fetchedScopes = await getScopes();
+      const auth = getAuth();
+      if (!auth.currentUser) {
+        throw new Error('Please sign in to view scopes');
+      }
+
+      const idToken = await auth.currentUser.getIdToken();
+      const fetchedScopes = await getScopes_fromClient(auth.currentUser.uid, idToken);
       setScopes(fetchedScopes);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Failed to load scopes');
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
+    setIsLoading(true);
     fetchScopes();
   }, []);
 
@@ -112,4 +118,3 @@ const ScopeManager = () => {
 };
 
 export default ScopeManager;
-

@@ -22,6 +22,8 @@ const SCOPE_DESCRIPTIONS = {
   'https://www.googleapis.com/auth/contacts': 'View and manage your Google Contacts'
 };
 
+const availableScopes = Object.keys(SCOPE_DESCRIPTIONS);
+
 export default function Settings() {
   const [currentScopes, setCurrentScopes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -81,17 +83,81 @@ export default function Settings() {
   async function handleRemoveScope(scope) {
     try {
       setProcessing(true);
-      await deleteScope(scope);
-      // Re-authenticate with remaining scopes
-      const updatedScopes = currentScopes.filter(s => s !== scope);
-      await signInWithGoogle(updatedScopes);
-      await loadScopes();
+      setError(null);
+
+      const auth = getAuth();
+      if (!auth.currentUser) {
+        throw new Error('Please sign in to manage scopes');
+      }
+
+      const idToken = await auth.currentUser.getIdToken();
+      const result = await deleteScope(scope, idToken);
+      
+      if (result.success) {
+        // Re-authenticate with remaining scopes
+        const updatedScopes = currentScopes.filter(s => s !== scope);
+        await signInWithGoogle(updatedScopes);
+        await loadScopes();
+      } else {
+        setError(result.error || 'Failed to remove scope');
+      }
     } catch (error) {
-      setError('Failed to remove scope: ' + error.message);
+      console.error('Error removing scope:', error);
+      setError(error.message || 'Failed to remove scope');
     } finally {
       setProcessing(false);
     }
   }
+
+  const handleGrantAll = async () => {
+    try {
+      setProcessing(true);
+      setError(null);
+
+      const auth = getAuth();
+      if (!auth.currentUser) {
+        throw new Error('Please sign in to manage scopes');
+      }
+
+      const idToken = await auth.currentUser.getIdToken();
+      const addPromises = availableScopes.map(scope => addScope(scope, idToken));
+      await Promise.all(addPromises);
+
+      // Re-authenticate with all scopes to ensure they're active
+      await signInWithGoogle(availableScopes);
+      await loadScopes();
+    } catch (error) {
+      console.error('Error granting all scopes:', error);
+      setError(error.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleRevokeAll = async () => {
+    try {
+      setProcessing(true);
+      setError(null);
+
+      const auth = getAuth();
+      if (!auth.currentUser) {
+        throw new Error('Please sign in to manage scopes');
+      }
+
+      const idToken = await auth.currentUser.getIdToken();
+      const deletePromises = currentScopes.map(scope => deleteScope(scope, idToken));
+      await Promise.all(deletePromises);
+
+      // Re-authenticate with no scopes
+      await signInWithGoogle([]);
+      await loadScopes();
+    } catch (error) {
+      console.error('Error revoking all scopes:', error);
+      setError(error.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -100,9 +166,6 @@ export default function Settings() {
       </div>
     );
   }
-
-  // All available scopes
-  const allScopes = Object.keys(SCOPE_DESCRIPTIONS);
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -119,8 +182,34 @@ export default function Settings() {
           <CardTitle>API Permissions</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="flex gap-4 mb-6">
+            <Button
+              onClick={handleGrantAll}
+              disabled={processing}
+              variant="default"
+            >
+              {processing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                'Grant All Scopes'
+              )}
+            </Button>
+
+            <Button
+              onClick={handleRevokeAll}
+              disabled={processing}
+              variant="destructive"
+            >
+              {processing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                'Revoke All Scopes'
+              )}
+            </Button>
+          </div>
+
           <ul className="space-y-4">
-            {allScopes.map((scope) => {
+            {availableScopes.map((scope) => {
               const isAuthorized = currentScopes.includes(scope);
               return (
                 <li key={scope} className={`flex items-center justify-between p-4 rounded-lg ${isAuthorized ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-200'}`}>

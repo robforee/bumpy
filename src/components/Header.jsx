@@ -26,49 +26,41 @@ const Header = () => {
         router.push('/');
       } else {
         console.error('Sign-out failed:', result.error);
-        router.push('/auth-error');
+        router.push('/auth-error?error=' + encodeURIComponent(result.error));
       }
     } catch (error) {
-      console.error('Error signing out:', error);
-      router.push('/auth-error');
+      console.error('Error in handleSignOut:', error);
+      router.push('/auth-error?error=' + encodeURIComponent(error.message));
     }
   };
 
   const handleSignIn = async () => {
     try {
-      // First sign-in without scopes, just to identify the user
-      const initialResult = await signInWithGoogle();
-      
-      if (!initialResult.success) {
-        handleSignInError(initialResult);
-        return;
-      }
-
-      // Get user's previously authorized scopes
+      // Get user's previously authorized scopes first
       const auth = getAuth();
-      const idToken = await auth.currentUser.getIdToken();
       let authorizedScopes = [];
       try {
-        authorizedScopes = await getScopes_fromClient(auth.currentUser.uid, idToken);
+        // Try to get the current user's token if they're already signed in
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          const idToken = await currentUser.getIdToken();
+          authorizedScopes = await getScopes_fromClient(currentUser.uid, idToken);
+        }
       } catch (error) {
         console.warn('Failed to fetch scopes, proceeding with empty scope list:', error);
       }
 
-      // If user has authorized scopes, sign in again with those scopes
-      if (authorizedScopes.length > 0) {
-        const scopedResult = await signInWithGoogle(authorizedScopes);
-        if (!scopedResult.success) {
-          handleSignInError(scopedResult);
-          return;
-        }
-
-        const { user, tokens: { accessToken, refreshToken } } = scopedResult;
-        await storeTokens_fromClient(user.uid, accessToken, refreshToken, idToken, authorizedScopes);
-      } else {
-        // For new users or users without scopes, store the initial tokens
-        const { user, tokens: { accessToken, refreshToken } } = initialResult;
-        await storeTokens_fromClient(user.uid, accessToken, refreshToken, idToken, []);
+      // Single sign-in with all authorized scopes
+      const signInResult = await signInWithGoogle(authorizedScopes);
+      if (!signInResult.success) {
+        handleSignInError(signInResult);
+        return;
       }
+
+      // Store the tokens
+      const { user, tokens: { accessToken, refreshToken } } = signInResult;
+      const idToken = await user.getIdToken();
+      await storeTokens_fromClient(user.uid, accessToken, refreshToken, idToken, authorizedScopes);
 
       await refreshUserProfile();
       router.push('/dashboard');

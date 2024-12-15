@@ -68,10 +68,10 @@ export async function signInWithGoogle(scopes = []) {
 export async function signOut() {
   try {
     await auth.signOut();
-    return true;
+    return { success: true };
   } catch (error) {
     console.error('Error signing out:', error);
-    return false;
+    return { success: false, error: error.message };
   }
 }
 

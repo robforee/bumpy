@@ -2,36 +2,34 @@
 
 ## Authentication Flow
 
-### Sign In Flow (`handleSignIn` in `Header.jsx`)
-1. User clicks sign in button
+### Sign In Flow (`handleEmailSubmit` in `Header.jsx`)
+1. User enters email in input box (pre-filled with last used email from localStorage)
 
-2. Initial Sign-in (`signInWithGoogle` without scopes)
-   - Creates GoogleAuthProvider without scopes
-   - Calls `signInWithPopup` from Firebase Auth for identification only
-   - User selects account from popup
-   - Returns initial tokens and user info
+2. Email-based Scope Resolution
+   - Queries Firestore `/user_scopes` collection using email
+   - If user found:
+     - Retrieves previously authorized scopes
+     - Proceeds with `select_account` prompt
+   - If user not found or query fails:
+     - Uses minimal scope (userinfo.email)
+     - Forces consent prompt for new authorization
 
-3. Scope Resolution
-   - Retrieves user's ID token
-   - Calls `getScopes()` to fetch previously authorized scopes from Firestore
-   - If fetch fails, proceeds with empty scope list
+3. Google Sign-in (`signInWithGoogle` in `firebaseAuth.js`)
+   - Creates GoogleAuthProvider with resolved scopes
+   - Sets prompt parameter:
+     - `select_account`: for existing users with authorized scopes
+     - `consent`: for new users or when requesting new scopes
+   - Calls `signInWithPopup` from Firebase Auth
+   - Returns tokens and user info
 
-4. Scoped Sign-in (if needed)
-   - If user has previously authorized scopes:
-     - Calls `signInWithGoogle` again with those scopes
-     - Google OAuth may show consent screen for any new/unauthorized scopes
-     - Returns new tokens with proper scope access
-   - If user has no scopes (new user):
-     - Proceeds with initial tokens
-     - No additional authorization needed
-
-5. Token Storage (`auth-actions.js`)
+4. Token Storage (`auth-actions.js`)
    - `storeTokens_fromClient` called with:
      - userId
      - accessToken
      - refreshToken
      - idToken
-     - authorized scopes (empty array for new users)
+     - authorized scopes
+   - Verifies token scopes with Google API
    - Encrypts tokens using AES-256-CBC
    - Stores in Firestore `/user_tokens` collection with:
      - Encrypted access token
@@ -40,6 +38,14 @@
      - Update time
      - Creation time
      - User email
+
+5. User Scope Management
+   - For new users:
+     - Creates document in `/user_scopes` collection
+     - Stores email and initial scopes
+   - For existing users:
+     - Maintains existing scope authorizations
+     - Updates only when new scopes are authorized
 
 6. User Profile Management
    - `refreshUserProfile` from `UserProvider.js` is called
@@ -56,6 +62,28 @@
      - Popup blocked: Redirects to enable-popups
      - Auth error: Redirects to auth-error
      - Other errors: Stays on current page
+
+### Token Refresh and Reauthorization
+1. Automatic Token Refresh
+   - Firebase Auth automatically refreshes tokens
+   - Refresh token used to obtain new access token
+   - No user interaction required for valid refresh tokens
+
+2. Token Verification
+   - `verifyTokenScopes` checks token validity with Google API
+   - If token invalid or scopes insufficient:
+     - Firebase Auth triggers automatic refresh
+     - If refresh fails, triggers new authentication
+     - Uses stored scopes from `/user_scopes`
+     - Shows only account selection (not consent) for authorized scopes
+
+3. Error Recovery
+   - Handles various token errors:
+     - Expired tokens: Automatic refresh
+     - Revoked tokens: Re-authentication
+     - Invalid scopes: New consent if needed
+   - Maintains user session when possible
+   - Only requests new consent when absolutely necessary
 
 ### Sign Out Flow (`handleSignOut` in `Header.jsx`)
 1. User clicks sign out button

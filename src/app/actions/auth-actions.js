@@ -116,8 +116,7 @@ export async function storeTokens({ accessToken, refreshToken, idToken }) {
 
 // CALLED FROM HEADER
 export async function storeTokens_fromClient(userId, accessToken, refreshToken, idToken, scopes) {
-
-  console.log('scopes.length',scopes)
+  console.log('Storing tokens with scopes:', scopes);
 
   if (!userId || !accessToken || !refreshToken || !idToken) {
     console.error('Missing required parameters');
@@ -138,9 +137,6 @@ export async function storeTokens_fromClient(userId, accessToken, refreshToken, 
     const updateTime = Date.now();
     const touchedTime = moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm [CST]');
 
-    console.log(refreshToken.length,'refreshToken.length')
-    console.log(refreshToken.slice(-5),'refreshToken')
-
     let encryptedAccessToken, encryptedRefreshToken;
     try {
       encryptedAccessToken = encrypt(accessToken);
@@ -150,6 +146,15 @@ export async function storeTokens_fromClient(userId, accessToken, refreshToken, 
       throw new Error(`Encryption failed: ${encryptError.message}`);
     }
 
+    // Verify the token's actual scopes
+    const tokenVerification = await verifyTokenScopes(accessToken);
+    const verifiedScopes = tokenVerification.scopes;
+
+    console.log('Verified token scopes:', verifiedScopes,
+      moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]')
+    );
+
+    // Store both requested and verified scopes
     const tokenData = {
       accessToken: encryptedAccessToken,
       refreshToken: encryptedRefreshToken,
@@ -158,18 +163,30 @@ export async function storeTokens_fromClient(userId, accessToken, refreshToken, 
       createdAt: updateTime,
       touchedAt: touchedTime,
       userEmail: currentUser.email,
-      scopes: scopes ? scopes : [],
-      lastUpdated: getFormattedTimestamp()
+      lastUpdated: getFormattedTimestamp(),
+      requestedScopes: scopes || [],
+      authorizedScopes: verifiedScopes,
+      isValid: tokenVerification.valid
     };
-    //console.log('tokenData.scopes.length',tokenData.scopes.length)
 
     await setDoc(userTokensRef, tokenData, { merge: true });
 
-    console.log('#\tTokens stored successfully');
-    return { success: true, message: 'Tokens stored successfully', updateTime: updateTime };
+    // Also update the user_scopes collection
+    const userScopesRef = doc(db, 'user_scopes', currentUser.uid);
+    await setDoc(userScopesRef, {
+      scopes: verifiedScopes,
+      lastUpdated: getFormattedTimestamp()
+    }, { merge: true });
+
+    return { 
+      success: true, 
+      message: 'Tokens stored successfully', 
+      updateTime: updateTime,
+      authorizedScopes: verifiedScopes
+    };
 
   } catch (error) {
-    console.error('Error in storeTokens_fromClient:', error);
+    console.error('Error storing tokens:', error);
     return { success: false, error: error.message };
   }
 }
@@ -336,40 +353,27 @@ export async function ensureFreshTokens_fromClient(idToken, userId, forceRefresh
   }
 }
 
-async function refreshAccessToken(refreshToken, storedScopes) {
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
-    throw new Error('Missing required Google OAuth environment variables');
-  }
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI
-  );
-
-  oauth2Client.setCredentials({
-    refresh_token: refreshToken,
-    scope: storedScopes.join(' ') // Join scopes into a space-separated string
-  });  
-
+async function verifyTokenScopes(accessToken) {
   try {
-
-    const { tokens } = await oauth2Client.refreshAccessToken();    
-
-    return { success: true, tokens:tokens };
-  } catch (error) {
-    if (error.response && error.response.data) {
-      //console.error('Full error response:', error);
+    const url = `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${accessToken}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Failed to verify token scopes');
     }
-    return { 
-      success: false, 
-      error: error.message || 'Unknown error occurred while refreshing token'
+    const tokenInfo = await response.json();
+    return {
+      scopes: tokenInfo.scope ? tokenInfo.scope.split(' ') : [],
+      expiresIn: tokenInfo.exp,
+      valid: true
     };
+  } catch (error) {
+    console.error('Error verifying token scopes:', error);
+    return { scopes: [], expiresIn: 0, valid: false };
   }
 }
 
 export async function getTokenInfo(idToken) {
   try {
-    
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
 
     if (!currentUser) {
@@ -377,9 +381,7 @@ export async function getTokenInfo(idToken) {
     }
 
     const db = getFirestore(firebaseServerApp); 
-
     const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
-
     const userTokensSnap = await getDoc(userTokensRef);
 
     if (!userTokensSnap.exists()) {
@@ -387,15 +389,21 @@ export async function getTokenInfo(idToken) {
     }
 
     const tokens = userTokensSnap.data();
+    const accessToken = decrypt(tokens.accessToken);
+    
+    // Verify current token scopes
+    const tokenVerification = await verifyTokenScopes(accessToken);
     const updateTime = moment(tokens.updateTime).tz('America/Chicago');
     const expirationTime = moment(tokens.expirationTime).tz('America/Chicago');
 
     return {
       lastUpdate: updateTime.format('YYYY-MM-DD HH:mm:ss [CST]'),
       expirationTime: expirationTime.format('YYYY-MM-DD HH:mm:ss [CST]'),
+      authorizedScopes: tokenVerification.scopes,
+      isValid: tokenVerification.valid
     };
   } catch (error) {
-    console.error('# Error in getTokenInfo');
+    console.error('Error in getTokenInfo:', error);
     throw new Error('An error occurred while fetching token information');
   }
 }
@@ -422,6 +430,65 @@ export async function getScopes_fromClient(userId, idToken) {
   } catch (error) {
     console.error('Error in getScopes_fromClient:', error);
     throw error; // Pass through the original error
+  }
+}
+
+async function refreshAccessToken(refreshToken, storedScopes) {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
+    throw new Error('Missing required Google OAuth environment variables');
+  }
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET,
+    process.env.GOOGLE_REDIRECT_URI
+  );
+
+  oauth2Client.setCredentials({
+    refresh_token: refreshToken,
+    scope: storedScopes.join(' ')
+  });  
+
+  try {
+
+    const { tokens } = await oauth2Client.refreshAccessToken();    
+
+    // Verify the refreshed token's scopes
+    const tokenVerification = await verifyTokenScopes(tokens.access_token);
+    
+    if (!tokenVerification.valid) {
+      return { 
+        success: false, 
+        error: 'Invalid token after refresh'
+      };
+    }
+
+    // Check if all requested scopes are authorized
+    const missingScopes = storedScopes.filter(scope => 
+      !tokenVerification.scopes.includes(scope)
+    );
+
+    if (missingScopes.length > 0) {
+      console.warn('Warning: Some requested scopes were not granted:', missingScopes);
+      return {
+        success: false,
+        error: 'Some requested scopes were not granted',
+        missingScopes
+      };
+    }
+
+    return { 
+      success: true, 
+      tokens: {
+        ...tokens,
+        authorized_scopes: tokenVerification.scopes
+      }
+    };
+  } catch (error) {
+    console.error('Error refreshing token:', error);
+    return { 
+      success: false, 
+      error: error.message || 'Unknown error occurred while refreshing token'
+    };
   }
 }
 

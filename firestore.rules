@@ -51,8 +51,14 @@ service cloud.firestore {
     match /user_tokens/{userId} {
       allow read, write, delete: if request.auth != null && request.auth.uid == userId;
     }
+
+    // User Scopes:
+    //   - Anyone can read (needed for optimized auth flow)
+    //   - Only authenticated user can write their own document
+    //   - Special 'default' document is accessible to all authenticated users
     match /user_scopes/{userId} {
-      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
+      allow read: true;  // Public read access
+      allow write, delete: if request.auth != null && (request.auth.uid == userId || userId == 'default');
     }    
 
     match /topics/{topicId} {
@@ -61,5 +67,9 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && resource.data.owner == request.auth.uid;
     }
 
+    // Allow querying user_scopes by email
+    match /user_scopes/{userId} {
+      allow get: if true;
+    }
   }
 }

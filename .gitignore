@@ -10,4 +10,4 @@ functions/.runtimeconfig.json
 .env.production
 scripts/token.json
 .vscode
-
+.bash_history

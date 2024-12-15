@@ -13,57 +13,43 @@ export function onAuthStateChanged(cb) {
   return _onAuthStateChanged(auth, cb);
 }
 
-export async function signInWithGoogle(scopes = []) {
-  const provider = new GoogleAuthProvider();
-
-  if (scopes.length > 0) {
-    scopes.forEach(scope => provider.addScope(scope));
-  }
-
-  // Add these parameters to force account selection
-  provider.setCustomParameters({
-    prompt: 'select_account'
-  });
-
+export const signInWithGoogle = async (scopes = ['https://www.googleapis.com/auth/userinfo.email'], forceConsent = false) => {
   try {
+    const provider = new GoogleAuthProvider();
+    
+    // Add all scopes
+    scopes.forEach(scope => provider.addScope(scope));
+    
+    // Only ask for consent if forced or if we're requesting new scopes
+    provider.setCustomParameters({
+      prompt: forceConsent ? 'consent' : 'select_account'
+    });
+
     const result = await signInWithPopup(auth, provider);
-    const user = result.user;
     const credential = GoogleAuthProvider.credentialFromResult(result);
-
-    if (!credential) {
-      return {
-        success: false,
-        error: 'No credential returned'
-      };
-    }
-
-    const accessToken = credential.accessToken;
-    const refreshToken = user.refreshToken;
-
-    if (!accessToken) {
-      return {
-        success: false,
-        error: 'No access token returned'
-      };
-    }
 
     return {
       success: true,
-      user,
+      user: result.user,
       tokens: {
-        accessToken,
-        refreshToken
+        accessToken: credential.accessToken,
+        refreshToken: result.user.refreshToken,
       }
     };
-
   } catch (error) {
-    console.error('Error in signInWithGoogle:', error);
-    return {
-      success: false,
-      error: error.message
-    };
+    console.error('Sign in error:', error);
+    
+    if (error.code === 'auth/popup-blocked') {
+      return { success: false, error: error.message, action: 'ENABLE_POPUPS' };
+    }
+    
+    if (error.code === 'auth/popup-closed-by-user') {
+      return { success: false, error: 'Sign in cancelled', action: 'STAY' };
+    }
+    
+    return { success: false, error: error.message, action: 'AUTH_ERROR' };
   }
-}
+};
 
 export async function signOut() {
   try {

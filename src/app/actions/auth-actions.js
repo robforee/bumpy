@@ -2,7 +2,7 @@
 "use server";
 
 import { google } from 'googleapis';// oauth
-import { getFirestore, doc, getDoc, setDoc, arrayUnion, arrayRemove } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc, arrayUnion, arrayRemove, collection, query, where, getDocs } from "firebase/firestore";
 import moment from 'moment-timezone';
 import crypto from 'crypto';
 import { headers } from "next/headers";
@@ -13,6 +13,7 @@ import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';
 
 const encryptionKey = process.env.ENCRYPTION_KEY;
 
+// Encrypts a given text using the encryption key
 function encrypt(text) {
   if (!process.env.ENCRYPTION_KEY) {
     throw new Error('ENCRYPTION_KEY environment variable is missing');
@@ -26,6 +27,7 @@ function encrypt(text) {
   return iv.toString('hex') + ':' + encrypted;
 }
 
+// Decrypts a given text using the encryption key
 function decrypt(text) {
   if (!process.env.ENCRYPTION_KEY) {
     throw new Error('ENCRYPTION_KEY environment variable is missing');
@@ -41,6 +43,7 @@ function decrypt(text) {
   return decrypted;
 }
 
+// Returns a formatted timestamp in the America/Chicago timezone
 function getFormattedTimestamp() {
   try {
     const options = {
@@ -60,13 +63,9 @@ function getFormattedTimestamp() {
   }
 }
 
-// calls by
-//  auth-actions - server side (works)
-//  firebaseAuth - client side (broken)
-//
+// Stores tokens for a given user
 export async function storeTokens({ accessToken, refreshToken, idToken }) {
   try {
-
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
     
     if (!currentUser || !currentUser?.uid ) {
@@ -80,9 +79,6 @@ export async function storeTokens({ accessToken, refreshToken, idToken }) {
     const expirationTime = Date.now() + 3600000; // 1 hour
     const updateTime = Date.now() + 0; 
     const touchedTime = moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm [CST]');
-
-    console.log(refreshToken.length,'refreshToken.length')
-    console.log(refreshToken.slice(-5),'refreshToken')
 
     let encryptedAccessToken, encryptedRefreshToken;
     try {
@@ -114,48 +110,28 @@ export async function storeTokens({ accessToken, refreshToken, idToken }) {
   }
 }
 
-// CALLED FROM HEADER
+// Stores tokens for a given user from the client side
 export async function storeTokens_fromClient(userId, accessToken, refreshToken, idToken, scopes) {
-  //console.log('Storing tokens with scopes:', scopes);
-  console.log(process.env.GOOGLE_CLIENT_ID)
-
-  if (!userId || !accessToken || !refreshToken || !idToken) {
-    console.error('Missing required parameters');
-    return { success: false, error: 'Missing required parameters' };
-  }
-
   try {
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
-    
-    if (!currentUser || currentUser.uid !== userId) {
-      console.log('User not authenticated or mismatch in storeTokens_fromClient');
-      throw new Error('User not authenticated or mismatch');
+
+    if (!currentUser) {
+      throw new Error('User not authenticated');
     }
 
     const db = getFirestore(firebaseServerApp);
     const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
-    const expirationTime = Date.now() + 3600000; // 1 hour
-    const updateTime = Date.now();
-    const touchedTime = moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm [CST]');
 
-    let encryptedAccessToken, encryptedRefreshToken;
-    try {
-      encryptedAccessToken = encrypt(accessToken);
-      encryptedRefreshToken = encrypt(refreshToken);
-    } catch (encryptError) {
-      console.error('Error during encryption:', encryptError);
-      throw new Error(`Encryption failed: ${encryptError.message}`);
-    }
+    const tokenVerification = await verifyToken(accessToken);
+    const verifiedScopes = tokenVerification.valid ? scopes : [];
 
-    // Verify the token's actual scopes
-    const tokenVerification = await verifyTokenScopes(accessToken);
-    const verifiedScopes = tokenVerification.scopes;
+    const updateTime = getFormattedTimestamp();
+    const touchedTime = updateTime;
+    const expirationTime = tokenVerification.valid ? tokenVerification.expirationTime : updateTime;
 
-    console.log('Verified token scopes:', verifiedScopes,
-      moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]')
-    );
+    const encryptedAccessToken = encryptToken(accessToken);
+    const encryptedRefreshToken = encryptToken(refreshToken);
 
-    // Store both requested and verified scopes
     const tokenData = {
       accessToken: encryptedAccessToken,
       refreshToken: encryptedRefreshToken,
@@ -165,16 +141,14 @@ export async function storeTokens_fromClient(userId, accessToken, refreshToken, 
       touchedAt: touchedTime,
       userEmail: currentUser.email,
       lastUpdated: getFormattedTimestamp(),
-      requestedScopes: scopes || [],
       authorizedScopes: verifiedScopes,
       isValid: tokenVerification.valid,
       account: process.env.GOOGLE_CLIENT_ID
     };
 
-    console.log('~~~~~~~~~~~~~~~~~~~');
     await setDoc(userTokensRef, tokenData, { merge: true });
 
-    // Update public authorized_scopes collection
+    // Keep authorized_scopes in sync
     const authorizedScopesRef = doc(db, 'authorized_scopes', currentUser.uid);
     await setDoc(authorizedScopesRef, {
       userEmail: currentUser.email,
@@ -188,14 +162,12 @@ export async function storeTokens_fromClient(userId, accessToken, refreshToken, 
       updateTime: updateTime,
       authorizedScopes: verifiedScopes
     };
-
   } catch (error) {
-    console.error('Error storing tokens:', error);
     return { success: false, error: error.message };
   }
 }
 
-// CALLED FROM DASHBOARD/TokenInfo
+// Ensures fresh tokens for a given user
 export async function ensureFreshTokens(idToken, userId, forceRefresh = false) {
   try {
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
@@ -209,31 +181,25 @@ export async function ensureFreshTokens(idToken, userId, forceRefresh = false) {
     const userTokensSnap = await getDoc(userTokensRef);
 
     if (!userTokensSnap.exists()) {
+      await logReauthRequired(db, currentUser.uid, 'No tokens found');
       throw new Error('REAUTH_REQUIRED');
-    }else{
-      console.log('#\n#\n tokens exist')
     }
 
     const tokens = userTokensSnap.data();
     const accessToken = decrypt(tokens.accessToken);
     const refreshToken = decrypt(tokens.refreshToken);
-    const scopes = tokens.scopes;
+    const scopes = tokens.authorizedScopes;
     const expirationTime = tokens.expirationTime;
 
     // Check if the access token is expired or if forceRefresh is true
     if (forceRefresh || Date.now() > expirationTime) {
-      console.log('#\n#\t\tRefreshing access token...');
+      console.log('Refreshing access token...');
 
       const refreshResult = await refreshAccessToken(refreshToken, scopes);
       
       if (!refreshResult.success) {
-        console.log(refreshResult.error);
         if (refreshResult.error === 'invalid_grant') {
-
-          //await setDoc(userTokensRef, { msg: 'invalid_grant' });
-          
-          //console.log(refreshResult.error)
-
+          await logReauthRequired(db, currentUser.uid, 'Invalid grant during refresh', refreshResult.error);
           throw new Error('REAUTH_REQUIRED');
         } else {
           throw new Error('Failed to refresh token');
@@ -260,8 +226,6 @@ export async function ensureFreshTokens(idToken, userId, forceRefresh = false) {
         refreshToken: newRefreshToken,
         expirationTime: Date.now() + 3600000 // 1 hour, matching the logic in storeTokens
       };
-    }else{
-      console.log('#\n#\n\ttoken still valid\n#\n#')
     }
 
     // If the token is still fresh and forceRefresh is false, return the existing tokens
@@ -276,50 +240,40 @@ export async function ensureFreshTokens(idToken, userId, forceRefresh = false) {
   }
 }
 
+// Ensures fresh tokens for a given user from the client side
 export async function ensureFreshTokens_fromClient(idToken, userId, forceRefresh = false) {
   try {
-
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
     
     if (!currentUser || currentUser.uid !== userId) {
       console.log('User not authenticated or mismatch in storeTokens_fromClient');
       throw new Error('User not authenticated or mismatch');
     }
-    console.log('currentUser ok and not mismatch')
 
     const db = getFirestore(firebaseServerApp);
     const userTokensRef = doc(db, 'user_tokens', currentUser.uid); // ON SERVER
     const userTokensSnap = await getDoc(userTokensRef);
 
     if (!userTokensSnap.exists()) {
+      await logReauthRequired(db, currentUser.uid, 'No tokens found in ensureFreshTokens_fromClient');
       throw new Error('REAUTH_REQUIRED');
-    }else{
-      console.log('#\n#\n tokens exist')
     }
 
     const tokens = userTokensSnap.data();
     const accessToken = decrypt(tokens.accessToken);
     const refreshToken = decrypt(tokens.refreshToken);
     const expirationTime = tokens.expirationTime;
-    const storedScopes = tokens.scopes;
-
-    console.log('#\t', refreshToken.slice(-5),'refreshToken')
-    console.log('#\tforceRefresh',forceRefresh)
-
+    const storedScopes = tokens.authorizedScopes;
 
     // Check if the access token is expired or if forceRefresh is true
     if (forceRefresh || Date.now() > expirationTime) {
-
-      console.log('#\tRefreshing access token...');
+      console.log('Refreshing access token...');
 
       const refreshResult = await refreshAccessToken(refreshToken, storedScopes);
       
       if (!refreshResult.success) {
-
         if (refreshResult.error === 'invalid_grant') {
-
-          //await setDoc(userTokensRef, { msg: 'invalid_grant' });
-          
+          await logReauthRequired(db, currentUser.uid, 'Invalid grant during refresh in fromClient', refreshResult.error);
           throw new Error('REAUTH_REQUIRED');
         } else {
           throw new Error('Failed to refresh token');
@@ -329,7 +283,6 @@ export async function ensureFreshTokens_fromClient(idToken, userId, forceRefresh
       const newAccessToken = refreshResult.tokens.access_token;
       const newRefreshToken = refreshResult.tokens.refresh_token || refreshToken;
 
-      console.log('~~~~~~~~~~~~~~~~~')
       const storeResult = await storeTokens_fromClient(userId, newAccessToken, newRefreshToken, idToken, storedScopes );
 
       if (!storeResult.success) {
@@ -342,8 +295,6 @@ export async function ensureFreshTokens_fromClient(idToken, userId, forceRefresh
         refreshToken: newRefreshToken,
         expirationTime: Date.now() + 3600000 // 1 hour, matching the logic in storeTokens
       };
-    }else{
-      console.log('#\n#\n\ttoken still valid\n#\n#')
     }
 
     // If the token is still fresh and forceRefresh is false, return the existing tokens
@@ -358,12 +309,13 @@ export async function ensureFreshTokens_fromClient(idToken, userId, forceRefresh
   }
 }
 
-async function verifyTokenScopes(accessToken) {
+// Verifies a given token
+async function verifyToken(accessToken) {
   try {
     const url = `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${accessToken}`;
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error('Failed to verify token scopes');
+      throw new Error('Failed to verify token');
     }
     const tokenInfo = await response.json();
     return {
@@ -372,11 +324,12 @@ async function verifyTokenScopes(accessToken) {
       valid: true
     };
   } catch (error) {
-    console.error('Error verifying token scopes:', error);
+    console.error('Error verifying token:', error);
     return { scopes: [], expiresIn: 0, valid: false };
   }
 }
 
+// Gets token information for a given user
 export async function getTokenInfo(idToken) {
   try {
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
@@ -397,7 +350,7 @@ export async function getTokenInfo(idToken) {
     const accessToken = decrypt(tokens.accessToken);
     
     // Verify current token scopes
-    const tokenVerification = await verifyTokenScopes(accessToken);
+    const tokenVerification = await verifyToken(accessToken);
     const updateTime = moment(tokens.updateTime).tz('America/Chicago');
     const expirationTime = moment(tokens.expirationTime).tz('America/Chicago');
 
@@ -413,34 +366,35 @@ export async function getTokenInfo(idToken) {
   }
 }
 
-export async function getScopes_fromClient(userId, idToken) {
+// Gets scopes for a given user from the client side
+export async function getScopes_fromClient(idToken) {
   try {
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
     
-    if (!currentUser || currentUser.uid !== userId) {
-      throw new Error('User not authenticated or mismatch');
+    if (!currentUser) {
+      throw new Error('User not authenticated');
     }
 
     const db = getFirestore(firebaseServerApp);
-    const userTokensRef = doc(db, 'user_tokens', userId);
+    const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
     const userTokensDoc = await getDoc(userTokensRef);
 
     if (!userTokensDoc.exists()) {
-      return [];
+      return { success: true, scopes: [] };
     }
 
-    return userTokensDoc.data().authorizedScopes || [];
+    const authorizedScopes = userTokensDoc.data().authorizedScopes || [];
+    return { success: true, scopes: authorizedScopes };
   } catch (error) {
-    console.error('Error getting scopes:', error);
-    return [];
+    return { success: false, error: error.message };
   }
 }
 
+// Refreshes an access token using a refresh token
 async function refreshAccessToken(refreshToken, storedScopes) {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
     throw new Error('Missing required Google OAuth environment variables');
   }
-  console.log(process.env.GOOGLE_CLIENT_ID)
 
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
@@ -454,11 +408,10 @@ async function refreshAccessToken(refreshToken, storedScopes) {
   });  
 
   try {
-
     const { tokens } = await oauth2Client.refreshAccessToken();    
 
     // Verify the refreshed token's scopes
-    const tokenVerification = await verifyTokenScopes(tokens.access_token);
+    const tokenVerification = await verifyToken(tokens.access_token);
     
     if (!tokenVerification.valid) {
       return { 
@@ -497,6 +450,7 @@ async function refreshAccessToken(refreshToken, storedScopes) {
   }
 }
 
+// Adds a scope for a given user
 export async function addScope(scope, idToken) {
   try {
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
@@ -546,6 +500,7 @@ export async function addScope(scope, idToken) {
   }
 }
 
+// Deletes a scope for a given user
 export async function deleteScope(scope, idToken) {
   try {
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
@@ -579,5 +534,24 @@ export async function deleteScope(scope, idToken) {
   } catch (error) {
     console.error('Error removing scope:', error);
     return { success: false, error: error.message };
+  }
+}
+
+async function logReauthRequired(db, userId, reason, error = null) {
+  try {
+    const timestamp = moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]');
+    const logRef = doc(db, 'spool', 'logs');
+    const reauthRef = doc(logRef, 'reauth', `${userId}_${timestamp}`);
+    
+    await setDoc(reauthRef, {
+      userId,
+      timestamp,
+      reason,
+      error,
+      redirectUri: process.env.GOOGLE_REDIRECT_URI,
+      clientId: process.env.GOOGLE_CLIENT_ID
+    });
+  } catch (logError) {
+    console.error('Failed to log reauth:', logError);
   }
 }

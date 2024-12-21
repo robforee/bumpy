@@ -55,7 +55,7 @@ const Header = () => {
     try {
       setIsSubmitting(true);
 
-      // Find user by email
+      // Query existing authorized scopes
       const db = getFirestore();
       const userQuery = await getDocs(
         query(collection(db, 'authorized_scopes'), 
@@ -100,7 +100,6 @@ const Header = () => {
       // Store the tokens
       const { user, tokens: { accessToken, refreshToken }, scopes: grantedScopes } = signInResult;
       const idToken = await user.getIdToken();
-      console.log('~~~~~~~~~~~~')
       await storeTokens_fromClient(user.uid, accessToken, refreshToken, idToken, grantedScopes);
 
       await refreshUserProfile();

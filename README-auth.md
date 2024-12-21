@@ -1,6 +1,42 @@
 # Authentication and Authorization
 
 ## Authentication Flow
+└── Sign In Flow
+    ├── Email Entry
+    │   └── `handleEmailSubmit` in `Header.jsx`
+    ├── Scope Resolution
+    │   └── `getScopes_fromClient` in `auth-actions.js`
+    ├── Firebase Authentication
+    │   ├── Initialize Provider
+    │   │   └── `signInWithGoogle` in `firebaseAuth.js`
+    │   │   └──── `signInWithPopup(auth, GoogleAuthProvider())`
+    │   ├── Add Required Scopes
+    │   │   └── `provider.addScope` in `firebaseAuth.js`
+    │   └── Sign In With Popup
+    │       └── `signInWithPopup` in `firebaseAuth.js`
+    ├── Token Management
+    │   ├── Get Firebase Token
+    │   │   └── `user.getIdToken` in `firebaseAuth.js`
+    │   ├── Store Tokens
+    │   │   └── `storeTokens_fromClient` in `auth-actions.js`
+    │   └── Store Authorized Scopes
+    │       └── `setDoc(userScopesRef)` in `auth-actions.js`
+    └── User Profile
+        ├── Load Profile
+        │   └── `loadUserProfile` in `UserProvider.js`
+        └── Initialize If Needed
+            └── `initializeNewUserIfNeeded` in `UserProvider.js`
+
+settings/page
+  handleGrantAll                            : settings/page
+    signInWithGoogle(availableScopes, true) : firebaseAuth.js
+    loadScopes()             : settings/page
+      getScopes_fromClient() : auth-actions : get from firebase user_scopes!
+      getCurrentScopes(scopes || []);
+
+signInWithGoogle
+  signInWithPopup
+    
 
 ### Sign In Flow (`handleEmailSubmit` in `Header.jsx`)
 1. User enters email in input box (pre-filled with last used email from localStorage)

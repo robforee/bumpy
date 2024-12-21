@@ -40,7 +40,7 @@ const path = require('path');
 
 // Initialize Firebase Admin SDK
 
-const serviceAccountPath = path.join(process.env.HOME, 'work/auth/analyst-server-firebase-adminsdk-bumpy-2.json');
+const serviceAccountPath = path.join(process.env.HOME, 'work/auth/analyst-server-service.json');
 if(!silent) console.log('admin.credential.cert\n\t',serviceAccountPath);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccountPath)

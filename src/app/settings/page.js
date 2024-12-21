@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getScopes_fromClient, addScope, deleteScope } from '@/src/app/actions/auth-actions';
+import { getScopes_fromClient, addScope, deleteScope, storeTokens_fromClient } from '@/src/app/actions/auth-actions';
 import { signInWithGoogle } from '@/src/lib/firebase/firebaseAuth';
 import { getAuth } from 'firebase/auth';
 import { Button } from "@/src/components/ui/button";
@@ -67,8 +67,13 @@ export default function Settings() {
       
       if (result.success) {
         // Re-authenticate with new scope
-        await signInWithGoogle([...currentScopes, scope]);
-        await loadScopes();
+        const signInResult = await signInWithGoogle([...currentScopes, scope], true);
+        if (signInResult.success) {
+          const { user, tokens: { accessToken, refreshToken }, scopes: grantedScopes } = signInResult;
+          const newIdToken = await user.getIdToken();
+          await storeTokens_fromClient(user.uid, accessToken, refreshToken, newIdToken, grantedScopes);
+          await loadScopes();
+        }
       } else {
         setError(result.error || 'Failed to add scope');
       }
@@ -96,8 +101,13 @@ export default function Settings() {
       if (result.success) {
         // Re-authenticate with remaining scopes
         const updatedScopes = currentScopes.filter(s => s !== scope);
-        await signInWithGoogle(updatedScopes);
-        await loadScopes();
+        const signInResult = await signInWithGoogle(updatedScopes, true);
+        if (signInResult.success) {
+          const { user, tokens: { accessToken, refreshToken }, scopes: grantedScopes } = signInResult;
+          const newIdToken = await user.getIdToken();
+          await storeTokens_fromClient(user.uid, accessToken, refreshToken, newIdToken, grantedScopes);
+          await loadScopes();
+        }
       } else {
         setError(result.error || 'Failed to remove scope');
       }
@@ -124,8 +134,15 @@ export default function Settings() {
       await Promise.all(addPromises);
 
       // Re-authenticate with all scopes to ensure they're active
-      await signInWithGoogle(availableScopes);
-      await loadScopes();
+      console.log('Re-authenticating with scopes:', JSON.stringify(availableScopes, null, 2));
+      const signInResult = await signInWithGoogle(availableScopes, true);  // Force consent screen
+      
+      if (signInResult.success) {
+        const { user, tokens: { accessToken, refreshToken }, scopes: grantedScopes } = signInResult;
+        const newIdToken = await user.getIdToken();
+        await storeTokens_fromClient(user.uid, accessToken, refreshToken, newIdToken, grantedScopes);
+        await loadScopes();
+      }
     } catch (error) {
       console.error('Error granting all scopes:', error);
       setError(error.message);
@@ -149,8 +166,13 @@ export default function Settings() {
       await Promise.all(deletePromises);
 
       // Re-authenticate with no scopes
-      await signInWithGoogle([]);
-      await loadScopes();
+      const signInResult = await signInWithGoogle([], true);
+      if (signInResult.success) {
+        const { user, tokens: { accessToken, refreshToken }, scopes: grantedScopes } = signInResult;
+        const newIdToken = await user.getIdToken();
+        await storeTokens_fromClient(user.uid, accessToken, refreshToken, newIdToken, grantedScopes);
+        await loadScopes();
+      }
     } catch (error) {
       console.error('Error revoking all scopes:', error);
       setError(error.message);

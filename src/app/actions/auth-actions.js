@@ -116,7 +116,8 @@ export async function storeTokens({ accessToken, refreshToken, idToken }) {
 
 // CALLED FROM HEADER
 export async function storeTokens_fromClient(userId, accessToken, refreshToken, idToken, scopes) {
-  console.log('Storing tokens with scopes:', scopes);
+  //console.log('Storing tokens with scopes:', scopes);
+  console.log(process.env.GOOGLE_CLIENT_ID)
 
   if (!userId || !accessToken || !refreshToken || !idToken) {
     console.error('Missing required parameters');
@@ -166,15 +167,18 @@ export async function storeTokens_fromClient(userId, accessToken, refreshToken, 
       lastUpdated: getFormattedTimestamp(),
       requestedScopes: scopes || [],
       authorizedScopes: verifiedScopes,
-      isValid: tokenVerification.valid
+      isValid: tokenVerification.valid,
+      account: process.env.GOOGLE_CLIENT_ID
     };
 
+    console.log('~~~~~~~~~~~~~~~~~~~');
     await setDoc(userTokensRef, tokenData, { merge: true });
 
-    // Also update the user_scopes collection
-    const userScopesRef = doc(db, 'user_scopes', currentUser.uid);
-    await setDoc(userScopesRef, {
-      scopes: verifiedScopes,
+    // Update public authorized_scopes collection
+    const authorizedScopesRef = doc(db, 'authorized_scopes', currentUser.uid);
+    await setDoc(authorizedScopesRef, {
+      userEmail: currentUser.email,
+      authorizedScopes: verifiedScopes,
       lastUpdated: getFormattedTimestamp()
     }, { merge: true });
 
@@ -325,6 +329,7 @@ export async function ensureFreshTokens_fromClient(idToken, userId, forceRefresh
       const newAccessToken = refreshResult.tokens.access_token;
       const newRefreshToken = refreshResult.tokens.refresh_token || refreshToken;
 
+      console.log('~~~~~~~~~~~~~~~~~')
       const storeResult = await storeTokens_fromClient(userId, newAccessToken, newRefreshToken, idToken, storedScopes );
 
       if (!storeResult.success) {
@@ -410,26 +415,24 @@ export async function getTokenInfo(idToken) {
 
 export async function getScopes_fromClient(userId, idToken) {
   try {
-    if (!idToken) {
-      throw new Error('Authentication token is required');
-    }
-    if (!userId) {
-      throw new Error('User ID is required');
+    const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
+    
+    if (!currentUser || currentUser.uid !== userId) {
+      throw new Error('User not authenticated or mismatch');
     }
 
-    const { firebaseServerApp } = await getAuthenticatedAppForUser(idToken);
     const db = getFirestore(firebaseServerApp);
-    const userScopesRef = doc(db, 'user_scopes', userId);
-    const userScopesSnap = await getDoc(userScopesRef);
+    const userTokensRef = doc(db, 'user_tokens', userId);
+    const userTokensDoc = await getDoc(userTokensRef);
 
-    if (!userScopesSnap.exists()) {
+    if (!userTokensDoc.exists()) {
       return [];
     }
 
-    return userScopesSnap.data().scopes || [];
+    return userTokensDoc.data().authorizedScopes || [];
   } catch (error) {
-    console.error('Error in getScopes_fromClient:', error);
-    throw error; // Pass through the original error
+    console.error('Error getting scopes:', error);
+    return [];
   }
 }
 
@@ -437,6 +440,8 @@ async function refreshAccessToken(refreshToken, storedScopes) {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
     throw new Error('Missing required Google OAuth environment variables');
   }
+  console.log(process.env.GOOGLE_CLIENT_ID)
+
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
@@ -494,69 +499,85 @@ async function refreshAccessToken(refreshToken, storedScopes) {
 
 export async function addScope(scope, idToken) {
   try {
-    if (!idToken) {
-      throw new Error('Authentication token is required');
-    }
-
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
+    
     if (!currentUser) {
       throw new Error('User not authenticated');
     }
 
-    const validScopes = [
-      "https://www.googleapis.com/auth/calendar",
-      "https://www.googleapis.com/auth/gmail.modify",
-      "https://www.googleapis.com/auth/gmail.compose",
-      "https://www.googleapis.com/auth/gmail.labels",
-      "https://www.googleapis.com/auth/drive",
-      "https://www.googleapis.com/auth/drive.file",
-      "https://www.googleapis.com/auth/drive.appdata",
-      "https://www.googleapis.com/auth/chat.messages",
-      "https://www.googleapis.com/auth/chat.spaces",
-      "https://www.googleapis.com/auth/contacts"
-    ];
+    const db = getFirestore(firebaseServerApp);
+    const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
+    const userTokensDoc = await getDoc(userTokensRef);
 
-    if (!validScopes.includes(scope)) {
-      throw new Error('Invalid scope');
+    if (!userTokensDoc.exists()) {
+      throw new Error('No tokens found for user');
     }
 
-    const db = getFirestore(firebaseServerApp);
-    const userScopesRef = doc(db, 'user_scopes', currentUser.uid);
+    const currentData = userTokensDoc.data();
+    const currentScopes = currentData.authorizedScopes || [];
 
-    await setDoc(userScopesRef, {
-      scopes: arrayUnion(scope),
+    if (currentScopes.includes(scope)) {
+      return { success: true, message: 'Scope already exists' };
+    }
+
+    // Update both collections atomically
+    const batch = db.batch();
+    
+    // Update user_tokens
+    batch.set(userTokensRef, {
+      authorizedScopes: arrayUnion(scope),
       lastUpdated: getFormattedTimestamp()
     }, { merge: true });
 
-    return { success: true, message: 'Scope added successfully' };
+    // Update authorized_scopes
+    const authorizedScopesRef = doc(db, 'authorized_scopes', currentUser.uid);
+    batch.set(authorizedScopesRef, {
+      userEmail: currentUser.email,
+      authorizedScopes: arrayUnion(scope),
+      lastUpdated: getFormattedTimestamp()
+    }, { merge: true });
+
+    await batch.commit();
+
+    return { success: true };
   } catch (error) {
-    console.error('Error in addScope:', error);
-    throw error;
+    console.error('Error adding scope:', error);
+    return { success: false, error: error.message };
   }
 }
 
 export async function deleteScope(scope, idToken) {
   try {
-    if (!idToken) {
-      throw new Error('Authentication token is required');
-    }
-
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
+    
     if (!currentUser) {
       throw new Error('User not authenticated');
     }
 
     const db = getFirestore(firebaseServerApp);
-    const userScopesRef = doc(db, 'user_scopes', currentUser.uid);
-
-    await setDoc(userScopesRef, {
-      scopes: arrayRemove(scope),
+    
+    // Update both collections atomically
+    const batch = db.batch();
+    
+    // Update user_tokens
+    const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
+    batch.set(userTokensRef, {
+      authorizedScopes: arrayRemove(scope),
       lastUpdated: getFormattedTimestamp()
     }, { merge: true });
 
-    return { success: true, message: 'Scope deleted successfully' };
+    // Update authorized_scopes
+    const authorizedScopesRef = doc(db, 'authorized_scopes', currentUser.uid);
+    batch.set(authorizedScopesRef, {
+      authorizedScopes: arrayRemove(scope),
+      lastUpdated: getFormattedTimestamp()
+    }, { merge: true });
+
+    await batch.commit();
+
+    return { success: true };
   } catch (error) {
-    console.error('Error in deleteScope:', error);
-    throw error; // Pass through the original error
+    console.error('Error removing scope:', error);
+    return { success: false, error: error.message };
   }
 }

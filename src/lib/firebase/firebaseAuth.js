@@ -20,13 +20,29 @@ export const signInWithGoogle = async (scopes = ['https://www.googleapis.com/aut
     // Add all scopes
     scopes.forEach(scope => provider.addScope(scope));
     
-    // Only ask for consent if forced or if we're requesting new scopes
+    // Always force consent screen
     provider.setCustomParameters({
-      prompt: forceConsent ? 'consent' : 'select_account'
+      prompt: 'consent'  // Always show consent screen
     });
 
     const result = await signInWithPopup(auth, provider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
+    
+    console.log('Full sign in result:', JSON.stringify({
+      result: {
+        user: result.user,
+        operationType: result.operationType,
+        providerId: result.providerId,
+      },
+      credential,
+      additionalUserInfo: result._tokenResponse
+    }, null, 2));
+
+    const grantedScopes = result._tokenResponse?.scope?.split(' ') || [];
+    console.log('Granted scopes from token response:', JSON.stringify(grantedScopes, null, 2));
+
+    console.log('Credential from Google:', JSON.stringify(credential, null, 2));
+    console.log('Granted scopes:', JSON.stringify(grantedScopes, null, 2));
 
     return {
       success: true,
@@ -34,7 +50,8 @@ export const signInWithGoogle = async (scopes = ['https://www.googleapis.com/aut
       tokens: {
         accessToken: credential.accessToken,
         refreshToken: result.user.refreshToken,
-      }
+      },
+      scopes: grantedScopes
     };
   } catch (error) {
     console.error('Sign in error:', error);

@@ -4,14 +4,14 @@
 import React, { useState } from 'react';
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
+import { getAuth } from 'firebase/auth';
+import { doc, getFirestore, collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
 import { signInWithGoogle, signOut } from "@/src/lib/firebase/firebaseAuth.js";
 import { storeTokens_fromClient, getScopes_fromClient } from '@/src/app/actions/auth-actions';
 import { useUser } from '@/src/contexts/UserProvider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/src/components/ui/dialog';
 import { Button } from '@/src/components/ui/button';
 import { X } from 'lucide-react';
-import { getAuth } from 'firebase/auth'; // vs firebase-admin/auth
-import { getFirestore, doc, getDoc, collection, query, where, getDocs, setDoc } from 'firebase/firestore';
 
 const Header = () => {
   const { user, userProfile, loading, refreshUserProfile } = useUser();
@@ -55,56 +55,53 @@ const Header = () => {
     try {
       setIsSubmitting(true);
 
-      // Try to get user scopes
-      let authorizedScopes = ['https://www.googleapis.com/auth/userinfo.email'];
-      let forceConsent = false;
-      try {
-        const db = getFirestore();
-        const userScopesSnapshot = await getDocs(
-          query(collection(db, 'user_scopes'), where('email', '==', email))
-        );
+      // Find user by email
+      const db = getFirestore();
+      const userQuery = await getDocs(
+        query(collection(db, 'authorized_scopes'), 
+          where('userEmail', '==', email),
+          limit(1)
+        )
+      );
 
-        if (!userScopesSnapshot.empty) {
-          const userScopesDoc = userScopesSnapshot.docs[0];
-          const scopesFromDb = userScopesDoc.data().scopes || [];
-          if (scopesFromDb.length > 0) {
-            authorizedScopes = scopesFromDb;
-            // Don't force consent if we're using the same scopes
-            forceConsent = false;
-          }
-        } else {
-          // Force consent for new users
-          forceConsent = true;
+      // Minimal scopes needed for login
+      const minimalScopes = [
+        'https://www.googleapis.com/auth/userinfo.email',
+        'openid',
+        'https://www.googleapis.com/auth/userinfo.profile'
+      ];
+      
+      let authorizedScopes = minimalScopes;
+      let forceConsent = false;
+
+      if (!userQuery.empty) {
+        const userDoc = userQuery.docs[0];
+        const scopesFromDb = userDoc.data().authorizedScopes || [];
+        if (scopesFromDb.length > 0) {
+          // Check if we need to add any minimal scopes
+          const newScopes = minimalScopes.filter(scope => !scopesFromDb.includes(scope));
+          authorizedScopes = [...scopesFromDb, ...newScopes];
+          // Only force consent if we're adding new scopes
+          forceConsent = newScopes.length > 0;
         }
-      } catch (error) {
-        console.log('Could not fetch user scopes, proceeding with email scope only:', error);
+      } else {
+        // Force consent for brand new users
         forceConsent = true;
       }
 
       // Sign in with Google using the found scopes
       const signInResult = await signInWithGoogle(authorizedScopes, forceConsent);
+      
       if (!signInResult.success) {
         handleSignInError(signInResult);
         return;
       }
 
       // Store the tokens
-      const { user, tokens: { accessToken, refreshToken } } = signInResult;
+      const { user, tokens: { accessToken, refreshToken }, scopes: grantedScopes } = signInResult;
       const idToken = await user.getIdToken();
-      await storeTokens_fromClient(user.uid, accessToken, refreshToken, idToken, authorizedScopes);
-
-      // Store email in user_scopes if we couldn't find it earlier
-      try {
-        const db = getFirestore();
-        const userScopesRef = doc(db, 'user_scopes', user.uid);
-        await setDoc(userScopesRef, {
-          email: email,
-          scopes: authorizedScopes,
-          lastUpdated: new Date().toISOString()
-        });
-      } catch (error) {
-        console.error('Error storing user scopes:', error);
-      }
+      console.log('~~~~~~~~~~~~')
+      await storeTokens_fromClient(user.uid, accessToken, refreshToken, idToken, grantedScopes);
 
       await refreshUserProfile();
       router.push('/dashboard');

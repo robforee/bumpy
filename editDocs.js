@@ -3,7 +3,7 @@ const yargs = require('yargs/yargs');
 const { hideBin } = require('yargs/helpers');
 
 // Initialize Firebase Admin SDK
-const serviceAccount = require('/home/user/work/auth/analyst-server-firebase-adminsdk-bumpy-2.json');
+const serviceAccount = require('/home/user/work/auth/analyst-server-service.json');
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });

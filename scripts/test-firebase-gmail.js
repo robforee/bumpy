@@ -5,7 +5,7 @@ const { google } = require('googleapis');
 const crypto = require('crypto');
 
 // Path to your service account key JSON file
-const serviceAccountPath = path.join(process.env.HOME, 'work/auth/analyst-server-firebase-adminsdk-bumpy-2.json');
+const serviceAccountPath = path.join(process.env.HOME, 'work/auth/analyst-server-service.json');
 
 // Initialize Firebase Admin SDK
 try {

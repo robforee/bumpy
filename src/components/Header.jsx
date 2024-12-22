@@ -227,6 +227,10 @@ const Header = () => {
                 <Button onClick={() => handleMenuItemClick(() => router.push('/settings'))}>
                   Settings
                 </Button>
+                <Button onClick={() => handleMenuItemClick(() => router.push('/dashboard'))}>
+                  Dashboard
+                </Button>
+
                 <Button onClick={() => handleMenuItemClick(handleSignOut)} variant="destructive">
                   Sign Out
                 </Button>

@@ -6,11 +6,11 @@ import { google } from 'googleapis';
 import { ensureFreshTokens } from './auth-actions';
 import { getIdToken } from "firebase/auth";
 import { auth } from "@/src/lib/firebase/clientApp";
+import { getScopes_fromClient } from './auth-actions';
 
-export async function queryGmailInbox(idToken) {
+export async function queryGmailInbox(userId,idToken) {
 
     try {
-
         const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
         
         if (!currentUser) {
@@ -22,10 +22,20 @@ export async function queryGmailInbox(idToken) {
         }
 
         // Use ensureFreshTokens to get fresh tokens
-        const { accessToken } = await ensureFreshTokens(idToken);
+        //const { scopes } = await getScopes_fromClient(userId, idToken);
+        //const { accessToken } = await ensureFreshTokens(idToken,true);
+        console.log('USER AUTH', userId,currentUser.displayName )
+        //return [];
 
-        const oauth2Client = new google.auth.OAuth2();
-        oauth2Client.setCredentials({ access_token: accessToken });
+
+        const oauth2Client = new google.auth.OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET,
+            process.env.GOOGLE_REDIRECT_URI            
+        );
+        // console.log(    process.env.GOOGLE_CLIENT_ID,
+        //     process.env.GOOGLE_REDIRECT_URI)
+        oauth2Client.setCredentials({ access_token: currentUser.accessToken });
 
         const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
@@ -33,6 +43,7 @@ export async function queryGmailInbox(idToken) {
             userId: 'me',
             maxResults: 10,
         });
+        return [];
 
         const messages = response.data.messages || [];
         const messageDetails = await Promise.all(messages.map(async (message) => {

@@ -9,7 +9,6 @@ import GmailInbox from '@/src/components/GmailInbox';
 import DriveFiles from '@/src/components/GoogleDriveFiles';
 import GoogleCalendar from '@/src/components/GoogleCalendar';
 import TopicChildren from '@/src/components/TopicChildren';
-import TokenInfo from '@/src/components/TokenInfo';
 import QueryOpenAi from '@/src/components/QueryOpenAi';
 import PromptEditor from '@/src/components/PromptEditor';
 import TopicSearch from '@/src/components/TopicSearch';
@@ -106,7 +105,6 @@ export default function Dashboard() {
       <h3 className="text-xl font-semibold mb-2">Test Connectivity</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <TopicChildren />
-        <TokenInfo />
         <GmailInbox />
         <DriveFiles />
         <GoogleCalendar />

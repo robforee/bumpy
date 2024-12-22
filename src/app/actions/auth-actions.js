@@ -94,6 +94,9 @@ export async function storeTokens({ accessToken, refreshToken, idToken }) {
       refreshToken: encryptedRefreshToken,
       expirationTime: expirationTime,
       updateTime: updateTime,
+      bumpy_expirationTimeCST: moment(expirationTime).tz('America/Chicago').format('YYYY-MM-DD HH:mm [CST]'),
+      bumpy_lastRefreshTime__: moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm [CST]'),
+      bumpy_account: process.env.GOOGLE_CLIENT_ID,
       createdAt: updateTime,
       touchedAt: touchedTime,
       userEmail: currentUser.email,
@@ -168,7 +171,8 @@ export async function storeTokens_fromClient(userId, accessToken, refreshToken, 
 }
 
 // Ensures fresh tokens for a given user
-export async function ensureFreshTokens(idToken, userId, forceRefresh = false) {
+export async function ensureFreshTokens(idToken, forceRefresh = false) {
+  if(forceRefresh) console.log('forceRefresh',forceRefresh)
   try {
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
     
@@ -188,15 +192,17 @@ export async function ensureFreshTokens(idToken, userId, forceRefresh = false) {
     const tokens = userTokensSnap.data();
     const accessToken = decrypt(tokens.accessToken);
     const refreshToken = decrypt(tokens.refreshToken);
-    const scopes = tokens.authorizedScopes;
+    const authorizedScopes = tokens.authorizedScopes;
     const expirationTime = tokens.expirationTime;
 
     // Check if the access token is expired or if forceRefresh is true
     if (forceRefresh || Date.now() > expirationTime) {
       console.log('Refreshing access token...');
 
-      const refreshResult = await refreshAccessToken(refreshToken, scopes);
+      const refreshResult = await refreshAccessToken(refreshToken, authorizedScopes);
       
+      if(forceRefresh) console.log('refreshResult',JSON.stringify(refreshResult,null,2))
+
       if (!refreshResult.success) {
         if (refreshResult.error === 'invalid_grant') {
           await logReauthRequired(db, currentUser.uid, 'Invalid grant during refresh', refreshResult.error);
@@ -206,14 +212,14 @@ export async function ensureFreshTokens(idToken, userId, forceRefresh = false) {
         }
       }
       
-      const newAccessToken = refreshResult.tokens.access_token;
+      const newAccessToken = refreshResult.tokens.access_token; // short-lived
       const newRefreshToken = refreshResult.tokens.refresh_token || refreshToken;
 
       const storeResult = await storeTokens({
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,
         idToken: idToken,
-        scopes: scopes
+        scopes: authorizedScopes
       });
 
       if (!storeResult.success) {
@@ -412,13 +418,14 @@ async function refreshAccessToken(refreshToken, storedScopes) {
     process.env.GOOGLE_REDIRECT_URI
   );
 
+  // refresh token is long-lived token
   oauth2Client.setCredentials({
-    refresh_token: refreshToken,
-    scope: storedScopes.join(' ')
+    refresh_token: refreshToken
   });  
 
   try {
-    const { tokens } = await oauth2Client.refreshAccessToken();    
+    const { tokens } = await oauth2Client.refreshAccessToken();
+    console.log('Refreshed access token:', JSON.stringify(tokens,null,2));
 
     // Verify the refreshed token's scopes
     const tokenVerification = await verifyToken(tokens.access_token);

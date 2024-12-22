@@ -1,12 +1,14 @@
 // src/app/actions/google-actions.js
 "use server";
 
-import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';
 import { google } from 'googleapis';
+import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';
 import { ensureFreshTokens } from './auth-actions';
 import { getIdToken } from "firebase/auth";
 import { auth } from "@/src/lib/firebase/clientApp";
 import { getScopes_fromClient } from './auth-actions';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { decrypt } from './auth-actions';
 
 export async function queryGmailInbox(userId,idToken) {
 
@@ -165,3 +167,103 @@ export async function queryGoogleCalendar(idToken) {
     }
 }
 
+export async function demoGmailToken(idToken) {
+    const results = [];
+    try {
+        const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
+        
+        if (!currentUser) {
+            const msg = 'User not authenticated';
+            console.log(msg);
+            results.push(msg);
+            return results;
+        }
+
+        console.log('Got authenticated user:', currentUser.uid);
+
+        // Get tokens from Firestore
+        const db = getFirestore(firebaseServerApp);
+        const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
+        const userTokensSnap = await getDoc(userTokensRef);
+
+        if (!userTokensSnap.exists()) {
+            const msg = 'No tokens found for user';
+            console.log(msg);
+            results.push(msg);
+            return results;
+        }
+
+        console.log('Found tokens in Firestore');
+        const tokens = userTokensSnap.data();
+        
+        try {
+            const accessToken = await decrypt(tokens.accessToken);
+            console.log('Successfully decrypted access token');
+            const authorizedScopes = tokens.authorizedScopes;
+            console.log('Authorized scopes:', authorizedScopes);
+
+            // Set up Gmail client
+            const oauth2Client = new google.auth.OAuth2(
+                process.env.GOOGLE_CLIENT_ID,
+                process.env.GOOGLE_CLIENT_SECRET,
+                process.env.GOOGLE_REDIRECT_URI
+            );
+            oauth2Client.setCredentials({ access_token: accessToken });
+            const gmailClient = google.gmail({ version: 'v1', auth: oauth2Client });
+
+            // Get labels
+            try {
+                const labels = await gmailClient.users.labels.list({ userId: 'me' });
+                const msg = `Success: Found ${labels.data.labels.length} labels`;
+                console.log(msg);
+                results.push(msg);
+            } catch (error) {
+                if (error.message.includes('invalid_grant')) {
+                    const msg = 'Error: Invalid grant - token needs refresh';
+                    console.error(msg);
+                    results.push(msg);
+                    return results;
+                }
+                throw error;
+            }
+
+            // Get message list
+            const maxResults = 10;
+            const messageList = await gmailClient.users.messages.list({
+                userId: 'me',
+                maxResults: maxResults
+            });
+            const msg = `Success: Found ${messageList.data.messages?.length || 0} messages`;
+            console.log(msg);
+            results.push(msg);
+
+            // Get message bodies
+            let messageCount = 0;
+            for (const message of messageList.data.messages || []) {
+                const fullMessage = await gmailClient.users.messages.get({
+                    userId: 'me',
+                    id: message.id,
+                    format: 'full'
+                });
+                messageCount++;
+            }
+            const finalMsg = `Success: Retrieved ${messageCount} message bodies`;
+            console.log(finalMsg);
+            results.push(finalMsg);
+
+        } catch (decryptError) {
+            const msg = `Error decrypting token: ${decryptError.message}`;
+            console.error(msg);
+            results.push(msg);
+            return results;
+        }
+
+        return results;
+
+    } catch (error) {
+        const errorMsg = `Error in demoGmailToken: ${error.message}`;
+        console.error(errorMsg);
+        results.push(errorMsg);
+        return results;
+    }
+}

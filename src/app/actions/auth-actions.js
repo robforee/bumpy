@@ -14,7 +14,7 @@ import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';
 const encryptionKey = process.env.ENCRYPTION_KEY;
 
 // Encrypts a given text using the encryption key
-function encrypt(text) {
+export async function encrypt(text) {
   if (!process.env.ENCRYPTION_KEY) {
     throw new Error('ENCRYPTION_KEY environment variable is missing');
   }
@@ -28,7 +28,7 @@ function encrypt(text) {
 }
 
 // Decrypts a given text using the encryption key
-function decrypt(text) {
+export async function decrypt(text) {
   if (!process.env.ENCRYPTION_KEY) {
     throw new Error('ENCRYPTION_KEY environment variable is missing');
   }
@@ -82,8 +82,8 @@ export async function storeTokens({ accessToken, refreshToken, idToken }) {
 
     let encryptedAccessToken, encryptedRefreshToken;
     try {
-      encryptedAccessToken = encrypt(accessToken);
-      encryptedRefreshToken = encrypt(refreshToken);
+      encryptedAccessToken = await encrypt(accessToken);
+      encryptedRefreshToken = await encrypt(refreshToken);
     } catch (encryptError) {
       console.error('Error during encryption:', encryptError);
       throw new Error(`Encryption failed: ${encryptError.message}`);
@@ -132,8 +132,8 @@ export async function storeTokens_fromClient(userId, accessToken, refreshToken, 
     const touchedTime = updateTime;
     const expirationTime = tokenVerification.valid ? tokenVerification.expirationTime : updateTime;
 
-    const encryptedAccessToken = encryptToken(accessToken);
-    const encryptedRefreshToken = encryptToken(refreshToken);
+    const encryptedAccessToken = await encryptToken(accessToken);
+    const encryptedRefreshToken = await encryptToken(refreshToken);
 
     const tokenData = {
       accessToken: encryptedAccessToken,
@@ -190,8 +190,8 @@ export async function ensureFreshTokens(idToken, forceRefresh = false) {
     }
 
     const tokens = userTokensSnap.data();
-    const accessToken = decrypt(tokens.accessToken);
-    const refreshToken = decrypt(tokens.refreshToken);
+    const accessToken = await decrypt(tokens.accessToken);
+    const refreshToken = await decrypt(tokens.refreshToken);
     const authorizedScopes = tokens.authorizedScopes;
     const expirationTime = tokens.expirationTime;
 
@@ -266,8 +266,8 @@ export async function ensureFreshTokens_fromClient(idToken, userId, forceRefresh
     }
 
     const tokens = userTokensSnap.data();
-    const accessToken = decrypt(tokens.accessToken);
-    const refreshToken = decrypt(tokens.refreshToken);
+    const accessToken = await decrypt(tokens.accessToken);
+    const refreshToken = await decrypt(tokens.refreshToken);
     const expirationTime = tokens.expirationTime;
     const storedScopes = tokens.authorizedScopes;
 
@@ -353,7 +353,7 @@ export async function getTokenInfo(idToken) {
     }
 
     const tokens = userTokensSnap.data();
-    const accessToken = decrypt(tokens.accessToken);
+    const accessToken = await decrypt(tokens.accessToken);
     
     // Verify current token scopes
     const tokenVerification = await verifyToken(accessToken);

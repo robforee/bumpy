@@ -17,10 +17,12 @@ import { getIdToken } from "firebase/auth";
 import { auth } from "@/src/lib/firebase/clientApp";
 import { updateTopic } from '@/src/app/actions/topic-actions';
 import { runOpenAiQuery } from '@/src/app/actions/query-actions';
+import { demoGmailToken } from '../actions/google-actions';
 
-export default function Dashboard() {
+export default function DashboardPage() {
   const { user, userProfile } = useUser();
   const [selectedTopic, setSelectedTopic] = useState(null);
+  const [demoResults, setDemoResults] = useState([]);
 
   const handleSaveTopic = async (updatedTopic) => {
     try {
@@ -83,6 +85,16 @@ export default function Dashboard() {
     }
   };
 
+  async function handleDemoGmail() {
+    try {
+      const idToken = await getIdToken(auth.currentUser);
+      const results = await demoGmailToken(idToken);
+      setDemoResults(results);
+    } catch (error) {
+      console.error('Error in demo:', error);
+      setDemoResults([`Error: ${error.message}`]);
+    }
+  }
 
   if (!user) {
     console.log('user')
@@ -102,6 +114,26 @@ export default function Dashboard() {
         )}
       </div>
       
+
+      <div className="mt-4">
+        <button
+          onClick={handleDemoGmail}
+          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+        >
+          Demo Gmail Token Use
+        </button>
+        
+        {demoResults.length > 0 && (
+          <div className="mt-4 p-4 bg-gray-100 rounded">
+            <h3 className="font-bold mb-2">Demo Results:</h3>
+            {demoResults.map((result, index) => (
+              <div key={index} className="mb-1">
+                {result}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
       <h3 className="text-xl font-semibold mb-2">Test Connectivity</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <TopicChildren />
@@ -131,6 +163,7 @@ export default function Dashboard() {
           Admin Panel
         </Link>
       </div>
+
     </div>
   );
 }

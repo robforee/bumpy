@@ -23,15 +23,20 @@ const GmailComponent = () => {
     setError(null);
 
     try {
-
       // prove to firebase we are logged in as currentUser to get accessToken, or more
       const idToken = await getIdToken(auth.currentUser); // api call
 
-      const emailDetails = await queryGmailInbox(auth.currentUser.uid,idToken);
-      if(emailDetails.length === 0) {
-        throw new Error('No emails found');
+      const response = await queryGmailInbox(auth.currentUser.uid, idToken);
+      
+      if (!response.success) {
+        throw new Error(response.error);
       }
-      setEmails(emailDetails);
+      
+      if (response.messages.length === 0) {
+        throw new Error('No emails found in inbox');
+      }
+      
+      setEmails(response.messages);
     } catch (error) {
       console.error('Error fetching emails:', error);
       setError(error.message);

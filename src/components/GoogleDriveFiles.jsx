@@ -24,8 +24,17 @@ const GoogleDriveFiles = () => {
 
     try {
       const idToken = await getIdToken(auth.currentUser);
-      const fileDetails = await queryRecentDriveFiles(idToken);
-      setFiles(fileDetails);
+      const response = await queryRecentDriveFiles(auth.currentUser.uid, idToken);
+      
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      
+      if (response.files.length === 0) {
+        throw new Error('No files found in Drive');
+      }
+      
+      setFiles(response.files);
     } catch (error) {
       console.error('Error fetching Drive files:', error);
       setError(error.message);
@@ -80,4 +89,3 @@ const GoogleDriveFiles = () => {
 };
 
 export default GoogleDriveFiles;
-

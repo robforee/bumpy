@@ -24,8 +24,17 @@ const GoogleCalendar = () => {
 
     try {
       const idToken = await getIdToken(auth.currentUser);
-      const calendarEvents = await queryGoogleCalendar(idToken);
-      setEvents(calendarEvents);
+      const response = await queryGoogleCalendar(auth.currentUser.uid, idToken);
+      
+      if (!response.success) {
+        throw new Error(response.error);
+      }
+      
+      if (response.events.length === 0) {
+        throw new Error('No upcoming events found');
+      }
+      
+      setEvents(response.events);
     } catch (error) {
       console.error('Error fetching calendar events:', error);
       setError(error.message);

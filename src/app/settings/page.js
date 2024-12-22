@@ -42,11 +42,29 @@ export default function Settings() {
         setLoading(false);
         return;
       }
-      const idToken = await auth.currentUser.getIdToken();
-      const scopes = await getScopes_fromClient(auth.currentUser.uid, idToken);
-      setCurrentScopes(scopes || []);
+
+      // Wait for auth state to be ready
+      await auth.authStateReady();
+      
+      // Force a token refresh to ensure we have a fresh token
+      const idToken = await auth.currentUser.getIdToken(true);
+      const userId = auth.currentUser.uid;
+      
+      if (!idToken || !userId) {
+        throw new Error('Failed to get authentication token or user ID');
+      }
+
+      const response = await getScopes_fromClient(userId, idToken);
+      if (response.success) {
+        setCurrentScopes(response.scopes || []);
+      } else {
+        console.error('Failed to load scopes:', response.error);
+        throw new Error(response.error);
+      }
     } catch (error) {
+      console.error('Error in loadScopes:', error);
       setError('Failed to load scopes: ' + error.message);
+      setCurrentScopes([]); // Set empty array as fallback
     } finally {
       setLoading(false);
     }
@@ -232,7 +250,7 @@ export default function Settings() {
 
           <ul className="space-y-4">
             {availableScopes.map((scope) => {
-              const isAuthorized = currentScopes.includes(scope);
+              const isAuthorized = currentScopes?.includes(scope);
               return (
                 <li key={scope} className={`flex items-center justify-between p-4 rounded-lg ${isAuthorized ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-200'}`}>
                   <div>

@@ -367,16 +367,25 @@ export async function getTokenInfo(idToken) {
 }
 
 // Gets scopes for a given user from the client side
-export async function getScopes_fromClient(idToken) {
+export async function getScopes_fromClient(userId, idToken) {
   try {
+    if (!userId || !idToken) {
+      throw new Error('User ID and ID token are required');
+    }
+
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
     
     if (!currentUser) {
       throw new Error('User not authenticated');
     }
 
+    // Verify the user ID matches
+    if (currentUser.uid !== userId) {
+      throw new Error('User ID mismatch');
+    }
+
     const db = getFirestore(firebaseServerApp);
-    const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
+    const userTokensRef = doc(db, 'user_tokens', userId);
     const userTokensDoc = await getDoc(userTokensRef);
 
     if (!userTokensDoc.exists()) {
@@ -386,6 +395,7 @@ export async function getScopes_fromClient(idToken) {
     const authorizedScopes = userTokensDoc.data().authorizedScopes || [];
     return { success: true, scopes: authorizedScopes };
   } catch (error) {
+    console.error('Error in getScopes_fromClient:', error);
     return { success: false, error: error.message };
   }
 }

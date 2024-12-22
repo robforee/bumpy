@@ -9,21 +9,45 @@ import { getAuth } from "firebase/auth";
 import { initializeServerApp } from "firebase/app";
 import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { getIdToken } from "firebase/auth";
 import { auth } from "@/src/lib/firebase/clientApp";
 
 export async function getAuthenticatedAppForUser(idToken) {
-  
-  const firebaseServerApp = initializeServerApp(
-    firebaseConfig,
-    idToken ? { authIdToken: idToken, }
-      : {}
-  );
+  if (!idToken) {
+    throw new Error('No ID token provided');
+  }
 
-  const auth = getAuth(firebaseServerApp);
-  await auth.authStateReady();
+  try {
+    // Initialize admin app if not already initialized
+    const adminApp = getAdminApp();
+    const adminAuth = getAdminAuth(adminApp);
+    
+    // Verify the ID token first using admin SDK
+    const decodedToken = await adminAuth.verifyIdToken(idToken);
+    
+    if (!decodedToken.uid) {
+      throw new Error('Invalid token');
+    }
 
-  return { firebaseServerApp, currentUser: auth.currentUser };
+    // Now initialize the server app with the verified token
+    const firebaseServerApp = initializeServerApp(
+      firebaseConfig,
+      { authIdToken: idToken }
+    );
+
+    const auth = getAuth(firebaseServerApp);
+    await auth.authStateReady();
+
+    if (!auth.currentUser) {
+      throw new Error('User not authenticated');
+    }
+
+    return { firebaseServerApp, currentUser: auth.currentUser };
+  } catch (error) {
+    console.error('Error in getAuthenticatedAppForUser:', error);
+    throw new Error('Authentication failed: ' + error.message);
+  }
 }
 
 export function getAdminApp() {

@@ -49,10 +49,28 @@ export async function signInWithGoogle(scopes = [], forceConsent = false) {
       scopes: scopes
     };
   } catch (error) {
+    console.error('Google sign in error:', error);
+    
+    // Check for user denied access
+    if (error.code === 'auth/popup-closed-by-user') {
+      return {
+        success: false,
+        error: 'Sign in cancelled by user'
+      };
+    }
+    
+    // Check for access denied
+    if (error.code === 'auth/user-cancelled' || 
+        (error.message && error.message.includes('access_denied'))) {
+      return {
+        success: false,
+        error: 'Access denied by user'
+      };
+    }
+
     return {
       success: false,
-      error: error.message,
-      errorCode: error.code
+      error: error.message || 'Failed to sign in with Google'
     };
   }
 }

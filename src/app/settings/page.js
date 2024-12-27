@@ -37,14 +37,15 @@ export default function Settings() {
   async function loadScopes() {
     try {
       const auth = getAuth();
+      
+      // Wait for auth state to be ready first
+      await auth.authStateReady();
+
       if (!auth.currentUser) {
         setError('Please sign in to manage your settings');
         setLoading(false);
         return;
       }
-
-      // Wait for auth state to be ready
-      await auth.authStateReady();
       
       // Force a token refresh to ensure we have a fresh token
       const idToken = await auth.currentUser.getIdToken(true);
@@ -91,6 +92,10 @@ export default function Settings() {
           const newIdToken = await user.getIdToken();
           await storeTokens_fromClient(user.uid, accessToken, refreshToken, newIdToken, grantedScopes);
           await loadScopes();
+        } else {
+          // If user denied access, remove the scope from our database
+          await deleteScope(scope, idToken);
+          throw new Error(signInResult.error || 'Failed to grant access');
         }
       } else {
         setError(result.error || 'Failed to add scope');

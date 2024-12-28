@@ -57,28 +57,30 @@ export async function storeTokens({ accessToken, refreshToken, idToken }) {
     const db = getFirestore(firebaseServerApp);
 
     const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
-    const timestamps = getTokenTimestamps('web');
+    const now = Date.now();
+    const cstTime = moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]');
     const encryptedAccessToken = await encrypt(accessToken);
     const encryptedRefreshToken = await encrypt(refreshToken);
 
     const tokenData = {
       accessToken: encryptedAccessToken,
       refreshToken: encryptedRefreshToken,
-      expirationTime: timestamps.expirationTime,
-      updateTime: timestamps.updateTime,
-      bumpy_expirationTimeCST: timestamps.bumpy_expirationTimeCST,
-      bumpy_lastRefreshTime__: timestamps.bumpy_lastRefreshTime__,
+      expirationTime: now + 3600000, // 1 hour from now
+      __last_token_update: now,
+      __web_token_update: cstTime,
+      updateTime: cstTime,
+      lastUpdated: cstTime,
+      bumpy_expirationTimeCST: moment(now + 3600000).tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]'),
+      bumpy_lastRefreshTime__: cstTime,
       bumpy_account: process.env.GOOGLE_CLIENT_ID,
-      createdAt: timestamps.updateTime,
-      touchedAt: timestamps.touchedTime,
-      userEmail: currentUser.email,
-      lastUpdated: timestamps.lastUpdated,
-      ...timestamps
+      createdAt: now,
+      touchedAt: cstTime,
+      userEmail: currentUser.email
     };
 
     await setDoc(userTokensRef, tokenData, { merge: true });
 
-    return { success: true, message: 'Tokens stored successfullly', updateTime: timestamps.updateTime };
+    return { success: true, message: 'Tokens stored successfullly', updateTime: cstTime };
 
   } catch (error) {
     console.error('Error storing tokens in auth-actions.storeTokens');
@@ -102,21 +104,30 @@ export async function storeTokens_fromClient(userId, accessToken, refreshToken, 
     const verifiedScopes = tokenVerification.valid ? scopes : [];
 
     // Get timestamps for both token and scope updates
-    const tokenTimestamps = getTokenTimestamps('web');
-    const scopeTimestamps = getScopeTimestamps('web');
-    
-    const encryptedAccessToken = await encryptToken(accessToken);
-    const encryptedRefreshToken = await encryptToken(refreshToken);
+    const now = Date.now();
+    const cstTime = moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]');
+    const encryptedAccessToken = await encrypt(accessToken);
+    const encryptedRefreshToken = await encrypt(refreshToken);
 
     const tokenData = {
       accessToken: encryptedAccessToken,
       refreshToken: encryptedRefreshToken,
-      expirationTime: tokenVerification.valid ? tokenVerification.expirationTime : tokenTimestamps.updateTime,
+      expirationTime: tokenVerification.valid ? tokenVerification.expirationTime : now,
       userEmail: currentUser.email,
       authorizedScopes: verifiedScopes,
       isValid: tokenVerification.valid,
       account: process.env.GOOGLE_CLIENT_ID,
-      ...tokenTimestamps
+      __last_token_update: now,
+      __web_token_update: cstTime,
+      updateTime: cstTime,
+      lastUpdated: cstTime,
+      bumpy_expirationTimeCST: moment(now + 3600000).tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]'),
+      bumpy_lastRefreshTime__: cstTime,
+      bumpy_account: process.env.GOOGLE_CLIENT_ID,
+      createdAt: now,
+      touchedAt: cstTime,
+      lastTokenUpdate: cstTime,
+      refreshToken_update: refreshToken ? cstTime : null
     };
 
     await setDoc(userTokensRef, tokenData, { merge: true });
@@ -126,16 +137,17 @@ export async function storeTokens_fromClient(userId, accessToken, refreshToken, 
     await setDoc(authorizedScopesRef, {
       userEmail: currentUser.email,
       authorizedScopes: verifiedScopes,
-      ...scopeTimestamps
+      lastUpdated: cstTime
     }, { merge: true });
 
     return { 
       success: true, 
       message: 'Tokens stored successfully', 
-      updateTime: tokenTimestamps.updateTime,
+      updateTime: cstTime,
       authorizedScopes: verifiedScopes
     };
   } catch (error) {
+    console.error('Error storing tokens in auth-actions.storeTokens:', error);
     return { success: false, error: error.message };
   }
 }
@@ -467,14 +479,14 @@ export async function addScope(scope, idToken) {
     // Update user_tokens
     batch.set(userTokensRef, {
       authorizedScopes: arrayUnion(scope),
-      lastUpdated: getTokenTimestamps('web').lastUpdated
+      lastUpdated: moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]')
     }, { merge: true });
 
     // Update authorized_scopes
     const authorizedScopesRef = doc(db, 'authorized_scopes', currentUser.uid);
     batch.set(authorizedScopesRef, {
       authorizedScopes: arrayUnion(scope),
-      lastUpdated: getTokenTimestamps('web').lastUpdated
+      lastUpdated: moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]')
     }, { merge: true });
 
     await batch.commit();
@@ -504,14 +516,14 @@ export async function deleteScope(scope, idToken) {
     const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
     batch.set(userTokensRef, {
       authorizedScopes: arrayRemove(scope),
-      ...getTokenTimestamps('web')
+      lastUpdated: moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]')
     }, { merge: true });
 
     // Update authorized_scopes
     const authorizedScopesRef = doc(db, 'authorized_scopes', currentUser.uid);
     batch.set(authorizedScopesRef, {
       authorizedScopes: arrayRemove(scope),
-      ...getScopeTimestamps('web')
+      lastUpdated: moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]')
     }, { merge: true });
 
     await batch.commit();
@@ -525,7 +537,7 @@ export async function deleteScope(scope, idToken) {
 
 async function logReauthRequired(db, userId, reason, error = null) {
   try {
-    const timestamp = getTokenTimestamps('web').touchedTime;
+    const timestamp = moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]');
     const logRef = doc(db, 'spool', 'logs');
     const reauthRef = doc(logRef, 'reauth', `${userId}_${timestamp}`);
     

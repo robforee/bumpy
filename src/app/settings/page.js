@@ -157,11 +157,16 @@ export default function Settings() {
       await Promise.all(addPromises);
 
       // Re-authenticate with all scopes to ensure they're active
-      console.log('Re-authenticating with scopes:', JSON.stringify(availableScopes, null, 2));
+      //console.log('Re-authenticating with scopes:', JSON.stringify(availableScopes, null, 2));
       const signInResult = await signInWithGoogle(availableScopes, true);  // Force consent screen
       
       if (signInResult.success) {
         const { user, tokens: { accessToken, refreshToken }, scopes: grantedScopes } = signInResult;
+        console.log('Got new tokens:', {
+          hasAccessToken: !!accessToken,
+          hasRefreshToken: !!refreshToken,
+          grantedScopesCount: grantedScopes?.length
+        });
         const newIdToken = await user.getIdToken();
         await storeTokens_fromClient(user.uid, accessToken, refreshToken, newIdToken, grantedScopes);
         await loadScopes();

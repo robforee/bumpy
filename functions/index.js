@@ -2,36 +2,28 @@
 /*
 current firebase functions code uses CommonJS module syntax (require), 
 not using ES Modules syntax (import)
-
 */
 
 const { OpenAI } = require('openai');
 const { logger } = require("firebase-functions");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
-
-const {onRequest} = require("firebase-functions/v2/https");
-const {onDocumentCreated} = require("firebase-functions/v2/firestore");
+const { onRequest } = require("firebase-functions/v2/https");
+const { onDocumentCreated } = require("firebase-functions/v2/firestore");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 
 // onCall is for calling via Firebase SDK
 const { defineSecret } = require("firebase-functions/params");
 const moment = require('moment-timezone');
 
-
 const admin = require('firebase-admin');
 const { google } = require('googleapis');
 
-
-console.log('FUNCTIONS_EMULATOR ',process.env.FUNCTIONS_EMULATOR )
+console.log('FUNCTIONS_EMULATOR ', process.env.FUNCTIONS_EMULATOR)
 
 const functions = require('firebase-functions');
-// const functions = process.env.FUNCTIONS_EMULATOR 
-//   ? require('firebase-functions')
-//   : require('firebase-admin/functions');
 
 // The Firebase Admin SDK to access Firestore.
-const {initializeApp} = require("firebase-admin/app");
- 
+const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const crypto = require('crypto');
 
@@ -40,7 +32,6 @@ const openaiApiKey = defineSecret('OPENAI_API_KEY');
 const encryptionKey = defineSecret('ENCRYPTION_KEY');
 
 initializeApp();
-
 
 exports.addmessage = onRequest(async (req, res) => {
   // Grab the text parameter.
@@ -108,7 +99,10 @@ exports.scheduledHelloWorld = onSchedule({
     schedule: 'every 1 hours',
     timeZone: 'America/Chicago',
     retryCount: 3,
-    maxRetrySeconds: 60
+    memory: '256MB',
+    labels: {
+        job: 'hello-world'
+    }
 }, async (event) => {
     try {
         // Get data from the scheduler event
@@ -169,5 +163,51 @@ exports.scheduledHelloWorld = onSchedule({
         
         // Throwing the error will trigger the retry policy
         throw error;
+    }
+});
+
+/**
+ * Scheduled function to trigger token refresh
+ * Sets flag in Firestore which triggers the refresh-tokens service
+ */
+exports.triggerTokenRefresh = onSchedule({
+    schedule: 'every 30 minutes',
+    timeZone: 'America/Chicago',
+    retryCount: 3,
+    memory: '256MB',
+    minInstances: 0,  // Ensures this runs as background function
+    maxInstances: 1,  // Only need one instance
+    labels: {
+        job: 'token-refresh'
+    }
+}, async (event) => {
+    const db = getFirestore();
+    const serviceRef = db.collection('services').doc('refresh-tokens');
+
+    try {
+        // Get current service state
+        const doc = await serviceRef.get();
+        if (!doc.exists) {
+            logger.error('refresh-tokens service document not found');
+            return;
+        }
+
+        const data = doc.data();
+        if (!data.__service_active) {
+            logger.info('refresh-tokens service is not active, skipping trigger');
+            return;
+        }
+
+        // Set trigger flag and update timestamps
+        await serviceRef.update({
+            __trigger_refresh: true,
+            __update: Date.now(),
+            __update_time: moment().tz('America/Chicago').format('YYYY-MM-DD hh:mm:ss A [CST]')
+        });
+
+        logger.info('Successfully set token refresh trigger');
+    } catch (error) {
+        logger.error('Error triggering token refresh:', error);
+        throw error; // Allows Cloud Functions to retry
     }
 });

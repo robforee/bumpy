@@ -97,7 +97,6 @@ export default function DashboardPage() {
   }
 
   if (!user) {
-    console.log('user')
     return <div>Please sign in to view your dashboard.</div>;
   }
 

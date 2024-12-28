@@ -74,6 +74,7 @@ const Header = () => {
       let authorizedScopes = minimalScopes;
       let forceConsent = false;
 
+      // If user already exists, check if we need to add any minimal scopes
       if (!userQuery.empty) {
         const userDoc = userQuery.docs[0];
         const scopesFromDb = userDoc.data().authorizedScopes || [];
@@ -81,8 +82,11 @@ const Header = () => {
           // Check if we need to add any minimal scopes
           const newScopes = minimalScopes.filter(scope => !scopesFromDb.includes(scope));
           authorizedScopes = [...scopesFromDb, ...newScopes];
-          // Only force consent if we're adding new scopes
-          forceConsent = newScopes.length > 0;
+          // force consent if we're adding new scopes
+          // force consent if requiresUserAction
+          if(userDoc.data().requiresUserAction || newScopes.length > 0) {
+            forceConsent = true;
+          }
         }
       } else {
         // Force consent for brand new users
@@ -99,8 +103,10 @@ const Header = () => {
 
       // Store the tokens
       const { user, tokens: { accessToken, refreshToken }, scopes: grantedScopes } = signInResult;
+      
       const idToken = await user.getIdToken();
       await storeTokens_fromClient(user.uid, accessToken, refreshToken, idToken, grantedScopes);
+      //console.log('Stored tokens for user:', user.uid);
 
       await refreshUserProfile();
       router.push('/dashboard');

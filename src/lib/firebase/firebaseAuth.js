@@ -34,18 +34,46 @@ export async function signInWithGoogle(scopes = [], forceConsent = false) {
       provider.setCustomParameters({
         prompt: 'consent'
       });
+    } else {
+      // If not forcing consent, use 'select_account' to let user pick account
+      // but skip consent if already granted
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
     }
 
     const result = await signInWithPopup(auth, provider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
+    
+    // Validate tokens before returning
+    if (!credential?.accessToken) {
+      console.error('Missing access token in credential:', credential);
+      return {
+        success: false,
+        error: 'Failed to get access token from Google'
+      };
+    }
+
+    // Note: refresh_token may not always be present, especially if user has already granted access
+    // We'll only get a new refresh token if:
+    // 1. User has never logged in before
+    // 2. User was forced to give consent again
+    // 3. Previous refresh token was revoked
+    const tokens = {
+      accessToken: credential.accessToken,
+      refreshToken: result._tokenResponse?.refresh_token || null
+    };
+
+    console.log('Sign in successful. Got tokens:', {
+      hasAccessToken: !!tokens.accessToken,
+      hasRefreshToken: !!tokens.refreshToken,
+      wasConsentForced: forceConsent
+    });
 
     return {
       success: true,
       user: result.user,
-      tokens: {
-        accessToken: credential.accessToken,
-        refreshToken: result._tokenResponse.refresh_token
-      },
+      tokens,
       scopes: scopes
     };
   } catch (error) {

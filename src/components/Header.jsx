@@ -97,20 +97,47 @@ const Header = () => {
       const signInResult = await signInWithGoogle(authorizedScopes, forceConsent);
       
       if (!signInResult.success) {
+        console.error('Sign in failed:', signInResult.error);
         handleSignInError(signInResult);
         return;
       }
 
-      // Store the tokens
-      const { user, tokens: { accessToken, refreshToken }, scopes: grantedScopes } = signInResult;
-      
-      const idToken = await user.getIdToken();
-      await storeTokens_fromClient(user.uid, accessToken, refreshToken, idToken, grantedScopes);
-      //console.log('Stored tokens for user:', user.uid);
+      // Validate we got the necessary tokens
+      if (!signInResult.tokens?.accessToken) {
+        console.error('Missing access token after sign in');
+        handleSignInError({ error: 'Failed to get access token from Google' });
+        return;
+      }
 
-      await refreshUserProfile();
-      router.push('/dashboard');
+      try {
+        // Get ID token for server auth
+        const idToken = await signInResult.user.getIdToken();
+        if (!idToken) {
+          console.error('Failed to get ID token after sign in');
+          handleSignInError({ error: 'Failed to get ID token' });
+          return;
+        }
 
+        // Store tokens in Firestore
+        const storeResult = await storeTokens_fromClient(signInResult.user.uid, signInResult.tokens.accessToken, signInResult.tokens.refreshToken, idToken, authorizedScopes);
+
+        if (!storeResult.success) {
+          console.error('Failed to store tokens:', storeResult.error);
+          handleSignInError({ error: `Failed to store tokens: ${storeResult.error}` });
+          return;
+        }
+
+        // Successfully signed in and stored tokens
+        console.log('Sign in successful');
+        await refreshUserProfile();
+        router.push('/dashboard');
+
+      } catch (error) {
+        console.error('Error during sign in process:', error);
+        handleSignInError({ 
+          error: error.message || 'An unexpected error occurred during sign in'
+        });
+      }
     } catch (error) {
       console.error("Sign-in error:", error);
       router.push('/auth-error');

@@ -47,108 +47,171 @@ export async function decrypt(text) {
 // Stores tokens for a given user
 export async function storeTokens({ accessToken, refreshToken, idToken }) {
   try {
+    // Validate required tokens
+    if (!accessToken) {
+      console.error('Missing access token in storeTokens');
+      return { 
+        success: false, 
+        error: 'Access token is required' 
+      };
+    }
+
+    if (!idToken) {
+      console.error('Missing ID token in storeTokens');
+      return { 
+        success: false, 
+        error: 'ID token is required' 
+      };
+    }
+
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
     
     if (!currentUser || !currentUser?.uid ) {
-      console.log( 'User not authenticated or mismatch storeTokens' );
-      throw new Error('User not authenticated or mismatch',currentUser, currentUser.uid);
+      console.error('User not authenticated or mismatch storeTokens:', { 
+        hasUser: !!currentUser, 
+        hasUid: !!currentUser?.uid 
+      });
+      return { 
+        success: false, 
+        error: 'User not authenticated or mismatch' 
+      };
     }
 
     const db = getFirestore(firebaseServerApp);
 
     const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
     const now = Date.now();
-    const cstTime = moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]');
-    const encryptedAccessToken = await encrypt(accessToken);
-    const encryptedRefreshToken = await encrypt(refreshToken);
+    const cstTime = moment().tz('America/Chicago').format('YYYY-MM-DD hh:mm A [CST]');
 
-    const tokenData = {
-      accessToken: encryptedAccessToken,
-      refreshToken: encryptedRefreshToken,
-      expirationTime: now + 3600000, // 1 hour from now
-      __last_token_update: now,
-      __web_token_update: cstTime,
-      updateTime: cstTime,
-      lastUpdated: cstTime,
-      bumpy_expirationTimeCST: moment(now + 3600000).tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]'),
-      bumpy_lastRefreshTime__: cstTime,
-      bumpy_account: process.env.GOOGLE_CLIENT_ID,
-      createdAt: now,
-      touchedAt: cstTime,
-      userEmail: currentUser.email
-    };
+    try {
+      const encryptedAccessToken = await encrypt(accessToken);
+      const encryptedRefreshToken = refreshToken ? await encrypt(refreshToken) : null;
 
-    await setDoc(userTokensRef, tokenData, { merge: true });
+      const tokenData = {
+        accessToken: encryptedAccessToken,
+        ...(encryptedRefreshToken && { refreshToken: encryptedRefreshToken }),
+        expirationTime: now + 3600000, // 1 hour from now
+        __last_token_update: now,
+        __web_token_update: cstTime,
+        __web_refreshToken_update: refreshToken ? cstTime : null,
+        __web_account: process.env.GOOGLE_CLIENT_ID,
+        createdAt: now,
+        userEmail: currentUser.email
+      };
 
-    return { success: true, message: 'Tokens stored successfullly', updateTime: cstTime };
+      await setDoc(userTokensRef, tokenData, { merge: true });
+      console.log('Tokens stored successfully for user:', currentUser.uid);
+
+      return { 
+        success: true, 
+        message: 'Tokens stored successfully', 
+        updateTime: cstTime 
+      };
+
+    } catch (encryptError) {
+      console.error('Error encrypting tokens:', encryptError);
+      return { 
+        success: false, 
+        error: 'Failed to encrypt tokens' 
+      };
+    }
 
   } catch (error) {
-    console.error('Error storing tokens in auth-actions.storeTokens');
-    return { success: false, error: error.message };
+    console.error('Error in storeTokens:', error);
+    return { 
+      success: false, 
+      error: error.message || 'Unknown error storing tokens',
+      stack: error.stack
+    };
   }
 }
 
 // Stores tokens for a given user from the client side
 export async function storeTokens_fromClient(userId, accessToken, refreshToken, idToken, scopes) {
   try {
+    // Validate required tokens
+    if (!accessToken) {
+      console.error('Missing access token in storeTokens_fromClient');
+      return { 
+        success: false, 
+        error: 'Access token is required' 
+      };
+    }
+
+    if (!idToken) {
+      console.error('Missing ID token in storeTokens_fromClient');
+      return { 
+        success: false, 
+        error: 'ID token is required' 
+      };
+    }
+
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
 
     if (!currentUser) {
-      throw new Error('User not authenticated');
+      console.error('User not authenticated in storeTokens_fromClient');
+      return {
+        success: false,
+        error: 'User not authenticated'
+      };
     }
 
     const db = getFirestore(firebaseServerApp);
     const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
 
-    const tokenVerification = await verifyToken(accessToken);
-    const verifiedScopes = tokenVerification.valid ? scopes : [];
+    try {
+      // If we didn't get a new refresh token, check if user has an existing one
+      if (!refreshToken) {
+        const userTokens = await getDoc(userTokensRef);
+        if (userTokens.exists() && userTokens.data().refreshToken) {
+          console.log('Preserving existing refresh token for user:', currentUser.uid);
+          refreshToken = await decrypt(userTokens.data().refreshToken);
+        }
+      }
 
-    // Get timestamps for both token and scope updates
-    const now = Date.now();
-    const cstTime = moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]');
-    const encryptedAccessToken = await encrypt(accessToken);
-    const encryptedRefreshToken = await encrypt(refreshToken);
+      const tokenVerification = await verifyToken(accessToken);
+      const now = Date.now();
+      const cstTime = moment().tz('America/Chicago').format('YYYY-MM-DD hh:mm A [CST]');
 
-    const tokenData = {
-      accessToken: encryptedAccessToken,
-      refreshToken: encryptedRefreshToken,
-      expirationTime: tokenVerification.valid ? tokenVerification.expirationTime : now,
-      userEmail: currentUser.email,
-      authorizedScopes: verifiedScopes,
-      isValid: tokenVerification.valid,
-      account: process.env.GOOGLE_CLIENT_ID,
-      __last_token_update: now,
-      __web_token_update: cstTime,
-      updateTime: cstTime,
-      lastUpdated: cstTime,
-      bumpy_expirationTimeCST: moment(now + 3600000).tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]'),
-      bumpy_lastRefreshTime__: cstTime,
-      bumpy_account: process.env.GOOGLE_CLIENT_ID,
-      createdAt: now,
-      touchedAt: cstTime,
-      lastTokenUpdate: cstTime,
-      refreshToken_update: refreshToken ? cstTime : null
-    };
+      const encryptedAccessToken = await encrypt(accessToken);
+      const encryptedRefreshToken = refreshToken ? await encrypt(refreshToken) : null;
 
-    await setDoc(userTokensRef, tokenData, { merge: true });
+      const tokenData = {
+        accessToken: encryptedAccessToken,
+        ...(encryptedRefreshToken && { refreshToken: encryptedRefreshToken }),
+        expirationTime: now + 3600000, // 1 hour from now
+        __last_token_update: now,
+        __web_token_update: cstTime,
+        __web_refreshToken_update: refreshToken ? cstTime : null,
+        __web_account: process.env.GOOGLE_CLIENT_ID,
+        userEmail: currentUser.email,
+        authorizedScopes: scopes,
+        isValid: tokenVerification.valid
+      };
 
-    // Keep authorized_scopes in sync with timestamps
-    const authorizedScopesRef = doc(db, 'authorized_scopes', currentUser.uid);
-    await setDoc(authorizedScopesRef, {
-      userEmail: currentUser.email,
-      authorizedScopes: verifiedScopes,
-      lastUpdated: cstTime
-    }, { merge: true });
+      await setDoc(userTokensRef, tokenData, { merge: true });
+      console.log('Tokens stored successfully for user:', currentUser.uid, {
+        hasAccessToken: true,
+        hasRefreshToken: !!encryptedRefreshToken
+      });
 
-    return { 
-      success: true, 
-      message: 'Tokens stored successfully', 
-      updateTime: cstTime,
-      authorizedScopes: verifiedScopes
-    };
+      return { success: true, message: 'Tokens stored successfully', updateTime: cstTime };
+
+    } catch (encryptError) {
+      console.error('Error encrypting/storing tokens:', encryptError);
+      return { 
+        success: false, 
+        error: 'Failed to encrypt or store tokens' 
+      };
+    }
+
   } catch (error) {
-    console.error('Error storing tokens in auth-actions.storeTokens:', error);
-    return { success: false, error: error.message };
+    console.error('Error in storeTokens_fromClient:', error);
+    return { 
+      success: false, 
+      error: error.message || 'Unknown error storing tokens',
+      stack: error.stack
+    };
   }
 }
 
@@ -479,14 +542,14 @@ export async function addScope(scope, idToken) {
     // Update user_tokens
     batch.set(userTokensRef, {
       authorizedScopes: arrayUnion(scope),
-      lastUpdated: moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]')
+      lastUpdated: moment().tz('America/Chicago').format('YYYY-MM-DD hh:mm A [CST]')
     }, { merge: true });
 
     // Update authorized_scopes
     const authorizedScopesRef = doc(db, 'authorized_scopes', currentUser.uid);
     batch.set(authorizedScopesRef, {
       authorizedScopes: arrayUnion(scope),
-      lastUpdated: moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]')
+      lastUpdated: moment().tz('America/Chicago').format('YYYY-MM-DD hh:mm A [CST]')
     }, { merge: true });
 
     await batch.commit();
@@ -516,14 +579,14 @@ export async function deleteScope(scope, idToken) {
     const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
     batch.set(userTokensRef, {
       authorizedScopes: arrayRemove(scope),
-      lastUpdated: moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]')
+      lastUpdated: moment().tz('America/Chicago').format('YYYY-MM-DD hh:mm A [CST]')
     }, { merge: true });
 
     // Update authorized_scopes
     const authorizedScopesRef = doc(db, 'authorized_scopes', currentUser.uid);
     batch.set(authorizedScopesRef, {
       authorizedScopes: arrayRemove(scope),
-      lastUpdated: moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]')
+      lastUpdated: moment().tz('America/Chicago').format('YYYY-MM-DD hh:mm A [CST]')
     }, { merge: true });
 
     await batch.commit();
@@ -537,7 +600,7 @@ export async function deleteScope(scope, idToken) {
 
 async function logReauthRequired(db, userId, reason, error = null) {
   try {
-    const timestamp = moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm:ss [CST]');
+    const timestamp = moment().tz('America/Chicago').format('YYYY-MM-DD hh:mm A [CST]');
     const logRef = doc(db, 'spool', 'logs');
     const reauthRef = doc(logRef, 'reauth', `${userId}_${timestamp}`);
     

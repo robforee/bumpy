@@ -5,9 +5,11 @@ import React, { useState } from 'react';
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { getAuth } from 'firebase/auth';
-import { doc, getFirestore, collection, query, where, getDocs, limit, orderBy } from 'firebase/firestore';
+import { getIdToken } from "firebase/auth";
+
+import { doc, getFirestore, collection, query, where, getDocs, limit, orderBy, setDoc } from 'firebase/firestore';
 import { signInWithGoogle, signOut } from "@/src/lib/firebase/firebaseAuth.js";
-import { storeTokens_fromClient, getScopes_fromClient } from '@/src/app/actions/auth-actions';
+import { storeTokenInfo } from '@/src/app/actions/auth-actions';
 import { useUser } from '@/src/contexts/UserProvider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/src/components/ui/dialog';
 import { Button } from '@/src/components/ui/button';
@@ -64,80 +66,47 @@ const Header = () => {
         )
       );
 
-      // Minimal scopes needed for login
-      const minimalScopes = [
-        'https://www.googleapis.com/auth/userinfo.email',
-        'openid',
-        'https://www.googleapis.com/auth/userinfo.profile'
-      ];
+      // gather PUBLIC scopes for login
+      let PUBLIC_SCOPES = [];
+      if(userQuery.docs[0].data().authorizedScopes.length > 0) {
+        PUBLIC_SCOPES = userQuery.docs[0].data().authorizedScopes
+      }else{
+        PUBLIC_SCOPES [
+          'https://www.googleapis.com/auth/userinfo.email',
+          'openid',
+          'https://www.googleapis.com/auth/userinfo.profile'
+        ]
+      }
       
-      let authorizedScopes = minimalScopes;
       let forceConsent = false;
 
-      // If user already exists, check if we need to add any minimal scopes
-      if (!userQuery.empty) {
-        const userDoc = userQuery.docs[0];
-        const scopesFromDb = userDoc.data().authorizedScopes || [];
-        if (scopesFromDb.length > 0) {
-          // Check if we need to add any minimal scopes
-          const newScopes = minimalScopes.filter(scope => !scopesFromDb.includes(scope));
-          authorizedScopes = [...scopesFromDb, ...newScopes];
-          // force consent if we're adding new scopes
-          // force consent if requiresUserAction
-          if(userDoc.data().requiresUserAction || newScopes.length > 0) {
-            forceConsent = true;
-          }
-        }
-      } else {
-        // Force consent for brand new users
-        forceConsent = true;
-      }
-
       // Sign in with Google using the found scopes
-      const signInResult = await signInWithGoogle(authorizedScopes, forceConsent);
+      let signInResult = await signInWithGoogle(PUBLIC_SCOPES, forceConsent);
+      console.log('signInResult', signInResult);
+
+      // use google tokenInfo endpoint to get authorized for this login scopes
+      let AUTHD_SCOPES = await fetch( `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${signInResult.tokens.accessToken}` ).then(r => r.json());
+      console.log('Token scopes:', AUTHD_SCOPES.scope?.split(' '));
       
-      if (!signInResult.success) {
-        console.error('Sign in failed:', signInResult.error);
-        handleSignInError(signInResult);
-        return;
-      }
-
-      // Validate we got the necessary tokens
-      if (!signInResult.tokens?.accessToken) {
-        console.error('Missing access token after sign in');
-        handleSignInError({ error: 'Failed to get access token from Google' });
-        return;
-      }
-
-      try {
-        // Get ID token for server auth
-        const idToken = await signInResult.user.getIdToken();
-        if (!idToken) {
-          console.error('Failed to get ID token after sign in');
-          handleSignInError({ error: 'Failed to get ID token' });
-          return;
+      // check if token scopes match authorized scopes
+      if (AUTHD_SCOPES.scope?.split(' ').sort().join(',') !== PUBLIC_SCOPES.sort().join(',')) {
+        console.error('Token scopes do not match authorized scopes');
+        forceConsent = true;
+        signInResult = await signInWithGoogle(PUBLIC_SCOPES, forceConsent);
+        AUTHD_SCOPES = await fetch( `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${signInResult.tokens.accessToken}` ).then(r => r.json());
+        if (AUTHD_SCOPES.scope?.split(' ').sort().join(',') !== PUBLIC_SCOPES.sort().join(',')) {
+          console.error('Token scopes still do not match authorized scopes');          
         }
-
-        // Store tokens in Firestore
-        const storeResult = await storeTokens_fromClient(signInResult.user.uid, signInResult.tokens.accessToken, signInResult.tokens.refreshToken, idToken, authorizedScopes);
-
-        if (!storeResult.success) {
-          console.error('Failed to store tokens:', storeResult.error);
-          handleSignInError({ error: `Failed to store tokens: ${storeResult.error}` });
-          return;
-        }
-
-        // Successfully signed in and stored tokens
-        console.log('Sign in successful');
-        await refreshUserProfile();
-        router.push('/dashboard');
-
-      } catch (error) {
-        console.error('Error during sign in process:', error);
-        handleSignInError({ 
-          error: error.message || 'An unexpected error occurred during sign in'
-        });
+        // store tokens
+        storeTokenInfo(user.uid, 
+                    signInResult.tokens.accessToken, 
+                    signInResult.tokens.refreshToken, 
+                    AUTHD_SCOPES.scope?.split(' '), 
+                    signInResult.tokens.idToken);
+      }else{
+        console.log('Token scopes match authorized scopes');
       }
+
     } catch (error) {
       console.error("Sign-in error:", error);
       router.push('/auth-error');
@@ -146,9 +115,16 @@ const Header = () => {
     }
   };
 
-  const handleSignInError = (result) => {
+  const handleSignInError = async (result) => {
     switch (result.action) {
       case 'ENABLE_POPUPS':
+        // Sign out before redirecting
+        try {
+          await signOut();
+          console.log('Signed out user before popup redirect');
+        } catch (error) {
+          console.error('Error signing out:', error);
+        }
         router.push('/enable-popups');
         break;
       case 'AUTH_ERROR':

@@ -21,54 +21,65 @@ export function onAuthStateChanged(cb) {
  * @returns {Promise<{ success: boolean, user: any, tokens: any, scopes: string[] }>} The result of the sign in.
  */
 export async function signInWithGoogle(scopes = [], forceConsent = false) {
+  console.log('Force consent:', forceConsent);
+
   try {
     const provider = new GoogleAuthProvider();
     
     // Add requested scopes
-    scopes.forEach(scope => {
-      provider.addScope(scope);
-    });
+    scopes.forEach(scope => { provider.addScope(scope); });
 
     // Force consent if requested or if new scopes are being added
     if (forceConsent) {
       provider.setCustomParameters({
-        prompt: 'consent'
+        prompt: 'consent',
+        access_type: 'offline'  // Request a refresh token
       });
     } else {
       // If not forcing consent, use 'select_account' to let user pick account
       // but skip consent if already granted
       provider.setCustomParameters({
-        prompt: 'select_account'
+        prompt: 'select_account',
+        access_type: 'offline'  // Request a refresh token
       });
     }
 
     const result = await signInWithPopup(auth, provider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
     
+    // NOT THIS result.user.accessToken (is idToken)
+    // YES THIS result._tokenResponse?.refreshToken
+    // expiresIn "3600"
+    console.log('50',result);  // _tokenResponse.refreshToken .oauthAccessToken
+    console.log('refreshToken',result._tokenResponse?.refreshToken) 
+    
+    // YES THIS credential.accessToken
+    console.log('53',credential); // accessToken
+    
     // Validate tokens before returning
     if (!credential?.accessToken) {
       console.error('Missing access token in credential:', credential);
       return {
         success: false,
-        error: 'Failed to get access token from Google'
+        error: 'Failed to get access token from Google',
+        action: 'AUTH_ERROR'
       };
     }
 
-    // Note: refresh_token may not always be present, especially if user has already granted access
-    // We'll only get a new refresh token if:
-    // 1. User has never logged in before
-    // 2. User was forced to give consent again
-    // 3. Previous refresh token was revoked
+    // When forcing consent, we must get a refresh token
+    if (forceConsent && !result._tokenResponse?.refreshToken) {
+      console.error('Did not receive refresh token after forcing consent');
+      return {
+        success: false,
+        error: 'Failed to get refresh token from Google',
+        action: 'AUTH_ERROR'
+      };
+    }
+
     const tokens = {
       accessToken: credential.accessToken,
       refreshToken: result._tokenResponse?.refresh_token || null
     };
-
-    console.log('Sign in successful. Got tokens:', {
-      hasAccessToken: !!tokens.accessToken,
-      hasRefreshToken: !!tokens.refreshToken,
-      wasConsentForced: forceConsent
-    });
 
     return {
       success: true,
@@ -79,11 +90,21 @@ export async function signInWithGoogle(scopes = [], forceConsent = false) {
   } catch (error) {
     console.error('Google sign in error:', error);
     
+    // Check for popup blocked
+    if (error.code === 'auth/popup-blocked') {
+      return {
+        success: false,
+        error: 'Popup was blocked by browser',
+        action: 'ENABLE_POPUPS'
+      };
+    }
+    
     // Check for user denied access
     if (error.code === 'auth/popup-closed-by-user') {
       return {
         success: false,
-        error: 'Sign in cancelled by user'
+        error: 'Sign in cancelled by user',
+        action: 'STAY'
       };
     }
     
@@ -92,13 +113,15 @@ export async function signInWithGoogle(scopes = [], forceConsent = false) {
         (error.message && error.message.includes('access_denied'))) {
       return {
         success: false,
-        error: 'Access denied by user'
+        error: 'Access denied by user',
+        action: 'STAY'
       };
     }
 
     return {
       success: false,
-      error: error.message || 'Failed to sign in with Google'
+      error: error.message || 'Failed to sign in with Google',
+      action: 'AUTH_ERROR'
     };
   }
 }

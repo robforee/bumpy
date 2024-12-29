@@ -9,12 +9,43 @@ service cloud.firestore {
       && (resource.data[key] == request.resource.data[key]);
   }
 
+  // Helper function to check if user is admin
+  function isAdmin() {
+    return request.auth != null && 
+           (request.auth.token.admin == true || 
+            request.auth.uid == 'CtAyzps80VXRzna32Kdy0NHYcPe2');
+  }
+
   match /databases/{database}/documents {
+    // Admin collection for managing users
+    match /admin/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    match /jobs/{jobId} {
+      allow read, write: if request.auth.token.admin == true;
+    }  
+
     // Users:
     //   - Authenticated user can read and write their own document
+    //   - Admin can access all documents
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth != null && 
+        (request.auth.uid == userId || isAdmin());
     }
+
+    // User Tokens:
+    match /user_tokens/{userId} {
+      // Full access for authenticated user's own document or admin
+      allow read, write, delete: if request.auth != null && 
+        (request.auth.uid == userId || isAdmin());
+
+      // Public can only read authorizedScopes and userEmail for login
+      allow read: if 
+        request.query.limit <= 1 && 
+        request.query.orderBy == "userEmail" &&
+        resource.data.keys().hasOnly(["authorizedScopes", "userEmail"]);
+    }    
 
     // Restaurants:
     //   - Authenticated user can read
@@ -45,31 +76,45 @@ service cloud.firestore {
       }      
     }
 
-    // User Tokens:
-    //   - Authenticated user can read and write their own token document
-    //   - Deletes are allowed for the user's own document
-    match /user_tokens/{userId} {
-      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
+    // Authorized scopes:
+    //   - Anyone can read
+    //   - Only owner or admin can write
+    match /authorized_scopes/{userId} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        (request.auth.uid == userId || isAdmin());
+    }    
+    
+    // User scopes:
+    match /user_scopes/{userId} {
+      allow read: if true;  // Allow public read access
+      allow write: if request.auth != null && 
+                  (request.auth.uid == userId || 
+                   request.auth.uid == 'default' ||
+                   isAdmin());
     }
 
-    // User Scopes:
-    //   - Anyone can read (needed for optimized auth flow)
-    //   - Only authenticated user can write their own document
-    //   - Special 'default' document is accessible to all authenticated users
-    match /user_scopes/{userId} {
-      allow read: true;  // Public read access
-      allow write, delete: if request.auth != null && (request.auth.uid == userId || userId == 'default');
+    // User profiles:
+    match /user_profiles/{userId} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+        (request.auth.uid == userId || isAdmin());
+    }
+
+    match /logs/{logId} {
+      allow read, write, delete: if request.auth != null && 
+        (request.resource.data.userId == request.auth.uid || isAdmin());
+    }        
+
+    match /adminData/{userId} {
+      allow read, write, delete: if request.auth != null && 
+        (request.auth.uid == userId || userId == 'default' || isAdmin());
     }    
 
     match /topics/{topicId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.owner == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.owner == request.auth.uid;
-    }
-
-    // Allow querying user_scopes by email
-    match /user_scopes/{userId} {
-      allow get: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null;
     }
   }
 }

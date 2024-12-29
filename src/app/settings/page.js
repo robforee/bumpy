@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getScopes_fromClient, addScope, deleteScope, storeTokens_fromClient } from '@/src/app/actions/auth-actions';
+import { getScopes_fromClient, 
+            addScopes_bothPlaces, 
+            deleteScope, 
+            storeTokenInfo } from '@/src/app/actions/auth-actions';
 import { signInWithGoogle } from '@/src/lib/firebase/firebaseAuth';
 import { getAuth } from 'firebase/auth';
 import { Button } from "@/src/components/ui/button";
@@ -56,6 +59,7 @@ export default function Settings() {
       }
 
       const response = await getScopes_fromClient(userId, idToken);
+
       if (response.success) {
         setCurrentScopes(response.scopes || []);
       } else {
@@ -82,7 +86,7 @@ export default function Settings() {
       }
 
       const idToken = await auth.currentUser.getIdToken();
-      const result = await addScope(scope, idToken);
+      const result = await addScopes_bothPlaces(scope, idToken);
       
       if (result.success) {
         // Re-authenticate with new scope
@@ -90,7 +94,7 @@ export default function Settings() {
         if (signInResult.success) {
           const { user, tokens: { accessToken, refreshToken }, scopes: grantedScopes } = signInResult;
           const newIdToken = await user.getIdToken();
-          await storeTokens_fromClient(user.uid, accessToken, refreshToken, newIdToken, grantedScopes);
+          await storeTokenInfo(user.uid, accessToken, refreshToken, newIdToken, grantedScopes);
           await loadScopes();
         } else {
           // If user denied access, remove the scope from our database
@@ -128,7 +132,7 @@ export default function Settings() {
         if (signInResult.success) {
           const { user, tokens: { accessToken, refreshToken }, scopes: grantedScopes } = signInResult;
           const newIdToken = await user.getIdToken();
-          await storeTokens_fromClient(user.uid, accessToken, refreshToken, newIdToken, grantedScopes);
+          await storeTokenInfo(user.uid, accessToken, refreshToken, newIdToken, grantedScopes);
           await loadScopes();
         }
       } else {
@@ -153,7 +157,7 @@ export default function Settings() {
       }
 
       const idToken = await auth.currentUser.getIdToken();
-      const addPromises = availableScopes.map(scope => addScope(scope, idToken));
+      const addPromises = availableScopes.map(scope => addScopes_bothPlaces(scope, idToken));
       await Promise.all(addPromises);
 
       // Re-authenticate with all scopes to ensure they're active
@@ -168,7 +172,7 @@ export default function Settings() {
           grantedScopesCount: grantedScopes?.length
         });
         const newIdToken = await user.getIdToken();
-        await storeTokens_fromClient(user.uid, accessToken, refreshToken, newIdToken, grantedScopes);
+        await storeTokenInfo(user.uid, accessToken, refreshToken, newIdToken, grantedScopes);
         await loadScopes();
       }
     } catch (error) {
@@ -198,7 +202,7 @@ export default function Settings() {
       if (signInResult.success) {
         const { user, tokens: { accessToken, refreshToken }, scopes: grantedScopes } = signInResult;
         const newIdToken = await user.getIdToken();
-        await storeTokens_fromClient(user.uid, accessToken, refreshToken, newIdToken, grantedScopes);
+        await storeTokenInfo(user.uid, accessToken, refreshToken, newIdToken, grantedScopes);
         await loadScopes();
       }
     } catch (error) {

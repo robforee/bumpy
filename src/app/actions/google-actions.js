@@ -3,10 +3,6 @@
 
 import { google } from 'googleapis';
 import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';
-import { ensureFreshTokens } from './auth-actions';
-import { getIdToken } from "firebase/auth";
-import { auth } from "@/src/lib/firebase/clientApp";
-import { getScopes_fromClient } from './auth-actions';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { decrypt } from './auth-actions';
 

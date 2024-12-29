@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { getAuth } from "firebase/auth";
-import { getScopes_fromClient, addScope, deleteScope } from "@/src/app/actions/auth-actions";
+import { getScopes_fromClient, addScopes_bothPlaces, deleteScope } from "@/src/app/actions/auth-actions";
 
 const availableScopes = [
   "https://www.googleapis.com/auth/calendar",
@@ -50,7 +50,7 @@ const ScopeManager = () => {
     setIsLoading(true);
     setError(null);
     try {
-      await addScope(newScope);
+      await addScopes_bothPlaces(newScope);
       setNewScope('');
       await fetchScopes();
     } catch (err) {

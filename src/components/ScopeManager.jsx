@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { getAuth } from "firebase/auth";
-import { getScopes_fromClient, addScopes_bothPlaces, deleteScope } from "@/src/app/actions/auth-actions";
+import { getAuthenticatedScopes, addScopes_toPUBLIC, deleteScope } from "@/src/app/actions/auth-actions";
 
 const availableScopes = [
   "https://www.googleapis.com/auth/calendar",
@@ -31,7 +31,7 @@ const ScopeManager = () => {
       }
 
       const idToken = await auth.currentUser.getIdToken();
-      const fetchedScopes = await getScopes_fromClient(auth.currentUser.uid, idToken);
+      const fetchedScopes = await getAuthenticatedScopes(auth.currentUser.uid, idToken);
       setScopes(fetchedScopes);
     } catch (err) {
       setError(err.message || 'Failed to load scopes');
@@ -50,7 +50,7 @@ const ScopeManager = () => {
     setIsLoading(true);
     setError(null);
     try {
-      await addScopes_bothPlaces(newScope);
+      await addScopes_toPUBLIC(newScope);
       setNewScope('');
       await fetchScopes();
     } catch (err) {

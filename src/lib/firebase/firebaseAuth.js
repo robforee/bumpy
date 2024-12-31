@@ -6,6 +6,7 @@ import {
   signInWithPopup,
   onAuthStateChanged as _onAuthStateChanged,
 } from "firebase/auth";
+import { storeTokenInfo } from "@/src/app/actions/auth-actions";
 
 import { auth } from "@/src/lib/firebase/clientApp";
 
@@ -21,7 +22,8 @@ export function onAuthStateChanged(cb) {
  * @returns {Promise<{ success: boolean, user: any, tokens: any, scopes: string[] }>} The result of the sign in.
  */
 export async function signInWithGoogle(scopes = [], forceConsent = false) {
-  console.log('Force consent:', forceConsent);
+  
+  const msg = 'compare PUBLIC_SCOPES TO AUTHD_SCOPES';
 
   try {
     const provider = new GoogleAuthProvider();
@@ -31,6 +33,7 @@ export async function signInWithGoogle(scopes = [], forceConsent = false) {
 
     // Force consent if requested or if new scopes are being added
     if (forceConsent) {
+      console.log('Force consent:', forceConsent);
       provider.setCustomParameters({
         prompt: 'consent',
         access_type: 'offline'  // Request a refresh token
@@ -46,28 +49,24 @@ export async function signInWithGoogle(scopes = [], forceConsent = false) {
 
     const result = await signInWithPopup(auth, provider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
-    
-    // NOT THIS result.user.accessToken (is idToken)
-    // YES THIS result._tokenResponse?.refreshToken
-    // expiresIn "3600"
-    console.log('50',result);  // _tokenResponse.refreshToken .oauthAccessToken
-    console.log('refreshToken',result._tokenResponse?.refreshToken) 
-    
-    // YES THIS credential.accessToken
-    console.log('53',credential); // accessToken
-    
-    // Validate tokens before returning
-    if (!credential?.accessToken) {
+    let signInResult = {
+      success: true,
+      user: result.user,
+      tokens: {
+        accessToken: credential?.accessToken || null,
+        refreshToken: result._tokenResponse?.refresh_token || null
+      },
+      scopes: scopes
+    }
+    if (!signInResult.tokens?.accessToken) {
       console.error('Missing access token in credential:', credential);
       return {
         success: false,
         error: 'Failed to get access token from Google',
         action: 'AUTH_ERROR'
       };
-    }
-
-    // When forcing consent, we must get a refresh token
-    if (forceConsent && !result._tokenResponse?.refreshToken) {
+    }    
+    if (forceConsent && !signInResult.tokens?.refreshToken) {
       console.error('Did not receive refresh token after forcing consent');
       return {
         success: false,
@@ -75,18 +74,37 @@ export async function signInWithGoogle(scopes = [], forceConsent = false) {
         action: 'AUTH_ERROR'
       };
     }
+    // use google tokenInfo endpoint to get authorized for this login scopes
+    let AUTHD_SCOPES = await fetch( `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${signInResult.tokens.accessToken}` ).then(r => r.json());
+    
+    // check if token scopes match authorized scopes
+    if (AUTHD_SCOPES.scope?.split(' ').sort().join(',') !== scopes.sort().join(',')) {
+      console.error('AUTHD scopes do not match passed scopes, trying again with force consent');
+      forceConsent = true;
+      signInResult = await signInWithGoogle(scopes, forceConsent);
+      AUTHD_SCOPES = await fetch( `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${signInResult.tokens.accessToken}` ).then(r => r.json());
+      if (AUTHD_SCOPES.scope?.split(' ').sort().join(',') !== scopes.sort().join(',')) {
+        console.error('Token scopes still do not match authorized scopes');          
+      }
+      // store tokens and authorized scopes
+      await storeTokenInfo({
+        accessToken: signInResult.tokens.accessToken,
+        refreshToken: signInResult.tokens.refreshToken,
+        authorizedScopes: AUTHD_SCOPES.scope?.split(' '),
+        idToken: signInResult.tokens.idToken
+      });
+    } else {
+      //console.log('Token scopes match authorized scopes');
+      // store tokens and authorized scopes
+      await storeTokenInfo({
+        accessToken: signInResult.tokens.accessToken,
+        refreshToken: signInResult.tokens.refreshToken,
+        authorizedScopes: AUTHD_SCOPES.scope?.split(' '),
+        idToken: signInResult.tokens.idToken
+      });
+    }
 
-    const tokens = {
-      accessToken: credential.accessToken,
-      refreshToken: result._tokenResponse?.refresh_token || null
-    };
-
-    return {
-      success: true,
-      user: result.user,
-      tokens,
-      scopes: scopes
-    };
+    return signInResult;
   } catch (error) {
     console.error('Google sign in error:', error);
     
@@ -109,8 +127,7 @@ export async function signInWithGoogle(scopes = [], forceConsent = false) {
     }
     
     // Check for access denied
-    if (error.code === 'auth/user-cancelled' || 
-        (error.message && error.message.includes('access_denied'))) {
+    if (error.code === 'auth/user-cancelled' ||  (error.message && error.message.includes('access_denied'))) {
       return {
         success: false,
         error: 'Access denied by user',

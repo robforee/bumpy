@@ -65,7 +65,12 @@ export async function storeTokenInfo({ accessToken, refreshToken, scopes, idToke
     const tokenData = {
       __last_token_update: now,
       accessToken: await encrypt(accessToken),
-      expirationTime: now + 3600000
+      expirationTime: now + 3600000,
+      // Clear error states on successful token update
+      errors: [],
+      consecutiveFailures: 0,
+      requiresUserAction: false,
+      requiresRefreshToken: false
     };
 
     // If refresh token is provided, include additional data
@@ -145,7 +150,7 @@ export async function getTokenInfo(idToken) {
 }
 
 // Gets scopes for a given user from the client side
-export async function getScopes_fromClient(userId, idToken) {
+export async function getAuthenticatedScopes(userId, idToken) {
   try {
     if (!userId || !idToken) {
       throw new Error('User ID and ID token are required');
@@ -171,6 +176,7 @@ export async function getScopes_fromClient(userId, idToken) {
     }
 
     const authorizedScopes = userTokensDoc.data().authorizedScopes || [];
+
     return { success: true, scopes: authorizedScopes };
   } catch (error) {
     console.error('Error in getScopes_fromClient:', error);
@@ -241,48 +247,30 @@ async function refreshAccessToken(refreshToken, accessToken, storedScopes) {
 }
 
 // Adds a scope for a given user
-export async function addScopes_bothPlaces(scope, idToken) {
+export async function addScopes_toPUBLIC(scope, idToken, userId) {
   try {
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
     
     if (!currentUser) {
       throw new Error('User not authenticated');
     }
-
     const db = getFirestore(firebaseServerApp);
-    const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
-    const userTokensDoc = await getDoc(userTokensRef);
+    const PUBLIC_SCOPE_REF = doc(db, 'authorized_scopes', userId);
+    const currentScopes = await getDoc(PUBLIC_SCOPE_REF);
 
-    if (!userTokensDoc.exists()) {
-      throw new Error('No tokens found for user');
+    console.log('me')
+    if (!currentScopes.exists()) {
+      await setDoc(PUBLIC_SCOPE_REF, { scopes: [scope] });
+    } else {
+      const existingScopes = currentScopes.data().authorizedScopes || [];
+      //console.log('me3',existingScopes)
+      if (!existingScopes.includes(scope)) {
+        await setDoc(PUBLIC_SCOPE_REF, { authorizedScopes: arrayUnion(scope) }, { merge: true });
+        //console.log( await getDoc(userTokensRef).data() )
+      }
     }
 
-    const currentData = userTokensDoc.data();
-    const currentScopes = currentData.authorizedScopes || [];
-
-    if (currentScopes.includes(scope)) {
-      return { success: true, message: 'Scope already exists' };
-    }
-
-    // Update both collections atomically
-    const batch = writeBatch(db);
-    
-    // Update user_tokens
-    batch.set(userTokensRef, {
-      authorizedScopes: arrayUnion(scope),
-      lastUpdated: moment().tz('America/Chicago').format('YYYY-MM-DD hh:mm A [CST]')
-    }, { merge: true });
-
-    // Update authorized_scopes
-    const authorizedScopesRef = doc(db, 'authorized_scopes', currentUser.uid);
-    batch.set(authorizedScopesRef, {
-      authorizedScopes: arrayUnion(scope),
-      lastUpdated: moment().tz('America/Chicago').format('YYYY-MM-DD hh:mm A [CST]')
-    }, { merge: true });
-
-    await batch.commit();
-
-    return { success: true };
+    return (await getDoc(PUBLIC_SCOPE_REF)).data()
   } catch (error) {
     console.error('Error adding scope:', error);
     return { success: false, error: error.message };

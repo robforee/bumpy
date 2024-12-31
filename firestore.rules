@@ -22,6 +22,17 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // Admin data collection for application configuration
+    match /admin_data/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Public data collection - anyone can read, only admins can write
+    match /public_data/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /jobs/{jobId} {
       allow read, write: if request.auth.token.admin == true;
     }  

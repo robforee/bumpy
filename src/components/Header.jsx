@@ -1,13 +1,13 @@
 // src/components/Header.jsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import { getAuth } from 'firebase/auth';
 import { getIdToken } from "firebase/auth";
 
-import { doc, getFirestore, collection, query, where, getDocs, limit, orderBy, setDoc } from 'firebase/firestore';
+import { doc, getFirestore, collection, query, where, getDocs, limit, orderBy, setDoc, getDoc } from 'firebase/firestore';
 import { signInWithGoogle, signOut } from "@/src/lib/firebase/firebaseAuth.js";
 import { storeTokenInfo } from '@/src/app/actions/auth-actions';
 import { useUser } from '@/src/contexts/UserProvider';
@@ -27,7 +27,20 @@ const Header = () => {
     }
     return '';
   });
+  const [publicScopes, setPublicScopes] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch public scopes from Firestore
+  useEffect(() => {
+    const fetchPublicScopes = async () => {
+      const db = getFirestore();
+      const scopesDoc = await getDoc(doc(db, 'public_data', 'scopes'));
+      if (scopesDoc.exists()) {
+        setPublicScopes(scopesDoc.data().default_scopes || []);
+      }
+    };
+    fetchPublicScopes();
+  }, []);
 
   const handleSignOut = async () => {
     try {
@@ -65,28 +78,38 @@ const Header = () => {
           limit(1)
         )
       );
-
-      // gather PUBLIC scopes for login
       let PUBLIC_SCOPES = [];
-      if(userQuery.docs[0].data().authorizedScopes.length > 0) {
-        PUBLIC_SCOPES = userQuery.docs[0].data().authorizedScopes
-      }else{
-        PUBLIC_SCOPES [
-          'https://www.googleapis.com/auth/userinfo.email',
-          'openid',
-          'https://www.googleapis.com/auth/userinfo.profile'
-        ]
-      }
-      
       let forceConsent = false;
+      if(userQuery.docs.length === 0) {
+        console.error('No user found with email:', email);
+        console.log('create a profile and proceed')
+        PUBLIC_SCOPES = publicScopes;
+        forceConsent = true;
+      }else{
+        if(userQuery.docs[0].data().authorizedScopes.length > 0) {
+          PUBLIC_SCOPES = userQuery.docs[0].data().authorizedScopes
+        }else{
+          PUBLIC_SCOPES = publicScopes;
+        }  
+      }
+      console.log('User query:', userQuery.docs);
+      
 
       // Sign in with Google using the found scopes
+      // check if scopes match requested
+      // save the (new) scopes to user_tokens/authorizedScopes
       let signInResult = await signInWithGoogle(PUBLIC_SCOPES, forceConsent);
-      console.log('signInResult', signInResult);
 
+      if (!signInResult.success) {
+        console.error('Sign-in failed:', signInResult.error);
+        handleSignInError(signInResult);
+        return;
+      }else{
+        //console.log('Sign-in successful');
+      }
       // use google tokenInfo endpoint to get authorized for this login scopes
       let AUTHD_SCOPES = await fetch( `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${signInResult.tokens.accessToken}` ).then(r => r.json());
-      console.log('Token scopes:', AUTHD_SCOPES.scope?.split(' '));
+      //console.log('Token scopes:', AUTHD_SCOPES.scope?.split(' '));
       
       // check if token scopes match authorized scopes
       if (AUTHD_SCOPES.scope?.split(' ').sort().join(',') !== PUBLIC_SCOPES.sort().join(',')) {
@@ -104,7 +127,7 @@ const Header = () => {
                     AUTHD_SCOPES.scope?.split(' '), 
                     signInResult.tokens.idToken);
       }else{
-        console.log('Token scopes match authorized scopes');
+        //console.log('Token scopes match authorized scopes');
       }
 
     } catch (error) {
@@ -112,6 +135,7 @@ const Header = () => {
       router.push('/auth-error');
     } finally {
       setIsSubmitting(false);
+      router.push('/');  
     }
   };
 
@@ -233,14 +257,11 @@ const Header = () => {
                 </Button>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <Button onClick={() => handleMenuItemClick(() => router.push('/settings'))}>
-                  Settings
-                </Button>
                 <Button onClick={() => handleMenuItemClick(() => router.push('/dashboard'))}>
                   Dashboard
                 </Button>
 
-                <Button onClick={() => handleMenuItemClick(handleSignOut)} variant="destructive">
+                <Button onClick={handleSignOut} variant="destructive">
                   Sign Out
                 </Button>
               </div>

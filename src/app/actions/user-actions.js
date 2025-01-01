@@ -2,10 +2,10 @@
 'use server'
 
 import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';
-import { getFirestore, doc, getDoc, setDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import moment from 'moment-timezone';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { getIdToken } from "firebase/auth";
 import { auth } from "@/src/lib/firebase/clientApp";
+import { userService } from '@/src/services/userService';
 
 export async function getUserInfo() {
   const idToken = await getIdToken(auth.currentUser);
@@ -15,7 +15,7 @@ export async function getUserInfo() {
   }  
   try {
     console.log('getUserInfo: Fetching user profile and topic root');
-    const profile = await getUserProfile();
+    const profile = await userService.getUserProfile(currentUser.uid);
     
     if (!profile) {
       throw new Error('User profile not found');
@@ -43,43 +43,6 @@ export async function getUserInfo() {
   }
 }
 
-export async function getUserProfile() {
-  console.log('getUserProfile')
-  try {
-    const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
-    
-    if (!currentUser) {
-      throw new Error('User not authenticated');
-    }
-
-    const db = getFirestore(firebaseServerApp);
-    const userRef = doc(db, 'users', currentUser.uid);
-    const userSnap = await getDoc(userRef);
-
-    if (!userSnap.exists()) {
-      // Create new user profile
-      const updateTime = moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm [CST]');
-      const newUserData = {
-        email: currentUser.email,
-        displayName: currentUser.displayName,
-        photoURL: currentUser.photoURL,
-        topicRootId: null,
-        preferences: {},
-        createdAt: updateTime,
-        updatedAt: updateTime
-      };
-
-      await setDoc(userRef, newUserData);
-      return newUserData;
-    }
-
-    return userSnap.data();
-  } catch (error) {
-    console.error('Error fetching or creating user profile:', error);
-    throw new Error('Failed to fetch or create user profile for',currentUser);
-  }
-}
-
 export async function getTopicRoot(profile) {
   console.log('getTopicRoot')
   try {
@@ -92,43 +55,23 @@ export async function getTopicRoot(profile) {
     const db = getFirestore(firebaseServerApp);
 
     if (!profile.topicRootId) {
-      // Create new topic root
-      const updateTime = moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm [CST]');
-      
-      const topicData = {
-        title: profile.displayName + " Topic Root",
-        description: "This is the root of all your topics",
-        topic_type: 'root',
-        owner: currentUser.uid,
-        parents: null,
-        created_at: updateTime,
-        updated_at: updateTime
-      };
-
-      const topicRef = await addDoc(collection(db, 'topics'), topicData);
-      
-      // Update user profile with new topicRootId
-      const userRef = doc(db, 'users', currentUser.uid);
-      await setDoc(userRef, { topicRootId: topicRef.id }, { merge: true });
-
-      // Fetch the newly created topic
-      const topicSnap = await getDoc(topicRef);
-      return { id: topicRef.id, ...topicSnap.data() };
-    }
-
-    // Fetch existing topic root
-    const topicRef = doc(db, 'topics', profile.topicRootId);
-    const topicSnap = await getDoc(topicRef);
-
-    if (!topicSnap.exists()) {
+      // Topic root creation is now handled by userService.initializeNewUserIfNeeded
       throw new Error('Topic root not found');
     }
 
-    return { id: topicSnap.id, ...topicSnap.data() };
+    const topicRef = doc(db, 'topics', profile.topicRootId);
+    const topicSnap = await getDoc(topicRef);
+    
+    if (!topicSnap.exists()) {
+      throw new Error('Topic root document not found');
+    }
+
+    return {
+      id: topicSnap.id,
+      ...topicSnap.data()
+    };
   } catch (error) {
-    console.error('Error fetching or creating topic root:', error);
-    throw new Error('Failed to fetch or create topic root');
+    console.error('Error in getTopicRoot:', error);
+    throw error;
   }
 }
-
-

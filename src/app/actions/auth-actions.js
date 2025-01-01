@@ -59,13 +59,16 @@ export async function storeTokenInfo({ accessToken, refreshToken, scopes, idToke
 
     const db = getFirestore(firebaseServerApp);
     const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
+    const authorizedScopesRef = doc(db, 'authorized_scopes', currentUser.uid);
     const now = Date.now();
 
     // Base token data for access token update
     const tokenData = {
       __last_token_update: now,
+      __web_token_update: moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm'),
       accessToken: await encrypt(accessToken),
       expirationTime: now + 3600000,
+      userEmail: currentUser.email,
       // Clear error states on successful token update
       errors: [],
       consecutiveFailures: 0,
@@ -78,12 +81,22 @@ export async function storeTokenInfo({ accessToken, refreshToken, scopes, idToke
       Object.assign(tokenData, {
         refreshToken: await encrypt(refreshToken),
         __web_refresh_token_update: moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm'),
-        __web_account: process.env.GOOGLE_CLIENT_ID,
-        authorizedScopes: scopes
+        __web_account: process.env.GOOGLE_CLIENT_ID
       });
     }
 
-    await setDoc(userTokensRef, tokenData, { merge: true });
+    // Store authorized scopes separately
+    const scopesData = {
+      userEmail: currentUser.email,
+      authorizedScopes: scopes || [],
+      lastUpdated: moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm [CST]')
+    };
+
+    // Update collections atomically
+    await Promise.all([
+      setDoc(userTokensRef, tokenData, { merge: true }),
+      setDoc(authorizedScopesRef, scopesData, { merge: true })
+    ]);
 
     return { success: true };
   } catch (error) {

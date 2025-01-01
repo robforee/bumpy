@@ -10,6 +10,7 @@ import { getIdToken } from "firebase/auth";
 import { doc, getFirestore, collection, query, where, getDocs, limit, orderBy, setDoc, getDoc } from 'firebase/firestore';
 import { signInWithGoogle, signOut } from "@/src/lib/firebase/firebaseAuth.js";
 import { storeTokenInfo } from '@/src/app/actions/auth-actions';
+import { getUserInfo } from '@/src/app/actions/user-actions';
 import { useUser } from '@/src/contexts/UserProvider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/src/components/ui/dialog';
 import { Button } from '@/src/components/ui/button';
@@ -58,6 +59,15 @@ const Header = () => {
     }
   };
 
+  // user management is handled through UserProvider context
+  // UserProvider can be found in Layout component and wraps <Header >
+  // UserProvider is tiggered when auth state changes
+  // UserProvider uses userService to:
+      // Create user profile if needed
+      // Create user_tokens document
+      // Create authorized_scopes document
+      // Initialize topic root
+      
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
     if (!email || isSubmitting) return;
@@ -82,7 +92,7 @@ const Header = () => {
       let forceConsent = false;
       if(userQuery.docs.length === 0) {
         console.error('No user found with email:', email);
-        console.log('create a profile and proceed')
+        console.log('create a profile and proceed after signInWithGoogle');
         PUBLIC_SCOPES = publicScopes;
         forceConsent = true;
       }else{
@@ -104,9 +114,24 @@ const Header = () => {
         console.error('Sign-in failed:', signInResult.error);
         handleSignInError(signInResult);
         return;
-      }else{
-        //console.log('Sign-in successful');
       }
+
+      // Get the current user and ID token
+      const auth = getAuth();
+      if (!auth.currentUser) {
+        console.error('No user after successful sign-in');
+        return;
+      }
+
+      const idToken = await auth.currentUser.getIdToken();
+      if (!idToken) {
+        console.error('No ID token available after sign-in');
+        return;
+      }
+
+      // Profile creation is handled by UserProvider context
+      console.log('Sign-in successful, UserProvider will handle profile creation');
+
       // use google tokenInfo endpoint to get authorized for this login scopes
       let AUTHD_SCOPES = await fetch( `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${signInResult.tokens.accessToken}` ).then(r => r.json());
       //console.log('Token scopes:', AUTHD_SCOPES.scope?.split(' '));
@@ -120,14 +145,20 @@ const Header = () => {
         if (AUTHD_SCOPES.scope?.split(' ').sort().join(',') !== PUBLIC_SCOPES.sort().join(',')) {
           console.error('Token scopes still do not match authorized scopes');          
         }
-        // store tokens
-        storeTokenInfo(user.uid, 
-                    signInResult.tokens.accessToken, 
-                    signInResult.tokens.refreshToken, 
-                    AUTHD_SCOPES.scope?.split(' '), 
-                    signInResult.tokens.idToken);
-      }else{
-        //console.log('Token scopes match authorized scopes');
+      }
+
+      // Store tokens after successful sign-in and scope verification
+      try {
+        await storeTokenInfo(
+          auth.currentUser.uid, 
+          signInResult.tokens.accessToken, 
+          signInResult.tokens.refreshToken, 
+          AUTHD_SCOPES.scope?.split(' '), 
+          idToken
+        );
+      } catch (error) {
+        console.error('Error storing tokens:', error);
+        // Continue anyway as the user is signed in
       }
 
     } catch (error) {

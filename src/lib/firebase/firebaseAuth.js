@@ -49,12 +49,15 @@ export async function signInWithGoogle(scopes = [], forceConsent = false) {
 
     const result = await signInWithPopup(auth, provider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
+    const idToken = await result.user.getIdToken();
+    
     let signInResult = {
       success: true,
       user: result.user,
       tokens: {
         accessToken: credential?.accessToken || null,
-        refreshToken: result._tokenResponse?.refresh_token || null
+        refreshToken: result._tokenResponse?.refreshToken || null,
+        idToken: idToken
       },
       scopes: scopes
     }
@@ -76,21 +79,23 @@ export async function signInWithGoogle(scopes = [], forceConsent = false) {
     }
     // use google tokenInfo endpoint to get authorized for this login scopes
     let AUTHD_SCOPES = await fetch( `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${signInResult.tokens.accessToken}` ).then(r => r.json());
+    const authorizedScopes = AUTHD_SCOPES.scope?.split(' ') || [];
     
     // check if token scopes match authorized scopes
-    if (AUTHD_SCOPES.scope?.split(' ').sort().join(',') !== scopes.sort().join(',')) {
+    if (authorizedScopes.sort().join(',') !== scopes.sort().join(',')) {
       console.error('AUTHD scopes do not match passed scopes, trying again with force consent');
       forceConsent = true;
       signInResult = await signInWithGoogle(scopes, forceConsent);
       AUTHD_SCOPES = await fetch( `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${signInResult.tokens.accessToken}` ).then(r => r.json());
-      if (AUTHD_SCOPES.scope?.split(' ').sort().join(',') !== scopes.sort().join(',')) {
+      const newAuthorizedScopes = AUTHD_SCOPES.scope?.split(' ') || [];
+      if (newAuthorizedScopes.sort().join(',') !== scopes.sort().join(',')) {
         console.error('Token scopes still do not match authorized scopes');          
       }
       // store tokens and authorized scopes
       await storeTokenInfo({
         accessToken: signInResult.tokens.accessToken,
         refreshToken: signInResult.tokens.refreshToken,
-        authorizedScopes: AUTHD_SCOPES.scope?.split(' '),
+        scopes: newAuthorizedScopes,
         idToken: signInResult.tokens.idToken
       });
     } else {
@@ -99,7 +104,7 @@ export async function signInWithGoogle(scopes = [], forceConsent = false) {
       await storeTokenInfo({
         accessToken: signInResult.tokens.accessToken,
         refreshToken: signInResult.tokens.refreshToken,
-        authorizedScopes: AUTHD_SCOPES.scope?.split(' '),
+        scopes: authorizedScopes,
         idToken: signInResult.tokens.idToken
       });
     }

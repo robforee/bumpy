@@ -12,13 +12,13 @@ export const UserProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const loadUserProfile = useCallback(async (uid) => {
+  const loadUserProfile = useCallback(async (authUser) => {
     try {
-      const profile = await userService.getUserProfile(uid);
+      const profile = await userService.getUserProfile(authUser.uid);
       if (!profile) {
         console.log("Profile not found, initializing new user");
-        await userService.initializeNewUserIfNeeded({ uid });
-        const newProfile = await userService.getUserProfile(uid);
+        await userService.initializeNewUserIfNeeded(authUser);
+        const newProfile = await userService.getUserProfile(authUser.uid);
         setUserProfile(newProfile);
       } else {
         setUserProfile(profile);
@@ -33,16 +33,14 @@ export const UserProvider = ({ children }) => {
       setLoading(true);
       
       if (authUser) {
-        if(process.env.NODE_ENV === 'development')
-          console.log("Auth state changed:",process.env.NODE_ENV, 
-            process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID, 
-            process.env.NEXT_PUBLIC_FOREE
-          ); //  
+        console.log('Auth state changed:', JSON.stringify({
+          uid: authUser.uid,
+          email: authUser.email
+        }));
         setUser(authUser);
-        await loadUserProfile(authUser.uid);
+        await loadUserProfile(authUser);
       } else {
-        if(process.env.NODE_ENV === 'development')
-          console.log("Auth state changed:",process.env.NODE_ENV,);
+        console.log('Auth state changed: signed out');
         setUser(null);
         setUserProfile(null);
       }
@@ -55,7 +53,7 @@ export const UserProvider = ({ children }) => {
 
   const refreshUserProfile = useCallback(async () => {
     if (user) {
-      await loadUserProfile(user.uid);
+      await loadUserProfile(user);
     }
   }, [user, loadUserProfile]);
 

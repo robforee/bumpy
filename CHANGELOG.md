@@ -1,5 +1,73 @@
 # Web-Bumpy Changelog
 
+## 2025-01-01 17:42 CST - OAuth Token Flow Improvements
+
+### Bottlenecks Encountered
+1. Race Conditions in Auth State
+   - Firebase auth state and Google OAuth tokens arriving in different orders
+   - Multiple sign-in popups causing conflicts
+   - Solution: Added auth state waiting with timeout
+
+2. Token Lifecycle Management
+   - Refresh token requires special OAuth parameters
+   - Need to preserve existing refresh tokens
+   - Solution: Added proper token refresh and storage flow
+
+3. State Coordination
+   - Client/server state synchronization
+   - Error state management
+   - Solution: Centralized auth state in UserProvider
+
+### Key Routes and Functions
+
+1. Auth Flow Routes
+   ```
+   /auth/callback - OAuth2 callback handling
+   /api/auth/token - Token exchange endpoint
+   ```
+
+2. Critical Functions
+   ```javascript
+   signInWithGoogle() - Initial auth and OAuth flow
+   handleOAuth2Callback() - Process OAuth code and get tokens
+   storeTokenInfo() - Encrypt and store tokens
+   refreshTokenInfo() - Handle token refresh flow
+   ```
+
+### Token Storage Structure
+```javascript
+{
+  // Timestamps
+  __last_token_update: timestamp,
+  __web_token_update: formatted_time,
+  __web_refresh_token_update: formatted_time,
+  
+  // Encrypted tokens
+  accessToken: encrypted_string,
+  refreshToken: encrypted_string,
+  
+  // State management
+  expirationTime: timestamp,
+  authorizedScopes: string[],
+  errors: string[],
+  consecutiveFailures: number
+}
+```
+
+### Common CLI Commands
+```bash
+# Check token storage
+firebase firestore:get user_tokens/{uid}
+
+# Review auth logs
+firebase functions:log --only auth
+
+# Test local auth flow
+npm run dev
+```
+
+### Previous Entries:
+
 ## 2024-12-31 21:36 CST - User Profile and Google Integration Updates
 
 ### Changes Made

@@ -6,9 +6,9 @@ import {
   signInWithPopup,
   onAuthStateChanged as _onAuthStateChanged,
 } from "firebase/auth";
-import { storeTokenInfo } from "@/src/app/actions/auth-actions";
 
 import { auth } from "@/src/lib/firebase/clientApp";
+import { storeTokenInfo } from "@/src/app/actions/auth-actions";
 
 export function onAuthStateChanged(cb) {
   return _onAuthStateChanged(auth, cb);
@@ -22,128 +22,72 @@ export function onAuthStateChanged(cb) {
  * @returns {Promise<{ success: boolean, user: any, tokens: any, scopes: string[] }>} The result of the sign in.
  */
 export async function signInWithGoogle(scopes = [], forceConsent = false) {
-  
-  const msg = 'compare PUBLIC_SCOPES TO AUTHD_SCOPES';
+  console.log('Starting sign in with:', JSON.stringify({
+    scopes: scopes,
+    forceConsent: forceConsent,
+    scopesType: typeof scopes,
+    isArray: Array.isArray(scopes)
+  }, null, 2));
 
   try {
     const provider = new GoogleAuthProvider();
     
+    // Ensure scopes is an array
+    const scopesToAdd = Array.isArray(scopes) ? scopes : [];
+    
     // Add requested scopes
-    scopes.forEach(scope => { provider.addScope(scope); });
+    scopesToAdd.forEach(scope => {
+      console.log('Adding scope:', JSON.stringify({
+        scope: scope
+      }, null, 2));
+      provider.addScope(scope);
+    });
 
-    // Force consent if requested or if new scopes are being added
-    if (forceConsent) {
-      console.log('Force consent:', forceConsent);
-      provider.setCustomParameters({
-        prompt: 'consent',
-        access_type: 'offline'  // Request a refresh token
-      });
-    } else {
-      // If not forcing consent, use 'select_account' to let user pick account
-      // but skip consent if already granted
-      provider.setCustomParameters({
-        prompt: 'select_account',
-        access_type: 'offline'  // Request a refresh token
-      });
-    }
+    // Always force consent to get refresh token
+    // Build Google OAuth2 URL directly
+    const redirectUri = process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI;
+    console.log('OAuth2 config:', JSON.stringify({
+      clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+      redirectUri: redirectUri,
+      scopes: scopes.join(' ')
+    }, null, 2));
 
-    const result = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    const idToken = await result.user.getIdToken();
+    const params = new URLSearchParams({
+      client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+      redirect_uri: redirectUri,
+      response_type: 'code',
+      access_type: 'offline',
+      prompt: 'consent',
+      scope: ['openid', 'profile', 'email', ...scopesToAdd].join(' ')
+    });
+
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+    console.log('Redirecting to:', JSON.stringify({
+      authUrl: authUrl
+    }, null, 2));
     
-    let signInResult = {
-      success: true,
-      user: result.user,
-      tokens: {
-        accessToken: credential?.accessToken || null,
-        refreshToken: result._tokenResponse?.refreshToken || null,
-        idToken: idToken
+    // Sign in with Firebase first
+    const signInWithPopup_result = await signInWithPopup(auth, provider);
+    console.log('Firebase sign in result:', JSON.stringify({
+      user: {
+        uid: signInWithPopup_result.user.uid,
+        email: signInWithPopup_result.user.email
       },
-      scopes: scopes
-    }
-    if (!signInResult.tokens?.accessToken) {
-      console.error('Missing access token in credential:', credential);
-      return {
-        success: false,
-        error: 'Failed to get access token from Google',
-        action: 'AUTH_ERROR'
-      };
-    }    
-    if (forceConsent && !signInResult.tokens?.refreshToken) {
-      console.error('Did not receive refresh token after forcing consent');
-      return {
-        success: false,
-        error: 'Failed to get refresh token from Google',
-        action: 'AUTH_ERROR'
-      };
-    }
-    // use google tokenInfo endpoint to get authorized for this login scopes
-    let AUTHD_SCOPES = await fetch( `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${signInResult.tokens.accessToken}` ).then(r => r.json());
-    const authorizedScopes = AUTHD_SCOPES.scope?.split(' ') || [];
-    
-    // check if token scopes match authorized scopes
-    if (authorizedScopes.sort().join(',') !== scopes.sort().join(',')) {
-      console.error('AUTHD scopes do not match passed scopes, trying again with force consent');
-      forceConsent = true;
-      signInResult = await signInWithGoogle(scopes, forceConsent);
-      AUTHD_SCOPES = await fetch( `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${signInResult.tokens.accessToken}` ).then(r => r.json());
-      const newAuthorizedScopes = AUTHD_SCOPES.scope?.split(' ') || [];
-      if (newAuthorizedScopes.sort().join(',') !== scopes.sort().join(',')) {
-        console.error('Token scopes still do not match authorized scopes');          
-      }
-      // store tokens and authorized scopes
-      await storeTokenInfo({
-        accessToken: signInResult.tokens.accessToken,
-        refreshToken: signInResult.tokens.refreshToken,
-        scopes: newAuthorizedScopes,
-        idToken: signInResult.tokens.idToken
-      });
-    } else {
-      //console.log('Token scopes match authorized scopes');
-      // store tokens and authorized scopes
-      await storeTokenInfo({
-        accessToken: signInResult.tokens.accessToken,
-        refreshToken: signInResult.tokens.refreshToken,
-        scopes: authorizedScopes,
-        idToken: signInResult.tokens.idToken
-      });
-    }
+      hasIdToken: !!(await signInWithPopup_result.user.getIdToken())
+    }, null, 2));
 
-    return signInResult;
+    // Then redirect to Google's consent page
+    window.location.href = authUrl;
+    return;
   } catch (error) {
-    console.error('Google sign in error:', error);
-    
-    // Check for popup blocked
-    if (error.code === 'auth/popup-blocked') {
-      return {
-        success: false,
-        error: 'Popup was blocked by browser',
-        action: 'ENABLE_POPUPS'
-      };
-    }
-    
-    // Check for user denied access
-    if (error.code === 'auth/popup-closed-by-user') {
-      return {
-        success: false,
-        error: 'Sign in cancelled by user',
-        action: 'STAY'
-      };
-    }
-    
-    // Check for access denied
-    if (error.code === 'auth/user-cancelled' ||  (error.message && error.message.includes('access_denied'))) {
-      return {
-        success: false,
-        error: 'Access denied by user',
-        action: 'STAY'
-      };
-    }
-
+    console.error('Sign in error:', JSON.stringify({
+      error: error.message,
+      code: error.code,
+      stack: error.stack
+    }, null, 2));
     return {
       success: false,
-      error: error.message || 'Failed to sign in with Google',
-      action: 'AUTH_ERROR'
+      error: error.message
     };
   }
 }
@@ -168,4 +112,82 @@ export async function getUserIdToken() {
     return user.getIdToken();
   }
   throw new Error('No user is signed in');
+}
+
+export async function handleOAuth2Callback(code) {
+  try {
+    console.log('OAuth2 callback handler:', JSON.stringify({
+      codePreview: code.slice(0, 8) + '...',
+      timestamp: new Date().toISOString()
+    }, null, 2));
+    
+    // Get ID token from current user
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('No authenticated user found');
+    }
+    const idToken = await user.getIdToken();
+
+    console.log('Current user:', JSON.stringify({
+      success: true,
+      uid: user.uid,
+      email: user.email,
+      hasIdToken: !!idToken
+    }, null, 2));
+
+    // Now exchange code for tokens
+    const response = await fetch('/api/auth/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${idToken}`
+      },
+      body: JSON.stringify({ code })
+    });
+
+    const tokenResult = await response.json();
+    console.log('Token exchange response:', JSON.stringify({
+      status: response.status,
+      success: tokenResult.success,
+      hasAccessToken: !!tokenResult.tokens?.access_token,
+      hasRefreshToken: !!tokenResult.tokens?.refresh_token,
+      hasError: !!tokenResult.error,
+      error: tokenResult.error,
+      errorDescription: tokenResult.error_description
+    }, null, 2));
+
+    if (!tokenResult.success) {
+      throw new Error(tokenResult.error_description || tokenResult.error || 'Failed to exchange code for tokens');
+    }
+
+    // Store the tokens
+    const storeResult = await storeTokenInfo({
+      accessToken: tokenResult.tokens.access_token,
+      refreshToken: tokenResult.tokens.refresh_token,
+      scopes: (tokenResult.tokens.scope || '').split(' ').filter(Boolean),
+      idToken
+    });
+    console.log('Store tokens result:', JSON.stringify(storeResult, null, 2));
+
+    return {
+      success: true,
+      tokens: {
+        hasAccessToken: !!tokenResult.tokens.access_token,
+        hasRefreshToken: !!tokenResult.tokens.refresh_token,
+        accessTokenPreview: tokenResult.tokens.access_token ? 
+          tokenResult.tokens.access_token.substring(0, 8) : 'none',
+        refreshTokenPreview: tokenResult.tokens.refresh_token ? 
+          tokenResult.tokens.refresh_token.substring(0, 8) : 'none'
+      }
+    };
+  } catch (error) {
+    console.error('OAuth2 callback error:', JSON.stringify({
+      error: error.message,
+      stack: error.stack
+    }, null, 2));
+    return {
+      success: false,
+      error: error.message
+    };
+  }
 }

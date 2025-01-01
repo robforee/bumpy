@@ -1,8 +1,7 @@
 // src/app/actions/auth-actions.js
 "use server";
 
-import { google } from 'googleapis';// oauth
-import { getFirestore, doc, getDoc, setDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, writeBatch } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, writeBatch } from "@firebase/firestore";
 import moment from 'moment-timezone';
 import crypto from 'crypto';
 import { headers } from "next/headers";
@@ -11,6 +10,7 @@ import { getIdToken } from "firebase/auth";
 import { auth } from "@/src/lib/firebase/clientApp";
 import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';  
 import { getTokenTimestamps, getScopeTimestamps } from '@/src/lib/utils/token-utils';
+import { google } from 'googleapis';
 
 const encryptionKey = process.env.ENCRYPTION_KEY;
 
@@ -52,6 +52,15 @@ export async function storeTokenInfo({ accessToken, refreshToken, scopes, idToke
       return { success: false, error: 'Access token is required' };
     }
 
+    console.log('Storing tokens:', {
+      hasAccessToken: !!accessToken,
+      accessTokenPreview: accessToken ? accessToken.substring(0, 8) : 'none',
+      hasRefreshToken: !!refreshToken,
+      refreshTokenPreview: refreshToken ? refreshToken.substring(0, 8) : 'none',
+      hasScopes: !!scopes && Array.isArray(scopes),
+      scopesCount: scopes?.length || 0
+    });
+
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
     if (!currentUser?.uid) {
       return { success: false, error: 'User not authenticated' };
@@ -59,48 +68,114 @@ export async function storeTokenInfo({ accessToken, refreshToken, scopes, idToke
 
     const db = getFirestore(firebaseServerApp);
     const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
-    const authorizedScopesRef = doc(db, 'authorized_scopes', currentUser.uid);
     const now = Date.now();
 
-    // Base token data for access token update
+    // Base token data - TESTING: store refresh token without encryption
     const tokenData = {
       __last_token_update: now,
-      __web_token_update: moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm'),
-      accessToken: await encrypt(accessToken),
+      __web_refresh_token_update: moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm'),
+      accessToken: accessToken, // TESTING: No encryption
+      refreshToken: refreshToken, // TESTING: No encryption
       expirationTime: now + 3600000,
       userEmail: currentUser.email,
-      // Clear error states on successful token update
+      authorizedScopes: scopes,
       errors: [],
       consecutiveFailures: 0,
       requiresUserAction: false,
       requiresRefreshToken: false
     };
 
-    // If refresh token is provided, include additional data
-    if (refreshToken) {
-      Object.assign(tokenData, {
-        refreshToken: await encrypt(refreshToken),
-        __web_refresh_token_update: moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm'),
-        __web_account: process.env.GOOGLE_CLIENT_ID
-      });
-    }
+    // Store tokens
+    await setDoc(userTokensRef, tokenData, { merge: true });
 
-    // Store authorized scopes separately
-    const scopesData = {
-      userEmail: currentUser.email,
-      authorizedScopes: scopes || [],
-      lastUpdated: moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm [CST]')
-    };
-
-    // Update collections atomically
-    await Promise.all([
-      setDoc(userTokensRef, tokenData, { merge: true }),
-      setDoc(authorizedScopesRef, scopesData, { merge: true })
-    ]);
+    console.log('Successfully stored tokens:', {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      hasRefreshToken: !!refreshToken,
+      requiresRefreshToken: false,
+      lastUpdate: tokenData.__web_token_update,
+      refreshTokenUpdate: tokenData.__web_refresh_token_update
+    });
 
     return { success: true };
   } catch (error) {
     console.error('Error storing tokens:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export async function refreshTokenInfo(idToken) {
+  console.log('Refreshing token for user:', idToken);
+  try {
+    // Wait 60 seconds before refreshing
+    console.log('Waiting 60 seconds before refresh...');
+    await new Promise(resolve => setTimeout(resolve, 10000));
+    console.log('Continuing with refresh after wait');
+
+    // Get existing tokens
+    const { success, data: tokenData, error } = await getTokenInfo(idToken);
+    if (!success) {
+      console.error('Failed to get existing tokens:', error);
+      return { success: false, error };
+    }
+
+    if (!tokenData.refreshToken) {
+      return { success: false, error: 'No refresh token available' };
+    }
+
+    // Set up OAuth client
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI
+    );
+
+    console.log('OAuth2 client config:', {
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      hasSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+      redirectUri: process.env.GOOGLE_REDIRECT_URI
+    });
+
+    // Set existing credentials
+    oauth2Client.setCredentials({
+      refresh_token: tokenData.refreshToken,
+    });
+
+    // Log refresh token (first few chars)
+    const refreshTokenPreview = tokenData.refreshToken ? 
+      `${tokenData.refreshToken.substring(0, 8)}...` : 'none';
+    console.log('Using refresh token:', refreshTokenPreview);
+
+    // Refresh the token
+    console.log('Refreshing token for user:', idToken);
+    try {
+      const { credentials } = await oauth2Client.refreshAccessToken();
+      console.log('Refreshed credentials for user:', credentials);
+      // Store the new tokens
+      await storeTokenInfo({
+        accessToken: credentials.access_token,
+        refreshToken: credentials.refresh_token || tokenData.refreshToken, // Keep existing refresh token if new one not provided
+        scopes: credentials.scope?.split(' ') || tokenData.authorizedScopes,
+        idToken
+      });
+
+      return { 
+        success: true, 
+        data: {
+          accessToken: credentials.access_token,
+          expiryDate: credentials.expiry_date
+        }
+      };
+    } catch (refreshError) {
+      console.error('Token refresh error details:', {
+        name: refreshError.name,
+        message: refreshError.message,
+        response: refreshError.response?.data
+      });
+      throw refreshError;
+    }
+  } catch (error) {
+    console.error('Error refreshing token:', error);
     return { success: false, error: error.message };
   }
 }
@@ -111,7 +186,7 @@ async function verifyToken(accessToken) {
     const url = `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${accessToken}`;
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error('Failed to verify token');
+      throw new Error('Failed to verify token here');
     }
     const tokenInfo = await response.json();
     return {
@@ -125,40 +200,47 @@ async function verifyToken(accessToken) {
   }
 }
 
-// Gets token information for a given user
+// Retrieves tokens for a given user
 export async function getTokenInfo(idToken) {
   try {
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
-
-    if (!currentUser) {
-      throw new Error('User not authenticated');
+    if (!currentUser?.uid) {
+      return { success: false, error: 'User not authenticated' };
     }
 
-    const db = getFirestore(firebaseServerApp); 
+    const db = getFirestore(firebaseServerApp);
     const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
     const userTokensSnap = await getDoc(userTokensRef);
 
     if (!userTokensSnap.exists()) {
-      throw new Error('No token information found');
+      return { success: false, error: 'No tokens found for user' };
     }
 
-    const tokens = userTokensSnap.data();
-    const accessToken = await decrypt(tokens.accessToken);
+    const tokenData = userTokensSnap.data();
     
-    // Verify current token scopes
-    const tokenVerification = await verifyToken(accessToken);
-    const updateTime = moment(tokens.updateTime).tz('America/Chicago');
-    const expirationTime = moment(tokens.expirationTime).tz('America/Chicago');
+    // TESTING: Only decrypt access token
+    const decryptedData = {
+      ...tokenData,
+      accessToken: tokenData.accessToken, // TESTING: No decryption
+      refreshToken: tokenData.refreshToken // TESTING: No decryption
+    };
 
-    return {
-      lastUpdate: updateTime.format('YYYY-MM-DD HH:mm:ss [CST]'),
-      expirationTime: expirationTime.format('YYYY-MM-DD HH:mm:ss [CST]'),
-      authorizedScopes: tokenVerification.scopes,
-      isValid: tokenVerification.valid
+    console.log('Successfully retrieved tokens:', {
+      uid: currentUser.uid,
+      email: currentUser.email,
+      hasRefreshToken: !!decryptedData.refreshToken,
+      requiresRefreshToken: decryptedData.requiresRefreshToken,
+      lastUpdate: decryptedData.__web_token_update,
+      refreshTokenUpdate: decryptedData.__web_refresh_token_update
+    });
+
+    return { 
+      success: true, 
+      data: decryptedData 
     };
   } catch (error) {
-    console.error('Error in getTokenInfo:', error);
-    throw new Error('An error occurred while fetching token information');
+    console.error('Error retrieving tokens:', error);
+    return { success: false, error: error.message };
   }
 }
 
@@ -194,68 +276,6 @@ export async function getAuthenticatedScopes(userId, idToken) {
   } catch (error) {
     console.error('Error in getScopes_fromClient:', error);
     return { success: false, error: error.message };
-  }
-}
-
-// Refreshes an access token using a refresh token
-async function refreshAccessToken(refreshToken, accessToken, storedScopes) {
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
-    throw new Error('Missing required Google OAuth environment variables');
-  }
-
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI
-  );
-
-  // refresh token is long-lived token
-  oauth2Client.setCredentials({
-    refresh_token:  decrypt(refreshToken),
-    access_token: decrypt(accessToken)
-  });  
- 
-  try {
-    const { credentials } = await oauth2Client.refreshAccessToken();
-    console.log('oauth2Client.refreshAccessToken 322:', JSON.stringify(credentials,null,2));
-
-    // Verify the refreshed token's scopes
-    const tokenVerification = await verifyToken(credentials.access_token);
-    
-    if (!tokenVerification.valid) {
-      return { 
-        success: false, 
-        error: 'Invalid token after refresh'
-      };
-    }
-
-    // Check if all requested scopes are authorized
-    const missingScopes = storedScopes.filter(scope => 
-      !tokenVerification.scopes.includes(scope)
-    );
-
-    if (missingScopes.length > 0) {
-      console.warn('Warning: Some requested scopes were not granted:', missingScopes);
-      return {
-        success: false,
-        error: 'Some requested scopes were not granted',
-        missingScopes
-      };
-    }
-
-    return { 
-      success: true, 
-      tokens: {
-        ...credentials,
-        authorized_scopes: tokenVerification.scopes
-      }
-    };
-  } catch (error) {
-    console.error('Error refreshing token:', error);
-    return { 
-      success: false, 
-      error: error.message || 'Unknown error occurred while refreshing token'
-    };
   }
 }
 
@@ -324,24 +344,5 @@ export async function deleteScope(scope, idToken) {
   } catch (error) {
     console.error('Error removing scope:', error);
     return { success: false, error: error.message };
-  }
-}
-
-async function logReauthRequired(db, userId, reason, error = null) {
-  try {
-    const timestamp = moment().tz('America/Chicago').format('YYYY-MM-DD hh:mm A [CST]');
-    const logRef = doc(db, 'spool', 'logs');
-    const reauthRef = doc(logRef, 'reauth', `${userId}_${timestamp}`);
-    
-    await setDoc(reauthRef, {
-      userId,
-      timestamp,
-      reason,
-      error,
-      redirectUri: process.env.GOOGLE_REDIRECT_URI,
-      clientId: process.env.GOOGLE_CLIENT_ID
-    });
-  } catch (logError) {
-    console.error('Failed to log reauth:', logError);
   }
 }

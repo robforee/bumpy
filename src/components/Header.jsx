@@ -30,14 +30,19 @@ const Header = () => {
   });
   const [publicScopes, setPublicScopes] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
 
   // Fetch public scopes from Firestore
   useEffect(() => {
     const fetchPublicScopes = async () => {
       const db = getFirestore();
-      const scopesDoc = await getDoc(doc(db, 'public_data', 'scopes'));
-      if (scopesDoc.exists()) {
-        setPublicScopes(scopesDoc.data().default_scopes || []);
+      try {
+        const scopesDoc = await getDoc(doc(db, 'public_data', 'scopes'));
+        if (scopesDoc.exists()) {
+          setPublicScopes(scopesDoc.data().default_scopes || []);
+        }
+      } catch (error) {
+        console.error('Error fetching public scopes:', error);
       }
     };
     fetchPublicScopes();
@@ -59,114 +64,123 @@ const Header = () => {
     }
   };
 
-  // user management is handled through UserProvider context
-  // UserProvider can be found in Layout component and wraps <Header >
-  // UserProvider is tiggered when auth state changes
-  // UserProvider uses userService to:
-      // Create user profile if needed
-      // Create user_tokens document
-      // Create authorized_scopes document
-      // Initialize topic root
-      
+/* UserProvider (Layout)
+Legend:
+  : - Public access (no auth required)
+  @ - Firebase auth state
+  ? - Conditional checks/decisions
+  * - Has access token
+  $ - Has both access & refresh tokens
+  # - Firestore writes (requires auth)
+  ! - Token deletion
+  N - New user checks
+
+UserProvider (Layout)
+@── onAuthStateChanged
+@   └── User Signs In
+?       ├── Check user state (Header.jsx)
+?       │   ├── Not signed in yet
+N       │   │   └── Force consent = true
+?       │   │
+?       │   ├── Check user_tokens collection
+?       │   │   ├── No tokens (new user)
+N       │   │   │   └── Force consent = true
+?       │   │   │
+?       │   │   └── Has tokens
+?       │   │       ├── Check requiresRefreshToken
+?       │   │       └── If true:
+!       │   │           ├── Delete existing tokens
+!       │   │           └── Force consent = true
+│       │
+$       ├── signInWithGoogle (firebaseAuth.js)
+$       │   ├── Get required scopes from public_data
+$       │   │   └── public_data/scopes.default_scopes
+$       │   │
+$       │   ├── Set OAuth2 parameters
+$       │   │   ├── Add all required scopes
+$       │   │   ├── access_type: 'offline'
+$       │   │   └── prompt: 'consent'
+$       │   │
+$       │   ├── signInWithPopup returns:
+$       │   │   ├── credential.accessToken
+$       │   │   ├── _tokenResponse.refreshToken
+$       │   │   └── user.getIdToken()
+$       │   │
+$       │   ├── Verify token scopes
+$       │   │   └── GET oauth2/v3/tokeninfo?access_token=
+$       │   │
+$       │   └── Return result
+$       │
+#       └── storeTokenInfo (auth-actions.js)
+#           └── user_tokens/
+#               ├── accessToken (encrypted)
+#               ├── refreshToken (encrypted)
+#               ├── authorizedScopes (from token)
+#               ├── requiresRefreshToken (false)
+#               └── timestamps
+#                   ├── __last_token_update
+#                   ├── __web_token_update
+#                   └── __web_refresh_token_update
+*/
+
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
     if (!email || isSubmitting) return;
 
-    // Save email to localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('lastUsedEmail', email);
-    }
-
     try {
       setIsSubmitting(true);
+      setError(null);
 
-      // Query existing authorized scopes
+      // First check if user needs refresh token
       const db = getFirestore();
-      const userQuery = await getDocs(
-        query(collection(db, 'authorized_scopes'), 
-          where('userEmail', '==', email),
-          limit(1)
-        )
-      );
-      let PUBLIC_SCOPES = [];
       let forceConsent = false;
-      if(userQuery.docs.length === 0) {
-        console.error('No user found with email:', email);
-        console.log('create a profile and proceed after signInWithGoogle');
-        PUBLIC_SCOPES = publicScopes;
+
+      const auth = getAuth();
+      if (auth.currentUser) {
+        const userTokensRef = doc(db, 'user_tokens', auth.currentUser.uid);
+        const userTokensSnap = await getDoc(userTokensRef);
+        
+        if (userTokensSnap.exists()) {
+          const userTokens = userTokensSnap.data();
+          forceConsent = userTokens.requiresRefreshToken === true;
+          if (forceConsent) {
+            console.log('Refresh token required, will force consent');
+          }
+        } else {
+          // Force consent for new users who don't have tokens yet
+          forceConsent = true;
+          console.log('New user, will force consent');
+        }
+      } else {
+        // Force consent for users not signed in yet
         forceConsent = true;
-      }else{
-        if(userQuery.docs[0].data().authorizedScopes.length > 0) {
-          PUBLIC_SCOPES = userQuery.docs[0].data().authorizedScopes
-        }else{
-          PUBLIC_SCOPES = publicScopes;
-        }  
+        console.log('Not signed in, will force consent');
       }
-      console.log('User query:', userQuery.docs);
+
+      // Always force consent for now to test OAuth2 flow
+      forceConsent = true;
+      console.log('Forcing consent to test OAuth2 flow');
+
+      // Sign in with Google
+      console.log('Starting sign in with:', {
+        publicScopes,
+        forceConsent,
+        currentUser: auth.currentUser?.email
+      });
       
-
-      // Sign in with Google using the found scopes
-      // check if scopes match requested
-      // save the (new) scopes to user_tokens/authorizedScopes
-      let signInResult = await signInWithGoogle(PUBLIC_SCOPES, forceConsent);
-
+      const signInResult = await signInWithGoogle(publicScopes, forceConsent);
+      
       if (!signInResult.success) {
         console.error('Sign-in failed:', signInResult.error);
         handleSignInError(signInResult);
         return;
       }
 
-      // Get the current user and ID token
-      const auth = getAuth();
-      if (!auth.currentUser) {
-        console.error('No user after successful sign-in');
-        return;
-      }
-
-      const idToken = await auth.currentUser.getIdToken();
-      if (!idToken) {
-        console.error('No ID token available after sign-in');
-        return;
-      }
-
-      // Profile creation is handled by UserProvider context
-      console.log('Sign-in successful, UserProvider will handle profile creation');
-
-      // use google tokenInfo endpoint to get authorized for this login scopes
-      let AUTHD_SCOPES = await fetch( `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${signInResult.tokens.accessToken}` ).then(r => r.json());
-      //console.log('Token scopes:', AUTHD_SCOPES.scope?.split(' '));
-      
-      // check if token scopes match authorized scopes
-      if (AUTHD_SCOPES.scope?.split(' ').sort().join(',') !== PUBLIC_SCOPES.sort().join(',')) {
-        console.error('Token scopes do not match authorized scopes');
-        forceConsent = true;
-        signInResult = await signInWithGoogle(PUBLIC_SCOPES, forceConsent);
-        AUTHD_SCOPES = await fetch( `https://www.googleapis.com/oauth2/v3/tokeninfo?access_token=${signInResult.tokens.accessToken}` ).then(r => r.json());
-        if (AUTHD_SCOPES.scope?.split(' ').sort().join(',') !== PUBLIC_SCOPES.sort().join(',')) {
-          console.error('Token scopes still do not match authorized scopes');          
-        }
-      }
-
-      // Store tokens after successful sign-in and scope verification
-      try {
-        await storeTokenInfo(
-          auth.currentUser.uid, 
-          signInResult.tokens.accessToken, 
-          signInResult.tokens.refreshToken, 
-          AUTHD_SCOPES.scope?.split(' '), 
-          idToken
-        );
-      } catch (error) {
-        console.error('Error storing tokens:', error);
-        // Continue anyway as the user is signed in
-      }
-
     } catch (error) {
       console.error("Sign-in error:", error);
-      router.push('/auth-error');
+      setError('Failed to sign in');
     } finally {
       setIsSubmitting(false);
-      router.push('/');  
     }
   };
 
@@ -271,6 +285,7 @@ const Header = () => {
                 >
                   {isSubmitting ? 'Signing in...' : 'Sign In'}
                 </Button>
+                {error && <div className="text-red-500">{error}</div>}
               </form>
             )}
           </div>
@@ -288,6 +303,9 @@ const Header = () => {
                 </Button>
               </DialogHeader>
               <div className="grid gap-4 py-4">
+                <Button onClick={() => handleMenuItemClick(() => router.push('/'))}>
+                  Home
+                </Button>
                 <Button onClick={() => handleMenuItemClick(() => router.push('/dashboard'))}>
                   Dashboard
                 </Button>

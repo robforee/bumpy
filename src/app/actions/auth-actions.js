@@ -52,15 +52,6 @@ export async function storeTokenInfo({ accessToken, refreshToken, scopes, idToke
       return { success: false, error: 'Access token is required' };
     }
 
-    console.log('Storing tokens:', {
-      hasAccessToken: !!accessToken,
-      accessTokenPreview: accessToken ? accessToken.substring(0, 8) : 'none',
-      hasRefreshToken: !!refreshToken,
-      refreshTokenPreview: refreshToken ? refreshToken.substring(0, 8) : 'none',
-      hasScopes: !!scopes && Array.isArray(scopes),
-      scopesCount: scopes?.length || 0
-    });
-
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
     if (!currentUser?.uid) {
       return { success: false, error: 'User not authenticated' };
@@ -69,33 +60,32 @@ export async function storeTokenInfo({ accessToken, refreshToken, scopes, idToke
     const db = getFirestore(firebaseServerApp);
     const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
     const now = Date.now();
+    const nowFormatted = moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm');
 
-    // Base token data - TESTING: store refresh token without encryption
+    // Encrypt tokens
+    const encryptedAccessToken = await encrypt(accessToken);
+    const encryptedRefreshToken = refreshToken ? await encrypt(refreshToken) : null;
+
+    // Base token data with encryption
     const tokenData = {
       __last_token_update: now,
-      __web_refresh_token_update: moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm'),
-      accessToken: accessToken, // TESTING: No encryption
-      refreshToken: refreshToken, // TESTING: No encryption
-      expirationTime: now + 3600000,
+      __web_token_update: nowFormatted,
+      __web_refresh_token_update: refreshToken ? nowFormatted : null,
+      __error_time: null, // Clear error time
+      __last_error: null, // Clear last error
+      accessToken: encryptedAccessToken,
+      refreshToken: encryptedRefreshToken,
+      expirationTime: now + 3600000, // 1 hour from now
       userEmail: currentUser.email,
       authorizedScopes: scopes,
-      errors: [],
-      consecutiveFailures: 0,
+      errors: [], // Clear errors array
+      consecutiveFailures: 0, // Reset failure count
       requiresUserAction: false,
       requiresRefreshToken: false
     };
 
     // Store tokens
     await setDoc(userTokensRef, tokenData, { merge: true });
-
-    console.log('Successfully stored tokens:', {
-      uid: currentUser.uid,
-      email: currentUser.email,
-      hasRefreshToken: !!refreshToken,
-      requiresRefreshToken: false,
-      lastUpdate: tokenData.__web_token_update,
-      refreshTokenUpdate: tokenData.__web_refresh_token_update
-    });
 
     return { success: true };
   } catch (error) {
@@ -105,77 +95,84 @@ export async function storeTokenInfo({ accessToken, refreshToken, scopes, idToke
 }
 
 export async function refreshTokenInfo(idToken) {
-  console.log('Refreshing token for user:', idToken);
   try {
-    // Wait 60 seconds before refreshing
-    console.log('Waiting 60 seconds before refresh...');
-    await new Promise(resolve => setTimeout(resolve, 10000));
-    console.log('Continuing with refresh after wait');
-
-    // Get existing tokens
-    const { success, data: tokenData, error } = await getTokenInfo(idToken);
-    if (!success) {
-      console.error('Failed to get existing tokens:', error);
-      return { success: false, error };
+    const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
+    if (!currentUser?.uid) {
+      return { success: false, error: 'User not authenticated' };
     }
 
+    const db = getFirestore(firebaseServerApp);
+    const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
+    const userTokensSnap = await getDoc(userTokensRef);
+
+    if (!userTokensSnap.exists()) {
+      return { success: false, error: 'No tokens found for user' };
+    }
+
+    const tokenData = userTokensSnap.data();
     if (!tokenData.refreshToken) {
-      return { success: false, error: 'No refresh token available' };
+      return { success: false, error: 'No refresh token found' };
     }
 
-    // Set up OAuth client
+    // Create OAuth2 client
     const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
+      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_REDIRECT_URI
+      process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI
     );
 
-    console.log('OAuth2 client config:', {
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      hasSecret: !!process.env.GOOGLE_CLIENT_SECRET,
-      redirectUri: process.env.GOOGLE_REDIRECT_URI
-    });
-
-    // Set existing credentials
+    // Set existing credentials with decrypted refresh token
     oauth2Client.setCredentials({
-      refresh_token: tokenData.refreshToken,
+      refresh_token: await decrypt(tokenData.refreshToken)
     });
-
-    // Log refresh token (first few chars)
-    const refreshTokenPreview = tokenData.refreshToken ? 
-      `${tokenData.refreshToken.substring(0, 8)}...` : 'none';
-    console.log('Using refresh token:', refreshTokenPreview);
 
     // Refresh the token
-    console.log('Refreshing token for user:', idToken);
-    try {
-      const { credentials } = await oauth2Client.refreshAccessToken();
-      console.log('Refreshed credentials for user:', credentials);
-      // Store the new tokens
-      await storeTokenInfo({
-        accessToken: credentials.access_token,
-        refreshToken: credentials.refresh_token || tokenData.refreshToken, // Keep existing refresh token if new one not provided
-        scopes: credentials.scope?.split(' ') || tokenData.authorizedScopes,
-        idToken
-      });
+    const { credentials } = await oauth2Client.refreshAccessToken();
+    const now = Date.now();
+    const nowFormatted = moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm');
 
-      return { 
-        success: true, 
-        data: {
-          accessToken: credentials.access_token,
-          expiryDate: credentials.expiry_date
-        }
-      };
-    } catch (refreshError) {
-      console.error('Token refresh error details:', {
-        name: refreshError.name,
-        message: refreshError.message,
-        response: refreshError.response?.data
-      });
-      throw refreshError;
-    }
+    // Encrypt new tokens
+    const encryptedAccessToken = await encrypt(credentials.access_token);
+    const encryptedRefreshToken = credentials.refresh_token ? 
+      await encrypt(credentials.refresh_token) : 
+      tokenData.refreshToken; // Keep existing encrypted refresh token if none provided
+
+    // Update token data
+    const updatedTokenData = {
+      __last_token_update: now,
+      __web_token_update: nowFormatted,
+      __error_time: null,
+      __last_error: null,
+      accessToken: encryptedAccessToken,
+      refreshToken: encryptedRefreshToken,
+      expirationTime: now + (credentials.expiry_date || 3600000),
+      errors: [],
+      consecutiveFailures: 0,
+      requiresUserAction: false,
+      requiresRefreshToken: false
+    };
+
+    await setDoc(userTokensRef, updatedTokenData, { merge: true });
+
+    return { success: true };
   } catch (error) {
     console.error('Error refreshing token:', error);
+    
+    // Update error state
+    const now = Date.now();
+    const errorData = {
+      __error_time: moment().tz('America/Chicago').format('YYYY-MM-DD HH:mm'),
+      __last_error: error.message,
+      errors: arrayUnion(error.message),
+      consecutiveFailures: increment(1),
+      requiresUserAction: error.message.includes('invalid_grant')
+    };
+
+    const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
+    const db = getFirestore(firebaseServerApp);
+    const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
+    await setDoc(userTokensRef, errorData, { merge: true });
+
     return { success: false, error: error.message };
   }
 }
@@ -218,11 +215,11 @@ export async function getTokenInfo(idToken) {
 
     const tokenData = userTokensSnap.data();
     
-    // TESTING: Only decrypt access token
+    // Decrypt tokens
     const decryptedData = {
       ...tokenData,
-      accessToken: tokenData.accessToken, // TESTING: No decryption
-      refreshToken: tokenData.refreshToken // TESTING: No decryption
+      accessToken: await decrypt(tokenData.accessToken),
+      refreshToken: tokenData.refreshToken ? await decrypt(tokenData.refreshToken) : null
     };
 
     console.log('Successfully retrieved tokens:', {

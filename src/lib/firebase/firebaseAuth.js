@@ -22,7 +22,7 @@ export function onAuthStateChanged(cb) {
  * @returns {Promise<{ success: boolean, user: any, tokens: any, scopes: string[] }>} The result of the sign in.
  */
 export async function signInWithGoogle(scopes = [], forceConsent = false) {
-  console.log('Starting sign in with:', JSON.stringify({
+  console.log('Starting sign in with: x ', JSON.stringify({
     scopes: scopes,
     forceConsent: forceConsent,
     scopesType: typeof scopes,
@@ -37,9 +37,9 @@ export async function signInWithGoogle(scopes = [], forceConsent = false) {
     
     // Add requested scopes
     scopesToAdd.forEach(scope => {
-      console.log('Adding scope:', JSON.stringify({
-        scope: scope
-      }, null, 2));
+      //console.log('Adding scope:', JSON.stringify({
+      //  scope: scope
+      //}, null, 2));
       provider.addScope(scope);
     });
 

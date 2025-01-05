@@ -162,11 +162,11 @@ $       │
       console.log('Forcing consent to test OAuth2 flow');
 
       // Sign in with Google
-      console.log('Starting sign in with:', {
-        publicScopes,
-        forceConsent,
-        currentUser: auth.currentUser?.email
-      });
+      // console.log('Starting sign in with: y', {
+      //   publicScopes,
+      //   forceConsent,
+      //   currentUser: auth.currentUser?.email
+      // });
       
       const signInResult = await signInWithGoogle(publicScopes, forceConsent);
       

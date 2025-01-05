@@ -46,11 +46,13 @@ export async function signInWithGoogle(scopes = [], forceConsent = false) {
     // Always force consent to get refresh token
     // Build Google OAuth2 URL directly
     const redirectUri = process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI;
-    // console.log('OAuth2 config:', JSON.stringify({
-    //   clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-    //   redirectUri: redirectUri,
-    //   scopes: scopes.join(' ')
-    // }, null, 2));
+    console.log('Redirect URI:', process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI)
+    console.log('client id:', process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID)
+    console.log('OAuth2 config:', JSON.stringify({
+      clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+      redirectUri: redirectUri,
+      scopes: scopes.join(' ')
+    }, null, 2));
 
     const params = new URLSearchParams({
       client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,

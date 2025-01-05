@@ -22,12 +22,12 @@ export function onAuthStateChanged(cb) {
  * @returns {Promise<{ success: boolean, user: any, tokens: any, scopes: string[] }>} The result of the sign in.
  */
 export async function signInWithGoogle(scopes = [], forceConsent = false) {
-  console.log('Starting sign in with: x ', JSON.stringify({
-    scopes: scopes,
-    forceConsent: forceConsent,
-    scopesType: typeof scopes,
-    isArray: Array.isArray(scopes)
-  }, null, 2));
+  // console.log('Starting sign in with: x ', JSON.stringify({
+  //   scopes: scopes,
+  //   forceConsent: forceConsent,
+  //   scopesType: typeof scopes,
+  //   isArray: Array.isArray(scopes)
+  // }, null, 2));
 
   try {
     const provider = new GoogleAuthProvider();
@@ -46,11 +46,11 @@ export async function signInWithGoogle(scopes = [], forceConsent = false) {
     // Always force consent to get refresh token
     // Build Google OAuth2 URL directly
     const redirectUri = process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI;
-    console.log('OAuth2 config:', JSON.stringify({
-      clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-      redirectUri: redirectUri,
-      scopes: scopes.join(' ')
-    }, null, 2));
+    // console.log('OAuth2 config:', JSON.stringify({
+    //   clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+    //   redirectUri: redirectUri,
+    //   scopes: scopes.join(' ')
+    // }, null, 2));
 
     const params = new URLSearchParams({
       client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,

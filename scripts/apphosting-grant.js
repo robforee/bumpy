@@ -2,7 +2,6 @@
 
 import fs from 'fs';
 import yaml from 'yaml';
-import { execSync } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -30,17 +29,11 @@ apphostingConfig.env.forEach(env => {
 const location = 'us-central1';
 const backend = 'bumpy-roads';
 
-console.log('Found secrets:', secrets);
-console.log('\nGranting access to each secret...\n');
+console.log('Found these secrets that need permissions:');
+console.log('----------------------------------------\n');
 
-// Run firebase command for each secret
-secrets.forEach(secret => {
-  const command = `firebase apphosting:secrets:grantaccess "${secret}" --location "${location}" --backend "${backend}"`;
-  console.log(`Running: ${command}`);
-  try {
-    execSync(command, { stdio: 'inherit' });
-    console.log(`✅ Successfully granted access to ${secret}\n`);
-  } catch (error) {
-    console.error(`❌ Failed to grant access to ${secret}\n`);
-  }
+// Generate commands for each secret
+secrets.forEach((secret, index) => {
+  console.log(`${index + 1}. For secret "${secret}", run:`);
+  console.log(`firebase apphosting:secrets:grantaccess "${secret}" --location "${location}" --backend "${backend}"\n`);
 });

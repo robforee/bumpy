@@ -3,7 +3,7 @@ env:
   # Get these values from the Firebase console
 
   - variable: NEXT_PUBLIC_FOREE
-    value: "robert"
+    value: "robert, see the apphosting.yaml file!"
 
   - variable: ENCRYPTION_KEY
     secret: projects/727308999536/secrets/ENCRYPTION_KEY
@@ -13,9 +13,6 @@ env:
 
   - variable: NEXT_PUBLIC_GOOGLE_CLIENT_ID
     secret: projects/727308999536/secrets/next_public_google_client_id
-
-  - variable: NEXT_PUBLIC_GOOGLE_CLIENT_SECRET
-    secret:  projects/727308999536/secrets/next_public_google_client_secret
 
   - variable: NEXT_PUBLIC_GOOGLE_REDIRECT_URI
     secret: projects/727308999536/secrets/next_public_google_redirect_uri

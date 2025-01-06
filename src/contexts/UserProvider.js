@@ -13,6 +13,12 @@ export const UserProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   const loadUserProfile = useCallback(async (authUser) => {
+    console.log('👤 [loadUserProfile] Loading user profile:', {
+      uid: authUser?.uid,
+      email: authUser?.email,
+      timestamp: new Date().toISOString(),
+      clientId: process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI
+    });
     try {
       const profile = await userService.getUserProfile(authUser.uid);
       if (!profile) {

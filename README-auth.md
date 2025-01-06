@@ -1,5 +1,36 @@
 # Authentication and Authorization
 
+
+└── OAuth2 Flow
+    ├── `signInWithGoogle` in `firebaseAuth.js`
+    │   ├── `GoogleAuthProvider` in `@firebase/auth`
+    │   └── `signInWithPopup` in `@firebase/auth`
+    ├── `OAuth2Callback` in `page.js`
+    │   └── `exchangeCodeForTokens` in `auth-actions.js`
+    │       └── `google.auth.OAuth2` in `googleapis`
+    ├── `handleTokenStorage` in `ClientCallback.jsx`
+    │   ├── `onAuthStateChanged` in `@firebase/auth`
+    │   └── `storeTokenInfo` in `auth-actions.js`
+    │       ├── `encrypt` in `auth-actions.js`
+    │       └── `setDoc` in `@firebase/firestore`
+    └── `loadUserProfile` in `UserProvider.js`
+        ├── `getDoc` in `@firebase/firestore`
+        └── `setContext` in `UserProvider.js`
+
+Credentials
+└── Required forOauth2
+    ├── GOOGLE_CLIENT_ID
+    └── GOOGLE_CLIENT_SECRET
+    └── GOOGLE_REDIRECT_URI
+    └── ENCRYPTION_KEY
+└── Locations
+    ├── `~/.bash_aliases`
+    ├── `~/work/auth/`
+    ├── `.env.local`
+    ├── `.env.production`
+    ├── `apphosting.yaml`
+    ├── `secretmanager` at `https://console.cloud.google.com/security/secret-manager`
+
 ## Authentication Flow
 └── Sign In Flow
     ├── Email Entry
@@ -26,6 +57,38 @@
         │   └── `loadUserProfile` in `UserProvider.js`
         └── Initialize If Needed
             └── `initializeNewUserIfNeeded` in `UserProvider.js`
+
+## OAuth2 Code Exchange Flow
+└── OAuth2 Code Exchange Flow
+    ├── Initial Google Auth
+    │   ├── Build OAuth URL
+    │   │   └── `signInWithGoogle` in `firebaseAuth.js`
+    │   │       └── URLSearchParams with client_id, redirect_uri, scopes
+    │   └── Redirect to Google Consent
+    │       └── `window.location.href = oauthUrl`
+    ├── Google Callback
+    │   ├── Receive Auth Code
+    │   │   └── `/auth/callback` page.js
+    │   └── Handle Callback
+    │       └── `handleOAuth2Callback` in `firebaseAuth.js`
+    ├── Token Exchange (Server Action)
+    │   ├── Exchange Code for Tokens
+    │   │   └── `exchangeCodeForTokens` in `auth-actions.js`
+    │   │       └── Using google.auth.OAuth2 client
+    │   └── Parse Token Response
+    │       └── Access Token, Refresh Token, Scope
+    ├── Token Storage
+    │   ├── Encrypt Tokens
+    │   │   └── `encrypt` in `auth-actions.js`
+    │   ├── Store in Firestore
+    │   │   └── `storeTokenInfo` in `auth-actions.js`
+    │   └── Store Token Timestamps
+    │       └── `getTokenTimestamps` in `token-utils.js`
+    └── Response to Client
+        ├── Success Case
+        │   └── Return tokens object with success: true
+        └── Error Case
+            └── Return error object with success: false
 
 settings/page
   handleGrantAll                            : settings/page

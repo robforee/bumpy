@@ -1,6 +1,6 @@
-// src/app/actions/auth-actions.js
-"use server";
+'use server'
 
+// src/app/actions/auth-actions.js
 import { getFirestore, doc, setDoc, getDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, writeBatch } from "@firebase/firestore";
 import moment from 'moment-timezone';
 import crypto from 'crypto';
@@ -46,6 +46,14 @@ export async function decrypt(text) {
 
 // Stores tokens for a given user
 export async function storeTokenInfo({ accessToken, refreshToken, scopes, idToken }) {
+  console.log('💫 [storeTokenInfo] Storing tokens:', {
+    hasTokens: !!accessToken,
+    hasAccessToken: !!accessToken,
+    hasRefreshToken: !!refreshToken,
+    scopes: scopes,
+    timestamp: new Date().toISOString()
+  });
+
   try {
     if (!accessToken) {
       console.error('Missing access token in storeTokens');
@@ -56,6 +64,12 @@ export async function storeTokenInfo({ accessToken, refreshToken, scopes, idToke
     if (!currentUser?.uid) {
       return { success: false, error: 'User not authenticated' };
     }
+
+    console.log('💫 [storeTokenInfo] Current user:', {
+      hasUser: !!currentUser,
+      uid: currentUser?.uid,
+      email: currentUser?.email
+    });
 
     const db = getFirestore(firebaseServerApp);
     const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
@@ -87,6 +101,8 @@ export async function storeTokenInfo({ accessToken, refreshToken, scopes, idToke
     // Store tokens
     await setDoc(userTokensRef, tokenData, { merge: true });
 
+    console.log('💫 [storeTokenInfo] Tokens stored successfully');
+    
     return { success: true };
   } catch (error) {
     console.error('Error storing tokens:', error);
@@ -348,5 +364,69 @@ export async function deleteScope(scope, idToken) {
   } catch (error) {
     console.error('Error removing scope:', error);
     return { success: false, error: error.message };
+  }
+}
+
+// Cache for token exchanges to prevent duplicates
+const tokenExchangeCache = new Map();
+
+export async function exchangeCodeForTokens(code) {
+  // Check if we've already processed this code
+  if (tokenExchangeCache.has(code)) {
+    console.log('🔄 [exchangeCodeForTokens] Using cached result for code');
+    return tokenExchangeCache.get(code);
+  }
+
+  try {
+    console.log('Token exchange request:', JSON.stringify({
+      hasCode: !!code,
+      codePreview: code ? `${code.substring(0, 8)}...` : 'none'
+    }, null, 2));
+
+    // Create OAuth2 client
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI || 'http://localhost:3000/auth/callback'
+    );
+
+    console.log('Token exchange parameters:', JSON.stringify({
+      client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+      redirect_uri: process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI || 'http://localhost:3000/auth/callback',
+      code_preview: code.substring(0, 8) + '...'
+    }, null, 2));
+
+    // Exchange code for tokens
+    const { tokens } = await oauth2Client.getToken(code);
+    console.log('Token exchange response:', JSON.stringify({
+      hasAccessToken: !!tokens.access_token,
+      hasRefreshToken: !!tokens.refresh_token,
+      scope: tokens.scope
+    }, null, 2));
+
+    const result = {
+      success: true,
+      tokens: {
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        scope: tokens.scope
+      }
+    };
+
+    // Cache the result
+    tokenExchangeCache.set(code, result);
+    
+    // Clear cache after 5 minutes
+    setTimeout(() => {
+      tokenExchangeCache.delete(code);
+    }, 5 * 60 * 1000);
+
+    return result;
+  } catch (error) {
+    console.error('Token exchange error:', error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
 }

@@ -18,7 +18,7 @@ env:
     secret: projects/727308999536/secrets/next_public_google_redirect_uri
 
   - variable: GOOGLE_CLIENT_SECRET
-    secret:  projects/727308999536/secrets/google_client_secret
+    secret:  projects/727308999536/secrets/GOOGLE_CLIENT_SECRET
 
   - variable: FIREBASE_PROJECT_ID
     secret: projects/727308999536/secrets/firebase_project_id

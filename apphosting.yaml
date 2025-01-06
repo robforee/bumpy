@@ -11,23 +11,17 @@ env:
   - variable: OPENAI_API_KEY
     secret: projects/727308999536/secrets/OPENAI_API_KEY
 
-  - variable: NEXT_PUBLIC_GOOGLE_CLIENT_ID
+  - variable: NEXT_PUBLIC_NEXT_PUBLIC_GOOGLE_CLIENT_ID
     secret: projects/727308999536/secrets/next_public_google_client_id
 
   - variable: NEXT_PUBLIC_GOOGLE_REDIRECT_URI
     secret: projects/727308999536/secrets/next_public_google_redirect_uri
 
-  - variable: GOOGLE_CLIENT_ID
-    secret: projects/727308999536/secrets/google_client_id
-
   - variable: GOOGLE_CLIENT_SECRET
     secret:  projects/727308999536/secrets/google_client_secret
 
-  - variable: GOOGLE_REDIRECT_URI
-    secret: projects/727308999536/secrets/google_redirect_uri
-
   - variable: FIREBASE_PROJECT_ID
-    secret: projects/727308999536/secrets/firebase_project_id
+    secret: projects/727308999536/secrets/FIREBASE_PROJECT_ID
 
   - variable: FIREBASE_PRIVATE_KEY_ID 
     secret: projects/727308999536/secrets/firebase_private_key_id

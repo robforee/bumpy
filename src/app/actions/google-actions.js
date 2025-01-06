@@ -38,7 +38,7 @@ export async function queryGmailInbox(userId, idToken) {
 
             // Set up Gmail client
             const oauth2Client = new google.auth.OAuth2(
-                process.env.GOOGLE_CLIENT_ID,
+                process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
                 process.env.GOOGLE_CLIENT_SECRET,
                 process.env.GOOGLE_REDIRECT_URI
             );
@@ -135,7 +135,7 @@ export async function queryRecentDriveFiles(userId, idToken) {
 
             // Set up Drive client
             const oauth2Client = new google.auth.OAuth2(
-                process.env.GOOGLE_CLIENT_ID,
+                process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
                 process.env.GOOGLE_CLIENT_SECRET,
                 process.env.GOOGLE_REDIRECT_URI
             );
@@ -204,7 +204,7 @@ export async function queryGoogleCalendar(userId, idToken) {
 
             // Set up Calendar client
             const oauth2Client = new google.auth.OAuth2(
-                process.env.GOOGLE_CLIENT_ID,
+                process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
                 process.env.GOOGLE_CLIENT_SECRET,
                 process.env.GOOGLE_REDIRECT_URI
             );
@@ -294,7 +294,7 @@ export async function demoGmailToken(idToken) {
 
             // Set up Gmail client
             const oauth2Client = new google.auth.OAuth2(
-                process.env.GOOGLE_CLIENT_ID,
+                process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
                 process.env.GOOGLE_CLIENT_SECRET,
                 process.env.GOOGLE_REDIRECT_URI
             );

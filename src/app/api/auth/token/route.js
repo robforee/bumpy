@@ -33,7 +33,7 @@ export async function POST(request) {
     }, null, 2));
     
     const tokenParams = new URLSearchParams({
-      client_id: process.env.NEXT_PUBLIC__GOOGLE_CLIENT_ID,
+      client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
       client_secret: process.env.GOOGLE_CLIENT_SECRET,
       redirect_uri: process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI,
       grant_type: 'authorization_code',
@@ -41,7 +41,7 @@ export async function POST(request) {
     });
 
     console.log('Token request params:', JSON.stringify({
-      clientId: process.env.NEXT_PUBLIC__GOOGLE_CLIENT_ID?.slice(0, 8) + '...',
+      clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.slice(0, 8) + '...',
       hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
       clientSecretPreview: process.env.GOOGLE_CLIENT_SECRET ? 
         process.env.GOOGLE_CLIENT_SECRET.slice(0, 4) + '...' : 'none',

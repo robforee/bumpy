@@ -116,14 +116,14 @@ export async function refreshTokenInfo(idToken) {
 
     // Create OAuth2 client
     console.log('Auth Environment:', {
-      CLIENT_ID: process.env.NEXT_PUBLIC__GOOGLE_CLIENT_ID,
+      CLIENT_ID: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
       REDIRECT_URI: process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI,
       NODE_ENV: process.env.NODE_ENV,
       // Don't log the secret!
     });
 
     const oauth2Client = new google.auth.OAuth2(
-      process.env.NEXT_PUBLIC__GOOGLE_CLIENT_ID,
+      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
       process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI
     );

@@ -61,7 +61,7 @@ export async function signInWithGoogle(scopes = [], forceConsent = false) {
       response_type: 'code',
       access_type: 'offline',
       // Use prompt=none to let Google handle scope mismatches
-      prompt: 'consent',
+      prompt: 'consent', // consent screen not appear requested scopes match the existing token.
       // Always include base scopes
       scope: ['openid', 'profile', 'email', ...scopesToAdd].join(' ')
     });

@@ -51,15 +51,18 @@ export async function signInWithGoogle(scopes = [], forceConsent = false) {
     console.log('OAuth2 config:', JSON.stringify({
       clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
       redirectUri: redirectUri,
-      scopes: scopes.join(' ')
-    }, null, 2));
+      scopes: scopes.join(' '),
+      timestamp: new Date().toISOString()
+    }));
 
     const params = new URLSearchParams({
       client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
       redirect_uri: redirectUri,
       response_type: 'code',
       access_type: 'offline',
+      // Use prompt=none to let Google handle scope mismatches
       prompt: 'consent',
+      // Always include base scopes
       scope: ['openid', 'profile', 'email', ...scopesToAdd].join(' ')
     });
 

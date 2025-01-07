@@ -3,33 +3,78 @@
 
 └── OAuth2 Flow
     ├── `signInWithGoogle` in `firebaseAuth.js`
+    │   ├── Get scopes from users/[uid].request_scopes or public_data/scopes
+    │   ├── Use prompt=none for automatic scope handling
     │   ├── `GoogleAuthProvider` in `@firebase/auth`
     │   └── `signInWithPopup` in `@firebase/auth`
     ├── `OAuth2Callback` in `page.js`
     │   └── `exchangeCodeForTokens` in `auth-actions.js`
+    │       ├── Exchange code for tokens with access_type=offline
+    │       ├── Returns access_token, refresh_token, and scope
     │       └── `google.auth.OAuth2` in `googleapis`
     ├── `handleTokenStorage` in `ClientCallback.jsx`
     │   ├── `onAuthStateChanged` in `@firebase/auth`
     │   └── `storeTokenInfo` in `auth-actions.js`
-    │       ├── `encrypt` in `auth-actions.js`
+    │       ├── Store encrypted tokens in user_tokens/[uid]
+    │       ├── Store authorizedScopes in user_tokens/[uid]
     │       └── `setDoc` in `@firebase/firestore`
     └── `loadUserProfile` in `UserProvider.js`
-        ├── `getDoc` in `@firebase/firestore`
+        ├── `getDoc` from users/[uid] in `@firebase/firestore`
         └── `setContext` in `UserProvider.js`
 
-Credentials
-└── Required forOauth2
-    ├── GOOGLE_CLIENT_ID
-    └── GOOGLE_CLIENT_SECRET
-    └── GOOGLE_REDIRECT_URI
-    └── ENCRYPTION_KEY
-└── Locations
-    ├── `~/.bash_aliases`
-    ├── `~/work/auth/`
-    ├── `.env.local`
-    ├── `.env.production`
-    ├── `apphosting.yaml`
-    ├── `secretmanager` at `https://console.cloud.google.com/security/secret-manager`
+└── Credentials
+    └── Required for OAuth2
+        ├── NEXT_PUBLIC_GOOGLE_CLIENT_ID (public)
+        ├── GOOGLE_CLIENT_SECRET (server-only)
+        ├── NEXT_PUBLIC_GOOGLE_REDIRECT_URI (public)
+        └── ENCRYPTION_KEY (server-only)
+    └── Storage Locations
+        ├── `~/.bash_aliases`
+        ├── `~/work/auth/`
+        ├── `.env.local`
+        ├── `.env.production`
+        ├── `apphosting.yaml`
+        └── `secretmanager` at `https://console.cloud.google.com/security/secret-manager`
+    └── Logging
+        └── Cloud Run logs
+            └── `gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=bumpy-roads" --limit=50`
+
+└── Token Storage
+    ├── Location: user_tokens/[uid]
+    ├── Fields
+    │   ├── accessToken (encrypted)
+    │   ├── refreshToken (encrypted)
+    │   ├── authorizedScopes (array)
+    │   └── expiresIn (timestamp)
+    └── Operations
+        ├── Store: `storeTokenInfo` in `auth-actions.js`
+        ├── Refresh: `refreshTokenInfo` in `auth-actions.js`
+        ├── Verify: `verifyToken` in `auth-actions.js`
+        └── Retrieve: `getTokenInfo` in `auth-actions.js`
+
+└── Scope Flow
+    ├── Source
+    │   ├── Primary: `users/[uid].request_scopes` in `fetchScopes` in `Header.jsx`
+    │   └── Fallback: `public_data/scopes.default_scopes` in `fetchScopes` in `Header.jsx`
+    ├── Usage
+    │   ├── Load via `fetchScopes` in `Header.jsx`
+    │   ├── Pass to `signInWithGoogle` in `handleSignIn` in `Header.jsx`
+    │   └── Use `prompt=none` in `signInWithGoogle` for auto consent handling
+    └── Management
+        ├── View/Edit via `ScopeManager.jsx`
+        └── Initialize in `initializeNewUserIfNeeded` in `userService.js`
+
+└── Scope Storage
+    ├── Requested Scopes (what user wants)
+    │   └── `users/[uid].request_scopes` array in Firestore
+    ├── Default Scopes (fallback)
+    │   └── `public_data/scopes.default_scopes` array in Firestore
+    ├── Authorized Scopes (what user has granted)
+    │   └── `user_tokens/[uid].authorizedScopes` array in Firestore
+    └── Scope Management
+        ├── Set on new user in `initializeNewUserIfNeeded` in `userService.js`
+        ├── Updated via `ScopeManager.jsx`
+        └── Verified in `auth-actions.js`
 
 ## Authentication Flow
 └── Sign In Flow

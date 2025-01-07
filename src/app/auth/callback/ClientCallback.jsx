@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/src/lib/firebase/clientApp';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -8,17 +8,9 @@ import { storeTokenInfo } from '@/src/app/actions/auth-actions';
 
 export default function ClientCallback({ result }) {
   const router = useRouter();
-  const processedRef = useRef(false);
 
   useEffect(() => {
     const handleTokenStorage = async () => {
-      // Prevent double execution
-      if (processedRef.current) {
-        console.log(' [handleTokenStorage] Skipping duplicate execution');
-        return;
-      }
-      processedRef.current = true;
-
       console.log(' [handleTokenStorage] Starting token storage:', {
         success: result.success,
         hasTokens: !!result.tokens,
@@ -27,21 +19,13 @@ export default function ClientCallback({ result }) {
       });
 
       if (!result.success) {
-        console.error('Token exchange failed:', {
-          error: result.error,
-          timestamp: new Date().toISOString(),
-          redirectUri: process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI
-        });
+        console.error('Token exchange failed:', result.error);
         router.push('/auth-error');
         return;
       }
 
       // Wait for Firebase auth
       if (!auth.currentUser) {
-        console.log('Waiting for auth state, current URI:', {
-          uri: process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI,
-          timestamp: new Date().toISOString()
-        });
         await new Promise((resolve) => {
           const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -61,29 +45,10 @@ export default function ClientCallback({ result }) {
         return;
       }
 
-      console.log(' [handleTokenStorage] Token structure:', {
-        tokens: {
-          ...result.tokens,
-          access_token: result.tokens.access_token ? `${result.tokens.access_token.substring(0, 10)}...` : null,
-          refresh_token: result.tokens.refresh_token ? `${result.tokens.refresh_token.substring(0, 10)}...` : null
-        }
-      });
-
       // Store tokens
       const idToken = await auth.currentUser.getIdToken();
-      const storeResult = await storeTokenInfo({
-        accessToken: result.tokens.access_token,
-        refreshToken: result.tokens.refresh_token,
-        scopes: result.tokens.scope?.split(' ') || [],
-        idToken: idToken
-      });
-      console.log(' [handleTokenStorage] Store result:', storeResult);
-      
-      if (storeResult.success) {
-        router.push('/');
-      } else {
-        router.push('/auth-error');
-      }
+      await storeTokenInfo({ ...result.tokens, idToken });
+      router.push('/');
     };
 
     handleTokenStorage();

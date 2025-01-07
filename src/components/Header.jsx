@@ -32,21 +32,47 @@ const Header = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch public scopes from Firestore
+  // Fetch scopes from Firestore
   useEffect(() => {
-    const fetchPublicScopes = async () => {
+    const fetchScopes = async () => {
       const db = getFirestore();
       try {
+        // First try to get user-specific scopes
+        if (user?.uid) {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists() && userDoc.data().request_scopes) {
+            console.log('[BUMPY_AUTH] Using user-specific scopes:', JSON.stringify({
+              userId: user.uid,
+              scopes: userDoc.data().request_scopes,
+              source: 'users/[uid].request_scopes',
+              timestamp: new Date().toISOString()
+            }));
+            setPublicScopes(userDoc.data().request_scopes);
+            return;
+          }
+        }
+        
+        // Fall back to default scopes from public_data
         const scopesDoc = await getDoc(doc(db, 'public_data', 'scopes'));
         if (scopesDoc.exists()) {
+          console.log('[BUMPY_AUTH] Using default scopes:', JSON.stringify({
+            userId: user?.uid,
+            scopes: scopesDoc.data().default_scopes,
+            source: 'public_data/scopes.default_scopes',
+            timestamp: new Date().toISOString()
+          }));
           setPublicScopes(scopesDoc.data().default_scopes || []);
         }
       } catch (error) {
-        console.error('Error fetching public scopes:', error);
+        console.error('[BUMPY_AUTH] Error fetching scopes:', JSON.stringify({
+          userId: user?.uid,
+          error: error.message,
+          timestamp: new Date().toISOString()
+        }));
       }
     };
-    fetchPublicScopes();
-  }, []);
+    fetchScopes();
+  }, [user?.uid]);
 
   const handleSignOut = async () => {
     try {
@@ -168,7 +194,7 @@ $       │
       //   currentUser: auth.currentUser?.email
       // });
       
-      const signInResult = await signInWithGoogle(publicScopes, forceConsent);
+      const signInResult = await signInWithGoogle(publicScopes, false); // Don't force consent
       
       if (!signInResult.success) {
         console.error('Sign-in failed:', signInResult.error);

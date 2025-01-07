@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { getAuth } from "firebase/auth";
-import { getAuthenticatedScopes, addScopes_toPUBLIC, deleteScope } from "@/src/app/actions/auth-actions";
+import { doc, getDoc, setDoc, getFirestore } from '@firebase/firestore';
 
 const availableScopes = [
   "https://www.googleapis.com/auth/calendar",
@@ -18,8 +18,8 @@ const availableScopes = [
 ];
 
 const ScopeManager = () => {
-  const [scopes, setScopes] = useState([]);
-  const [newScope, setNewScope] = useState('');
+  const [requestedScopes, setRequestedScopes] = useState([]);
+  const [authorizedScopes, setAuthorizedScopes] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -30,10 +30,34 @@ const ScopeManager = () => {
         throw new Error('Please sign in to view scopes');
       }
 
-      const idToken = await auth.currentUser.getIdToken();
-      const fetchedScopes = await getAuthenticatedScopes(auth.currentUser.uid, idToken);
-      setScopes(fetchedScopes);
+      // Get user's requested scopes
+      const db = getFirestore();
+      const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+      if (userDoc.exists()) {
+        console.log('[BUMPY_AUTH] Fetched user request_scopes:', JSON.stringify({
+          userId: auth.currentUser.uid,
+          scopes: userDoc.data().request_scopes || [],
+          timestamp: new Date().toISOString()
+        }));
+        setRequestedScopes(userDoc.data().request_scopes || []);
+      }
+
+      // Get authorized scopes
+      const userTokensDoc = await getDoc(doc(db, 'user_tokens', auth.currentUser.uid));
+      if (userTokensDoc.exists()) {
+        console.log('[BUMPY_AUTH] Fetched authorized scopes:', JSON.stringify({
+          userId: auth.currentUser.uid,
+          scopes: userTokensDoc.data().authorizedScopes || [],
+          timestamp: new Date().toISOString()
+        }));
+        setAuthorizedScopes(userTokensDoc.data().authorizedScopes || []);
+      }
     } catch (err) {
+      console.error('[BUMPY_AUTH] Error fetching scopes:', JSON.stringify({
+        userId: auth.currentUser?.uid,
+        error: err.message,
+        timestamp: new Date().toISOString()
+      }));
       setError(err.message || 'Failed to load scopes');
     } finally {
       setIsLoading(false);
@@ -45,29 +69,43 @@ const ScopeManager = () => {
     fetchScopes();
   }, []);
 
-  const handleAddScope = async () => {
-    if (!newScope) return;
-    setIsLoading(true);
-    setError(null);
+  const handleUpdateScopes = async (scope, action) => {
     try {
-      await addScopes_toPUBLIC(newScope);
-      setNewScope('');
-      await fetchScopes();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      setIsLoading(true);
+      const auth = getAuth();
+      const db = getFirestore();
+      const userRef = doc(db, 'users', auth.currentUser.uid);
+      
+      // Get current scopes
+      const userDoc = await getDoc(userRef);
+      const currentScopes = userDoc.exists() ? (userDoc.data().request_scopes || []) : [];
+      
+      // Update scopes
+      let updatedScopes = [...currentScopes];
+      if (action === 'add' && !currentScopes.includes(scope)) {
+        updatedScopes.push(scope);
+      } else if (action === 'remove') {
+        updatedScopes = currentScopes.filter(s => s !== scope);
+      }
 
-  const handleDeleteScope = async (scopeToDelete) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      await deleteScope(scopeToDelete);
-      await fetchScopes();
-    } catch (err) {
-      setError(err.message);
+      // Store updated scopes
+      console.log('[BUMPY_AUTH] Updating request_scopes:', JSON.stringify({
+        userId: auth.currentUser.uid,
+        scopes: updatedScopes,
+        action,
+        scope,
+        timestamp: new Date().toISOString()
+      }));
+      
+      await setDoc(userRef, { request_scopes: updatedScopes }, { merge: true });
+      setRequestedScopes(updatedScopes);
+    } catch (error) {
+      console.error('[BUMPY_AUTH] Error updating scopes:', JSON.stringify({
+        userId: auth.currentUser?.uid,
+        error: error.message,
+        timestamp: new Date().toISOString()
+      }));
+      setError(error.message || 'Failed to update scopes');
     } finally {
       setIsLoading(false);
     }
@@ -77,42 +115,34 @@ const ScopeManager = () => {
   if (error) return <div>Error: {error}</div>;
 
   return (
-    <div className="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-      <h2 className="text-xl font-bold mb-4">Scope Manager</h2>
-      <div className="mb-4">
-        <select
-          value={newScope}
-          onChange={(e) => setNewScope(e.target.value)}
-          className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-        >
-          <option value="">Select a scope to add</option>
-          {availableScopes.map((scope) => (
-            <option key={scope} value={scope}>
-              {scope}
-            </option>
-          ))}
-        </select>
-        <button
-          onClick={handleAddScope}
-          disabled={!newScope}
-          className="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline disabled:opacity-50"
-        >
-          Add Scope
-        </button>
-      </div>
-      <ul className="list-disc pl-5">
-        {scopes.map((scope) => (
-          <li key={scope} className="mb-2">
-            {scope}
-            <button
-              onClick={() => handleDeleteScope(scope)}
-              className="ml-2 bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs focus:outline-none focus:shadow-outline"
+    <div>
+      <h2>Available Scopes</h2>
+      <div>
+        {availableScopes.map((scope) => (
+          <div key={scope}>
+            <span>{scope}</span>
+            <button 
+              onClick={() => handleUpdateScopes(scope, 'add')}
+              disabled={requestedScopes.includes(scope)}
             >
-              Delete
+              Request Access
             </button>
-          </li>
+          </div>
         ))}
-      </ul>
+      </div>
+
+      <h2>Your Requested Scopes</h2>
+      <div>
+        {requestedScopes.map((scope) => (
+          <div key={scope}>
+            <span>{scope}</span>
+            <span>{authorizedScopes.includes(scope) ? '(Authorized)' : '(Pending)'}</span>
+            <button onClick={() => handleUpdateScopes(scope, 'remove')}>
+              Remove
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

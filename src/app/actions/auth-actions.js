@@ -46,14 +46,6 @@ export async function decrypt(text) {
 
 // Stores tokens for a given user
 export async function storeTokenInfo({ accessToken, refreshToken, scopes, idToken }) {
-  console.log('💫 [storeTokenInfo] Storing tokens:', {
-    hasTokens: !!accessToken,
-    hasAccessToken: !!accessToken,
-    hasRefreshToken: !!refreshToken,
-    scopes: scopes,
-    timestamp: new Date().toISOString()
-  });
-
   try {
     if (!accessToken) {
       console.error('Missing access token in storeTokens');
@@ -65,11 +57,11 @@ export async function storeTokenInfo({ accessToken, refreshToken, scopes, idToke
       return { success: false, error: 'User not authenticated' };
     }
 
-    console.log('💫 [storeTokenInfo] Current user:', {
-      hasUser: !!currentUser,
-      uid: currentUser?.uid,
-      email: currentUser?.email
-    });
+    console.log('[BUMPY_AUTH] Storing authorized scopes:', JSON.stringify({
+      userId: currentUser.uid,
+      authorizedScopes: scopes,
+      timestamp: new Date().toISOString()
+    }));
 
     const db = getFirestore(firebaseServerApp);
     const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
@@ -101,8 +93,6 @@ export async function storeTokenInfo({ accessToken, refreshToken, scopes, idToke
     // Store tokens
     await setDoc(userTokensRef, tokenData, { merge: true });
 
-    console.log('💫 [storeTokenInfo] Tokens stored successfully');
-    
     return { success: true };
   } catch (error) {
     console.error('Error storing tokens:', error);
@@ -140,7 +130,7 @@ export async function refreshTokenInfo(idToken) {
 
     const oauth2Client = new google.auth.OAuth2(
       process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_SECRET,
       process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI
     );
 
@@ -224,8 +214,10 @@ async function verifyToken(accessToken) {
 export async function getTokenInfo(idToken) {
   try {
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
-    if (!currentUser?.uid) {
-      return { success: false, error: 'User not authenticated' };
+    
+    if (!currentUser) {
+      console.error('[BUMPY_AUTH] No authenticated user for token info');
+      return { success: false, error: 'No authenticated user' };
     }
 
     const db = getFirestore(firebaseServerApp);
@@ -233,33 +225,31 @@ export async function getTokenInfo(idToken) {
     const userTokensSnap = await getDoc(userTokensRef);
 
     if (!userTokensSnap.exists()) {
-      return { success: false, error: 'No tokens found for user' };
+      console.log('[BUMPY_AUTH] No tokens found:', JSON.stringify({
+        userId: currentUser.uid,
+        timestamp: new Date().toISOString()
+      }));
+      return { success: false, error: 'No tokens found' };
     }
 
-    const tokenData = userTokensSnap.data();
-    
-    // Decrypt tokens
-    const decryptedData = {
-      ...tokenData,
-      accessToken: await decrypt(tokenData.accessToken),
-      refreshToken: tokenData.refreshToken ? await decrypt(tokenData.refreshToken) : null
-    };
+    const tokenInfo = userTokensSnap.data();
+    console.log('[BUMPY_AUTH] Token info retrieved:', JSON.stringify({
+      userId: currentUser.uid,
+      hasAccessToken: !!tokenInfo.accessToken,
+      hasRefreshToken: !!tokenInfo.refreshToken,
+      authorizedScopes: tokenInfo.authorizedScopes || [],
+      timestamp: new Date().toISOString()
+    }));
 
-    console.log('Successfully retrieved tokens:', {
-      uid: currentUser.uid,
-      email: currentUser.email,
-      hasRefreshToken: !!decryptedData.refreshToken,
-      requiresRefreshToken: decryptedData.requiresRefreshToken,
-      lastUpdate: decryptedData.__web_token_update,
-      refreshTokenUpdate: decryptedData.__web_refresh_token_update
-    });
-
-    return { 
-      success: true, 
-      data: decryptedData 
+    return {
+      success: true,
+      data: {
+        scopes: tokenInfo.authorizedScopes || [],
+        expiresIn: tokenInfo.expiresIn || 0
+      }
     };
   } catch (error) {
-    console.error('Error retrieving tokens:', error);
+    console.error('[BUMPY_AUTH] Error retrieving tokens:', error);
     return { success: false, error: error.message };
   }
 }
@@ -367,16 +357,7 @@ export async function deleteScope(scope, idToken) {
   }
 }
 
-// Cache for token exchanges to prevent duplicates
-const tokenExchangeCache = new Map();
-
 export async function exchangeCodeForTokens(code) {
-  // Check if we've already processed this code
-  if (tokenExchangeCache.has(code)) {
-    console.log('🔄 [exchangeCodeForTokens] Using cached result for code');
-    return tokenExchangeCache.get(code);
-  }
-
   try {
     console.log('Token exchange request:', JSON.stringify({
       hasCode: !!code,
@@ -387,12 +368,12 @@ export async function exchangeCodeForTokens(code) {
     const oauth2Client = new google.auth.OAuth2(
       process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
-      process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI || 'http://localhost:3000/auth/callback'
+      process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI
     );
 
     console.log('Token exchange parameters:', JSON.stringify({
       client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-      redirect_uri: process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI || 'http://localhost:3000/auth/callback',
+      redirect_uri: process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI,
       code_preview: code.substring(0, 8) + '...'
     }, null, 2));
 
@@ -404,24 +385,14 @@ export async function exchangeCodeForTokens(code) {
       scope: tokens.scope
     }, null, 2));
 
-    const result = {
+    return {
       success: true,
       tokens: {
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
-        scope: tokens.scope
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        scopes: tokens.scope.split(' ')
       }
     };
-
-    // Cache the result
-    tokenExchangeCache.set(code, result);
-    
-    // Clear cache after 5 minutes
-    setTimeout(() => {
-      tokenExchangeCache.delete(code);
-    }, 5 * 60 * 1000);
-
-    return result;
   } catch (error) {
     console.error('Token exchange error:', error);
     return {

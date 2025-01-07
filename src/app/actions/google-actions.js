@@ -32,9 +32,8 @@ export async function queryGmailInbox(userId, idToken) {
         
         try {
             const accessToken = await decrypt(tokens.accessToken);
-            console.log('Successfully decrypted access token');
+            console.log('[BUMPY_AUTH] queryGmailInbox:', JSON.stringify({ scopes: tokens.authorizedScopes, timestamp: new Date().toISOString() }));
             const authorizedScopes = tokens.authorizedScopes;
-            console.log('Authorized scopes:1', authorizedScopes);
 
             // Set up Gmail client
             const oauth2Client = new google.auth.OAuth2(
@@ -129,9 +128,8 @@ export async function queryRecentDriveFiles(userId, idToken) {
         
         try {
             const accessToken = await decrypt(tokens.accessToken);
-            console.log('Successfully decrypted access token');
+            console.log('[BUMPY_AUTH] queryRecentDriveFiles:', JSON.stringify({ scopes: tokens.authorizedScopes, timestamp: new Date().toISOString() }));
             const authorizedScopes = tokens.authorizedScopes;
-            console.log('Authorized scopes:2', authorizedScopes);
 
             // Set up Drive client
             const oauth2Client = new google.auth.OAuth2(
@@ -198,9 +196,8 @@ export async function queryGoogleCalendar(userId, idToken) {
         
         try {
             const accessToken = await decrypt(tokens.accessToken);
-            console.log('Successfully decrypted access token');
+            console.log('[BUMPY_AUTH] queryGoogleCalendar:', JSON.stringify({ scopes: tokens.authorizedScopes, timestamp: new Date().toISOString() }));
             const authorizedScopes = tokens.authorizedScopes;
-            console.log('Authorized scopes:3', authorizedScopes);
 
             // Set up Calendar client
             const oauth2Client = new google.auth.OAuth2(
@@ -283,14 +280,12 @@ export async function demoGmailToken(idToken) {
             return results;
         }
 
-        console.log('Found tokens in Firestore');
         const tokens = userTokensSnap.data();
         
         try {
             const accessToken = await decrypt(tokens.accessToken);
-            console.log('Successfully decrypted access token');
             const authorizedScopes = tokens.authorizedScopes;
-            console.log('Authorized scopes:4', authorizedScopes);
+            console.log('[BUMPY_AUTH] demoGmailToken:', JSON.stringify({ scopes: authorizedScopes, timestamp: new Date().toISOString() }));
 
             // Set up Gmail client
             const oauth2Client = new google.auth.OAuth2(

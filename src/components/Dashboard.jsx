@@ -108,6 +108,7 @@ const Dashboard = () => {
 
         <div style={{ flex: '1 1 300px', minWidth: '300px', border: '1px solid #ccc', borderRadius: '8px', padding: '20px' }}>
           <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Send Test Email</h2>
+          <p style={{ fontSize: '0.9em', color: '#666', marginBottom: '10px' }}>Test sending emails via Gmail API</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>To:</label>

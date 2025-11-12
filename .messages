@@ -1,0 +1,7 @@
+
+answer to the question where can I add test users to the redshirt webapp
+
+as far as Google is concerned, this web app is in test mode and we can only authenticate accounts registered as test users
+this is an Google Auth Platform / Audience configuration and the test users can be found and updated at https://console.cloud.google.com/auth/audience?project=analyst-server
+login as robert@redshirt.info
+

@@ -11,71 +11,189 @@ This project uses Firebase App Hosting (beta feature), which provides an integra
 - Global CDN distribution
 - Seamless integration with Firebase services
 
+## Branch Strategy
+
+### Main Branch (`main`)
+- Production code
+- Deploys automatically to production environment
+- Protected branch, requires PR review
+
+### Beta Branch (`beta`)
+- Pre-production testing
+- Deploys automatically to beta environment
+- Source for production PRs
+
+### Feature Branches
+- Named `feature/[feature-name]`
+- Merge into `beta` for testing
+- Create PR to `main` when ready for production
+
+### Branch Naming Conventions
+```
+feature/[type]-[description]
+
+Types:
+- doc-*     Documentation changes
+- feat-*    New features
+- fix-*     Bug fixes
+- refactor-* Code restructuring
+
+Examples:
+- feature/doc-deployment  # documentation updates
+- feature/feat-auth      # new auth feature
+- feature/fix-token      # fix token handling
+```
+
+### Branch Flows
+1. Features requiring testing:
+   ```
+   feature/feat-new-auth → beta → main
+   ```
+2. Documentation/simple fixes:
+   ```
+   feature/doc-update → main
+   ```
+
+### Branch Management
+
+#### Listing Branches
+```bash
+# List local branches
+git branch
+
+# List all branches (including remote)
+git branch -a
+
+# List merged branches
+git branch --merged
+```
+
+#### Cleaning Up Branches
+```bash
+# Delete remote branch
+git push origin --delete branch-name
+
+# Delete local branch
+git branch -d branch-name  # Safe delete (only if merged)
+git branch -D branch-name  # Force delete
+
+# Prune deleted remote branches from local
+git fetch --prune
+```
+
+#### Best Practices
+1. Bundle small changes together for deployment efficiency
+   - Keep feature branches until ready for a batch deployment
+   - Create a single PR combining multiple features
+   - Reduces unnecessary Cloud Run builds
+
+2. Track pending branches
+   - Keep a list of branches pending merge
+   - Review regularly to ensure nothing is forgotten
+   - Clean up after successful merges
+
+3. Regular maintenance
+   - Delete branches after merging
+   - Run `git fetch --prune` periodically
+   - Review old branches monthly
+
+### Common Git Commands
+
+#### Starting New Feature
+```bash
+# Save current changes if needed
+git stash
+
+# Get latest main
+git checkout main
+git pull origin main
+
+# Create feature branch
+git checkout -b feature/doc-update
+
+# Restore changes if needed
+git stash pop
+```
+
+#### Working with Changes
+```bash
+# Stage changes
+git add .
+
+# Commit
+git commit -m 'doc: update deployment guide'
+
+# Push to remote
+git push origin feature/doc-update
+```
+
+#### Feature Testing Flow
+```bash
+# Push feature to beta
+git checkout beta
+git pull origin beta
+git merge feature/feat-new-auth
+git push origin beta
+```
+
+#### Documentation Flow
+```bash
+# Create PR directly to main
+# Use GitHub UI or:
+gh pr create --base main --head feature/doc-update
+```
+
 ## Deployment Workflow
 
 ### Beta Deployment
 To deploy a beta version:
-1. Create and checkout a new feature branch:
+1. Create feature branch from main:
    ```bash
-   git checkout -b beta/feature-name
+   git checkout -b feature/new-feature main
    ```
-2. Make and test your changes locally
-3. Push changes to GitHub:
+2. Make and test changes locally
+3. Push feature branch:
    ```bash
-   git push origin beta/feature-name
+   git push origin feature/new-feature
    ```
-4. Firebase App Hosting automatically:
+4. Merge to beta branch:
+   ```bash
+   git checkout beta
+   git merge feature/new-feature
+   git push origin beta
+   ```
+5. Firebase App Hosting automatically:
    - Builds container using Buildpacks
-   - Deploys to preview channel
-   - Creates preview URL: https://beta--[project-id].web.app
+   - Deploys to beta channel
+   - Creates preview URL: https://beta--[project-id].run.app
 
 ### Production Deployment
 To deploy to production:
-1. Create a Pull Request from your beta branch to main
-2. Review and test using the preview URL
-3. Merge PR into main branch
+1. Create PR from `beta` to `main`
+2. Review and test using beta URL
+3. Merge PR into `main`
 4. Firebase App Hosting automatically:
    - Builds production container
    - Deploys to production channel
    - Updates production URL: https://[project-id].web.app
 
-## Deployment Types
+## App Hosting Commands
 
-### Firebase App Hosting (Used in this project)
-- Designed for containerized applications
-- Uses Cloud Run and Buildpacks
-- Configuration via Firebase Console or `gcloud beta app-hosting`
-- Creates preview environments with full container builds
-- Manages secrets and environment variables
-- Example preview URL: `https://beta--your-project-id.run.app`
-
-Commands:
+### Create Beta Rollout
 ```bash
-# Create new rollout
 gcloud beta app-hosting backends create-rollout your-backend \
   --source . \
   --branch beta
-
-# List rollouts
-gcloud beta app-hosting backends list-rollouts your-backend
-
-# View rollout status
-gcloud beta app-hosting backends describe-rollout your-backend rollout-id
 ```
 
-### Firebase Hosting Preview Channels (Different Feature)
-- Traditional Firebase Hosting feature
-- For static content and simple functions
-- Does not include container builds
-- Example preview URL: `https://your-channel--your-project.web.app`
-
-Commands:
+### List Rollouts
 ```bash
-# Create preview channel (NOT used in this project)
-firebase hosting:channel:create channel-name
+gcloud beta app-hosting backends list-rollouts your-backend
+```
 
-# Deploy to preview channel (NOT used in this project)
-firebase hosting:channel:deploy channel-name
+### View Rollout Status
+```bash
+gcloud beta app-hosting backends describe-rollout your-backend rollout-id
 ```
 
 ## Environment Configuration
@@ -88,24 +206,9 @@ firebase hosting:channel:deploy channel-name
 - View logs in Google Cloud Console > Logging
 - Rollback available through Firebase Console or CLI
 
-## Common Commands
-```bash
-# View current deployment status
-firebase hosting:channel:list
-
-# Create new preview channel
-firebase hosting:channel:create beta
-
-# Delete preview channel
-firebase hosting:channel:delete beta
-
-# View deployment history
-firebase hosting:channel:deploy --only hosting
-```
-
 ## Best Practices
-1. Always test changes in beta channel before production
-2. Use descriptive branch names (e.g., beta/auth-fix, beta/new-feature)
-3. Keep beta deployments short-lived
-4. Monitor resource usage in both channels
-5. Clean up unused preview channels
+1. Always test changes in beta environment before production
+2. Keep feature branches short-lived
+3. Regular merges from main to beta to stay up-to-date
+4. Monitor resource usage in both environments
+5. Clean up old feature branches after merge

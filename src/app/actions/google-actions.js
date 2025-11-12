@@ -254,11 +254,100 @@ export async function queryGoogleCalendar(userId, idToken) {
     }
 }
 
+export async function sendGmailMessage(idToken, to, subject, body) {
+    try {
+        console.log('Starting Gmail send for:', { to, subject });
+        const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
+
+        if (!currentUser) {
+            console.log('User not authenticated');
+            return { success: false, error: 'User not authenticated' };
+        }
+        console.log('Got authenticated user:', currentUser.uid);
+
+        // Get tokens from Firestore
+        const db = getFirestore(firebaseServerApp);
+        const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
+        const userTokensSnap = await getDoc(userTokensRef);
+
+        if (!userTokensSnap.exists()) {
+            console.log('No tokens found for user');
+            return { success: false, error: 'No tokens found for user' };
+        }
+        console.log('Found tokens in Firestore');
+
+        const tokens = userTokensSnap.data();
+
+        try {
+            const accessToken = await decrypt(tokens.accessToken);
+            console.log('[BUMPY_AUTH] sendGmailMessage:', JSON.stringify({
+                scopes: tokens.authorizedScopes,
+                timestamp: new Date().toISOString()
+            }));
+
+            // Set up Gmail client
+            const oauth2Client = new google.auth.OAuth2(
+                process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+                process.env.GOOGLE_CLIENT_SECRET,
+                process.env.GOOGLE_REDIRECT_URI
+            );
+            oauth2Client.setCredentials({ access_token: accessToken });
+            const gmailClient = google.gmail({ version: 'v1', auth: oauth2Client });
+
+            // Create email message in RFC 2822 format
+            const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
+            const messageParts = [
+                `To: ${to}`,
+                'Content-Type: text/plain; charset=utf-8',
+                'MIME-Version: 1.0',
+                `Subject: ${utf8Subject}`,
+                '',
+                body
+            ];
+            const message = messageParts.join('\n');
+
+            // Encode message to base64url
+            const encodedMessage = Buffer.from(message)
+                .toString('base64')
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=+$/, '');
+
+            // Send the email
+            console.log('Sending email...');
+            const response = await gmailClient.users.messages.send({
+                userId: 'me',
+                requestBody: {
+                    raw: encodedMessage
+                }
+            });
+
+            console.log(`Email sent successfully. Message ID: ${response.data.id}`);
+            return {
+                success: true,
+                messageId: response.data.id,
+                threadId: response.data.threadId
+            };
+
+        } catch (error) {
+            console.error('Gmail API error:', error);
+            if (error.message.includes('invalid_grant')) {
+                return { success: false, error: 'Token needs refresh' };
+            }
+            return { success: false, error: `Gmail API error: ${error.message}` };
+        }
+
+    } catch (error) {
+        console.error('Error in sendGmailMessage:', error);
+        return { success: false, error: `Error in sendGmailMessage: ${error.message}` };
+    }
+}
+
 export async function demoGmailToken(idToken) {
     const results = [];
     try {
         const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
-        
+
         if (!currentUser) {
             const msg = 'User not authenticated';
             console.log(msg);
@@ -281,7 +370,7 @@ export async function demoGmailToken(idToken) {
         }
 
         const tokens = userTokensSnap.data();
-        
+
         try {
             const accessToken = await decrypt(tokens.accessToken);
             const authorizedScopes = tokens.authorizedScopes;

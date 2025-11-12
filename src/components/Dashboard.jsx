@@ -4,12 +4,20 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useUser } from '@/src/contexts/UserProvider';
+import { sendGmailMessage } from '@/src/app/actions/google-actions';
 
 const Dashboard = () => {
   const { user } = useUser();
   const [emails, setEmails] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  
+
+  // Send email form state
+  const [sendTo, setSendTo] = useState('');
+  const [sendSubject, setSendSubject] = useState('');
+  const [sendBody, setSendBody] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [sendResult, setSendResult] = useState(null);
+
   // Sample reports data
   const [reports, setReports] = useState([
     { reportId: 1, text: ``     },
@@ -29,6 +37,32 @@ const Dashboard = () => {
       console.error('Error fetching emails:', error);
     }
     setIsLoading(false);
+  };
+
+  const handleSendEmail = async () => {
+    if (!sendTo || !sendSubject || !sendBody) {
+      setSendResult({ success: false, error: 'Please fill in all fields' });
+      return;
+    }
+
+    setIsSending(true);
+    setSendResult(null);
+    try {
+      const token = await user.getIdToken();
+      const result = await sendGmailMessage(token, sendTo, sendSubject, sendBody);
+      setSendResult(result);
+
+      if (result.success) {
+        // Clear form on success
+        setSendTo('');
+        setSendSubject('');
+        setSendBody('');
+      }
+    } catch (error) {
+      console.error('Error sending email:', error);
+      setSendResult({ success: false, error: error.message });
+    }
+    setIsSending(false);
   };
 
   // Custom styles for Markdown content
@@ -71,7 +105,80 @@ const Dashboard = () => {
             </ul>
           )}
         </div>
-        
+
+        <div style={{ flex: '1 1 300px', minWidth: '300px', border: '1px solid #ccc', borderRadius: '8px', padding: '20px' }}>
+          <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Send Test Email</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>To:</label>
+              <input
+                type="email"
+                value={sendTo}
+                onChange={(e) => setSendTo(e.target.value)}
+                placeholder="recipient@example.com"
+                style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Subject:</label>
+              <input
+                type="text"
+                value={sendSubject}
+                onChange={(e) => setSendSubject(e.target.value)}
+                placeholder="Email subject"
+                style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Body:</label>
+              <textarea
+                value={sendBody}
+                onChange={(e) => setSendBody(e.target.value)}
+                placeholder="Email body"
+                rows={6}
+                style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', resize: 'vertical' }}
+              />
+            </div>
+            <button
+              onClick={handleSendEmail}
+              disabled={isSending}
+              style={{
+                padding: '10px',
+                cursor: isSending ? 'not-allowed' : 'pointer',
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                fontWeight: 'bold'
+              }}
+            >
+              {isSending ? 'Sending...' : 'Send Email'}
+            </button>
+            {sendResult && (
+              <div style={{
+                padding: '10px',
+                borderRadius: '4px',
+                backgroundColor: sendResult.success ? '#d4edda' : '#f8d7da',
+                color: sendResult.success ? '#155724' : '#721c24',
+                border: `1px solid ${sendResult.success ? '#c3e6cb' : '#f5c6cb'}`
+              }}>
+                {sendResult.success ? (
+                  <>
+                    <strong>✓ Email sent successfully!</strong>
+                    <div style={{ fontSize: '0.9em', marginTop: '5px' }}>
+                      Message ID: {sendResult.messageId}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <strong>✗ Error:</strong> {sendResult.error}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
         {reports.map((report) => (
           <div key={report.reportId} style={{ flex: '1 1 300px', minWidth: '300px', border: '1px solid #ccc', borderRadius: '8px', padding: '20px' }}>
             <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Report {report.reportId}</h2>

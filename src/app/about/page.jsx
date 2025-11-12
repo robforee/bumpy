@@ -20,6 +20,9 @@ const AboutUsPage = () => {
             <p className="text-gray-700">
               We believe in the power of organized knowledge and the impact it can have on decision-making and innovation. Join us in our mission to make sense of the world, one topic at a time.
             </p>
+            <p className="text-gray-700 mt-4">
+              hello world
+            </p>
           </div>
         </div>
       </div>

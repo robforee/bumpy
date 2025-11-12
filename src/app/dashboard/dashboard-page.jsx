@@ -17,13 +17,20 @@ import { getIdToken } from "firebase/auth";
 import { auth } from "@/src/lib/firebase/clientApp";
 import { updateTopic } from '@/src/app/actions/topic-actions';
 import { runOpenAiQuery } from '@/src/app/actions/query-actions';
-import { demoGmailToken } from '../actions/google-actions';
+import { demoGmailToken, sendGmailMessage } from '../actions/google-actions';
 
 export default function DashboardPage() {
   const { user, userProfile } = useUser();
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [demoResults, setDemoResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Send email form state
+  const [sendTo, setSendTo] = useState('');
+  const [sendSubject, setSendSubject] = useState('');
+  const [sendBody, setSendBody] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [sendResult, setSendResult] = useState(null);
 
   const handleSaveTopic = async (updatedTopic) => {
     try {
@@ -100,6 +107,32 @@ export default function DashboardPage() {
     }
   }
 
+  const handleSendEmail = async () => {
+    if (!sendTo || !sendSubject || !sendBody) {
+      setSendResult({ success: false, error: 'Please fill in all fields' });
+      return;
+    }
+
+    setIsSending(true);
+    setSendResult(null);
+    try {
+      const idToken = await getIdToken(auth.currentUser);
+      const result = await sendGmailMessage(idToken, sendTo, sendSubject, sendBody);
+      setSendResult(result);
+
+      if (result.success) {
+        // Clear form on success
+        setSendTo('');
+        setSendSubject('');
+        setSendBody('');
+      }
+    } catch (error) {
+      console.error('Error sending email:', error);
+      setSendResult({ success: false, error: error.message });
+    }
+    setIsSending(false);
+  };
+
   if (!user) {
     return <div>Please sign in to view your dashboard.</div>;
   }
@@ -154,7 +187,64 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
-      <h3 className="text-xl font-semibold mb-2">Test Connectivity</h3>
+
+      <div className="mt-4 bg-white shadow-md rounded p-4">
+        <h3 className="text-xl font-semibold mb-4">Send Test Email</h3>
+        <p className="text-sm text-gray-600 mb-4">Test sending emails via Gmail API</p>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">To:</label>
+            <input
+              type="email"
+              value={sendTo}
+              onChange={(e) => setSendTo(e.target.value)}
+              placeholder="recipient@example.com"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Subject:</label>
+            <input
+              type="text"
+              value={sendSubject}
+              onChange={(e) => setSendSubject(e.target.value)}
+              placeholder="Email subject"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Body:</label>
+            <textarea
+              value={sendBody}
+              onChange={(e) => setSendBody(e.target.value)}
+              placeholder="Email body"
+              rows={6}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-vertical"
+            />
+          </div>
+          <button
+            onClick={handleSendEmail}
+            disabled={isSending}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSending ? 'Sending...' : 'Send Email'}
+          </button>
+          {sendResult && (
+            <div className={`p-4 rounded-md ${sendResult.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+              {sendResult.success ? (
+                <>
+                  <p className="font-semibold text-green-800">✓ Email sent successfully!</p>
+                  <p className="text-sm text-green-700 mt-1">Message ID: {sendResult.messageId}</p>
+                </>
+              ) : (
+                <p className="font-semibold text-red-800">✗ Error: {sendResult.error}</p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <h3 className="text-xl font-semibold mb-2 mt-4">Test Connectivity</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <TopicChildren />
         <GmailInbox />

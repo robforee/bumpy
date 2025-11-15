@@ -1,15 +1,10 @@
 // src/components/Header.jsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
-import { getAuth } from 'firebase/auth';
-import { getIdToken } from "firebase/auth";
-
-import { doc, getFirestore, collection, query, where, getDocs, limit, orderBy, setDoc, getDoc } from 'firebase/firestore';
-import { signInBasic, signInWithGoogle, signOut } from "@/src/lib/firebase/firebaseAuth.js";
-import { storeTokenInfo } from '@/src/app/actions/auth-actions';
+import { signInBasic, signOut } from "@/src/lib/firebase/firebaseAuth.js";
 import { useUser } from '@/src/contexts/UserProvider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/src/components/ui/dialog';
 import { Button } from '@/src/components/ui/button';
@@ -29,51 +24,8 @@ const Header = () => {
     }
     return '';
   });
-  const [publicScopes, setPublicScopes] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
-
-  // Fetch scopes from Firestore
-  useEffect(() => {
-    const fetchScopes = async () => {
-      const db = getFirestore();
-      try {
-        // First try to get user-specific scopes
-        if (user?.uid) {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists() && userDoc.data().request_scopes) {
-            console.log('[BUMPY_AUTH] Using user-specific scopes:', JSON.stringify({
-              userId: user.uid,
-              scopes: userDoc.data().request_scopes,
-              source: 'users/[uid].request_scopes',
-              timestamp: new Date().toISOString()
-            }));
-            setPublicScopes(userDoc.data().request_scopes);
-            return;
-          }
-        }
-        
-        // Fall back to default scopes from public_data
-        const scopesDoc = await getDoc(doc(db, 'public_data', 'scopes'));
-        if (scopesDoc.exists()) {
-          console.log('[BUMPY_AUTH] Using default scopes:', JSON.stringify({
-            userId: user?.uid,
-            scopes: scopesDoc.data().default_scopes,
-            source: 'public_data/scopes.default_scopes',
-            timestamp: new Date().toISOString()
-          }));
-          setPublicScopes(scopesDoc.data().default_scopes || []);
-        }
-      } catch (error) {
-        console.error('[BUMPY_AUTH] Error fetching scopes:', JSON.stringify({
-          userId: user?.uid,
-          error: error.message,
-          timestamp: new Date().toISOString()
-        }));
-      }
-    };
-    fetchScopes();
-  }, [user?.uid]);
 
   const handleSignOut = async () => {
     try {

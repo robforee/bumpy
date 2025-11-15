@@ -540,25 +540,26 @@ export async function checkServiceAuth(service, idToken) {
   try {
     const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
     if (!currentUser?.uid) {
-      return { success: false, authorized: false, error: 'User not authenticated' };
+      return { success: false, isAuthorized: false, error: 'User not authenticated' };
     }
 
     const db = getFirestore(firebaseServerApp);
-    const serviceCredsRef = doc(db, 'service_credentials', currentUser.uid, service);
+    // Match the path used in ClientCallback: service_credentials/{userId}_{service}
+    const serviceCredsRef = doc(db, `service_credentials/${currentUser.uid}_${service}`);
     const serviceCredsSnap = await getDoc(serviceCredsRef);
 
     if (!serviceCredsSnap.exists()) {
-      return { success: true, authorized: false };
+      return { success: true, isAuthorized: false };
     }
 
     const creds = serviceCredsSnap.data();
     return {
       success: true,
-      authorized: true,
+      isAuthorized: true,
       scopes: creds.scopes || []
     };
   } catch (error) {
     console.error(`❌ [checkServiceAuth] Error checking ${service} auth:`, error);
-    return { success: false, authorized: false, error: error.message };
+    return { success: false, isAuthorized: false, error: error.message };
   }
 }

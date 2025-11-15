@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, ExternalLink, Star } from 'lucide-react';
 import { checkServiceAuth } from '@/src/app/actions/auth-actions';
+import { requestServiceAuth } from '@/src/lib/firebase/firebaseAuth';
 import { useUser } from '@/src/contexts/UserProvider';
 import { getIdToken } from 'firebase/auth';
 import { auth } from '@/src/lib/firebase/clientApp';
@@ -54,7 +55,12 @@ const EmailWidget = ({ onItemClick }) => {
   };
 
   const handleConnect = () => {
-    window.location.href = '/auth/google?service=gmail';
+    const scopes = [
+      'https://www.googleapis.com/auth/gmail.readonly',
+      'https://www.googleapis.com/auth/gmail.compose',
+      'https://www.googleapis.com/auth/gmail.modify'
+    ];
+    requestServiceAuth('gmail', scopes);
   };
 
   if (loading) {

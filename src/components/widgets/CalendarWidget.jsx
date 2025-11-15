@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, ExternalLink } from 'lucide-react';
 import { checkServiceAuth } from '@/src/app/actions/auth-actions';
+import { requestServiceAuth } from '@/src/lib/firebase/firebaseAuth';
 import { useUser } from '@/src/contexts/UserProvider';
 import { getIdToken } from 'firebase/auth';
 import { auth } from '@/src/lib/firebase/clientApp';
@@ -40,8 +41,11 @@ const CalendarWidget = ({ onItemClick }) => {
   };
 
   const handleConnect = () => {
-    // Redirect to OAuth flow
-    window.location.href = '/auth/google?service=calendar';
+    const scopes = [
+      'https://www.googleapis.com/auth/calendar.readonly',
+      'https://www.googleapis.com/auth/calendar.events'
+    ];
+    requestServiceAuth('calendar', scopes);
   };
 
   if (loading) {

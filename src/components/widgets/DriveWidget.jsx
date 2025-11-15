@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { FolderOpen, ExternalLink, FileText, Image, File } from 'lucide-react';
 import { checkServiceAuth } from '@/src/app/actions/auth-actions';
+import { requestServiceAuth } from '@/src/lib/firebase/firebaseAuth';
 import { useUser } from '@/src/contexts/UserProvider';
 import { getIdToken } from 'firebase/auth';
 import { auth } from '@/src/lib/firebase/clientApp';
@@ -56,7 +57,11 @@ const DriveWidget = ({ onItemClick }) => {
   };
 
   const handleConnect = () => {
-    window.location.href = '/auth/google?service=drive';
+    const scopes = [
+      'https://www.googleapis.com/auth/drive.readonly',
+      'https://www.googleapis.com/auth/drive.file'
+    ];
+    requestServiceAuth('drive', scopes);
   };
 
   const getFileIcon = (mimeType) => {

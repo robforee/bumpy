@@ -20,6 +20,9 @@ env:
   - variable: GOOGLE_CLIENT_SECRET
     secret:  projects/727308999536/secrets/GOOGLE_CLIENT_SECRET
 
+  - variable: GOOGLE_REDIRECT_URI
+    secret: projects/727308999536/secrets/GOOGLE_REDIRECT_URI
+
   - variable: FIREBASE_PROJECT_ID
     secret: projects/727308999536/secrets/firebase_project_id
 

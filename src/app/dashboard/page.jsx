@@ -1,2 +1,2 @@
 // src/app/dashboard/page.js
-export { default } from './dashboard-page';
+export { default } from './dashboard-page-new';

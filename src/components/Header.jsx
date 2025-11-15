@@ -13,13 +13,15 @@ import { storeTokenInfo } from '@/src/app/actions/auth-actions';
 import { useUser } from '@/src/contexts/UserProvider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/src/components/ui/dialog';
 import { Button } from '@/src/components/ui/button';
-import { X } from 'lucide-react';
+import { X, Menu } from 'lucide-react';
+import LeftDrawer from './LeftDrawer';
 
 const Header = () => {
   const { user, userProfile, loading, refreshUserProfile } = useUser();
   const router = useRouter();
   const [avatarError, setAvatarError] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
   const [email, setEmail] = useState(() => {
     // Try to get email from localStorage on component mount
     if (typeof window !== 'undefined') {
@@ -223,53 +225,31 @@ $       │
     <header className="bg-white shadow-md">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between py-4">
+          {/* Left Section - Logo and Message */}
           <div className="flex items-center space-x-4">
-            <Link href="/" className="logo flex items-center">
-              <img src="/friendly-eats.svg" alt="FriendlyEats" className="h-8 mr-2" />
-            </Link>
-
-            <Link href="/" className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-              About Us
-            </Link>
-
-            {user && userProfile?.topicRootId && (
+            {user ? (
               <>
-                <Link href={`/topics/${userProfile.topicRootId}`} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-                  Your Plan
-                </Link>
-              
-                <Link href={`/topics/ulj8nfbMZSOAV1qeaQKo`} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-                  Biz Plan
-                </Link>
-                
-                <Link href={`/topics/qqIGRbzwrQSwpwn5UXt5`} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-                  Product Plan
-                </Link>
+                <button
+                  onClick={() => setShowDrawer(true)}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  aria-label="Open menu"
+                >
+                  <Menu className="h-6 w-6" />
+                </button>
+                <div className="text-sm text-gray-600 italic">
+                  Welcome back! Check your messages and stay organized.
+                </div>
               </>
+            ) : (
+              <Link href="/" className="logo flex items-center">
+                <img src="/friendly-eats.svg" alt="FriendlyEats" className="h-8 mr-2" />
+              </Link>
             )}
           </div>
 
+          {/* Right Section - Auth */}
           <div className="flex items-center space-x-4">
-            {user ? (
-              <button 
-                className="flex items-center space-x-2"
-                onClick={() => setShowMenu(true)}
-              >
-                {!avatarError ? (
-                  <img 
-                    className="w-8 h-8 rounded-full" 
-                    src={user.photoURL || "/default-avatar.png"} 
-                    alt={user.email} 
-                    onError={handleAvatarError}
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
-                    <span className="text-sm font-bold">{user.displayName ? user.displayName[0].toUpperCase() : '?'}</span>
-                  </div>
-                )}
-                <span>{user.displayName}</span>
-              </button>
-            ) : (
+            {!user && (
               <form onSubmit={handleEmailSubmit} className="flex items-center space-x-2">
                 <input
                   type="email"
@@ -279,7 +259,7 @@ $       │
                   className="px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   disabled={isSubmitting}
                 />
-                <Button 
+                <Button
                   type="submit"
                   disabled={!email || isSubmitting}
                   className={`${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -290,35 +270,11 @@ $       │
               </form>
             )}
           </div>
-
-          <Dialog open={showMenu} onOpenChange={setShowMenu}>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader className="sm:text-left">
-                <DialogTitle>User Menu</DialogTitle>
-                <Button
-                  variant="ghost"
-                  className="absolute right-4 top-4"
-                  onClick={() => setShowMenu(false)}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <Button onClick={() => handleMenuItemClick(() => router.push('/'))}>
-                  Home
-                </Button>
-                <Button onClick={() => handleMenuItemClick(() => router.push('/dashboard'))}>
-                  Dashboard
-                </Button>
-
-                <Button onClick={handleSignOut} variant="destructive">
-                  Sign Out
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
         </div>
       </div>
+
+      {/* Left Drawer */}
+      <LeftDrawer isOpen={showDrawer} onClose={() => setShowDrawer(false)} />
     </header>
   );
 };

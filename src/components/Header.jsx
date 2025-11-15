@@ -8,9 +8,8 @@ import { getAuth } from 'firebase/auth';
 import { getIdToken } from "firebase/auth";
 
 import { doc, getFirestore, collection, query, where, getDocs, limit, orderBy, setDoc, getDoc } from 'firebase/firestore';
-import { signInWithGoogle, signOut } from "@/src/lib/firebase/firebaseAuth.js";
+import { signInBasic, signInWithGoogle, signOut } from "@/src/lib/firebase/firebaseAuth.js";
 import { storeTokenInfo } from '@/src/app/actions/auth-actions';
-import { getUserInfo } from '@/src/app/actions/user-actions';
 import { useUser } from '@/src/contexts/UserProvider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/src/components/ui/dialog';
 import { Button } from '@/src/components/ui/button';
@@ -157,53 +156,29 @@ $       │
       setIsSubmitting(true);
       setError(null);
 
-      // First check if user needs refresh token
-      const db = getFirestore();
-      let forceConsent = false;
+      console.log('🔑 [Header] Starting sign in with signInBasic()');
 
-      const auth = getAuth();
-      if (auth.currentUser) {
-        const userTokensRef = doc(db, 'user_tokens', auth.currentUser.uid);
-        const userTokensSnap = await getDoc(userTokensRef);
-        
-        if (userTokensSnap.exists()) {
-          const userTokens = userTokensSnap.data();
-          forceConsent = userTokens.requiresRefreshToken === true;
-          if (forceConsent) {
-            console.log('Refresh token required, will force consent');
-          }
-        } else {
-          // Force consent for new users who don't have tokens yet
-          forceConsent = true;
-          console.log('New user, will force consent');
-        }
-      } else {
-        // Force consent for users not signed in yet
-        forceConsent = true;
-        console.log('Not signed in, will force consent');
-      }
+      // Use new simple sign-in (no Google API scopes)
+      const signInResult = await signInBasic();
 
-      // Always force consent for now to test OAuth2 flow
-      forceConsent = true;
-      console.log('Forcing consent to test OAuth2 flow');
-
-      // Sign in with Google
-      // console.log('Starting sign in with: y', {
-      //   publicScopes,
-      //   forceConsent,
-      //   currentUser: auth.currentUser?.email
-      // });
-      
-      const signInResult = await signInWithGoogle(publicScopes, false); // Don't force consent
-      
       if (!signInResult.success) {
-        console.error('Sign-in failed:', signInResult.error);
-        handleSignInError(signInResult);
+        console.error('❌ [Header] Sign-in failed:', signInResult.error);
+        setError(signInResult.error || 'Failed to sign in');
         return;
       }
 
+      console.log('✅ [Header] Sign in successful, redirecting to dashboard');
+
+      // Save email to localStorage for next time
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('lastUsedEmail', email);
+      }
+
+      // Redirect to dashboard where user can authorize services
+      router.push('/dashboard');
+
     } catch (error) {
-      console.error("Sign-in error:", error);
+      console.error("❌ [Header] Sign-in error:", error);
       setError('Failed to sign in');
     } finally {
       setIsSubmitting(false);

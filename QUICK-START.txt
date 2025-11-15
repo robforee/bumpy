@@ -1,0 +1,59 @@
+================================================================================
+FIRESTORE RULES DEPLOYMENT - QUICK START
+================================================================================
+
+PROBLEM: Firebase CLI login fails (localhost:9005 not accessible via SSH)
+
+SOLUTION: Deploy via Firebase Console (2 minutes)
+
+--------------------------------------------------------------------------------
+STEP 1: View the rules to copy
+--------------------------------------------------------------------------------
+
+Run this command:
+  cd /home/robforee/analyst-server/bumpy
+  ./show-new-rules.sh
+
+--------------------------------------------------------------------------------
+STEP 2: Open Firebase Console
+--------------------------------------------------------------------------------
+
+Visit: https://console.firebase.google.com/project/analyst-server/firestore/rules
+
+--------------------------------------------------------------------------------
+STEP 3: Paste the new rules
+--------------------------------------------------------------------------------
+
+1. Scroll to bottom of rules editor
+2. Find the last match block (defined_corridors)
+3. Paste the new service_credentials section AFTER it
+4. Click "Publish"
+
+--------------------------------------------------------------------------------
+STEP 4: Test from CLI
+--------------------------------------------------------------------------------
+
+  cd /home/robforee/analyst-server/bumpy
+  ./test-credentials.sh robforee@gmail.com YOUR_PASSWORD gmail
+
+Expected: "✅ ALL TESTS PASSED"
+
+--------------------------------------------------------------------------------
+STEP 5: Test from browser
+--------------------------------------------------------------------------------
+
+1. Open: http://localhost:3000
+2. Login
+3. Click "Connect Gmail"
+4. Complete OAuth
+5. Should see: "✅ Success! gmail connected successfully"
+
+================================================================================
+REFERENCE FILES
+================================================================================
+
+Full deployment guide: /home/robforee/analyst-server/bumpy/DEPLOY-FIRESTORE-RULES.md
+Show rules to copy:    /home/robforee/analyst-server/bumpy/show-new-rules.sh
+Test script:           /home/robforee/analyst-server/bumpy/test-credentials.sh
+Complete rules file:   /home/robforee/analyst-server/bumpy/firestore.rules
+

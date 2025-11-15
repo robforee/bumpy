@@ -10,30 +10,30 @@ export async function queryGmailInbox(userId, idToken) {
     try {
         console.log('Starting Gmail inbox query for user:', userId);
         const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
-        
+
         if (!currentUser) {
             console.log('User not authenticated');
             return { success: false, error: 'User not authenticated' };
         }
         console.log('Got authenticated user:', currentUser.uid);
 
-        // Get tokens from Firestore
+        // Get tokens from Firestore (service_credentials collection)
         const db = getFirestore(firebaseServerApp);
-        const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
-        const userTokensSnap = await getDoc(userTokensRef);
+        const serviceCredsRef = doc(db, `service_credentials/${currentUser.uid}_gmail`);
+        const serviceCredsSnap = await getDoc(serviceCredsRef);
 
-        if (!userTokensSnap.exists()) {
-            console.log('No tokens found for user');
-            return { success: false, error: 'No tokens found for user' };
+        if (!serviceCredsSnap.exists()) {
+            console.log('No Gmail credentials found for user');
+            return { success: false, error: 'No Gmail credentials found. Please authorize Gmail first.' };
         }
-        console.log('Found tokens in Firestore');
+        console.log('Found Gmail credentials in Firestore');
 
-        const tokens = userTokensSnap.data();
+        const tokens = serviceCredsSnap.data();
         
         try {
             const accessToken = await decrypt(tokens.accessToken);
-            console.log('[BUMPY_AUTH] queryGmailInbox:', JSON.stringify({ scopes: tokens.authorizedScopes, timestamp: new Date().toISOString() }));
-            const authorizedScopes = tokens.authorizedScopes;
+            console.log('[BUMPY_AUTH] queryGmailInbox:', JSON.stringify({ scopes: tokens.scopes, timestamp: new Date().toISOString() }));
+            const authorizedScopes = tokens.scopes;
 
             // Set up Gmail client
             const oauth2Client = new google.auth.OAuth2(
@@ -113,23 +113,23 @@ export async function queryRecentDriveFiles(userId, idToken) {
         }
         console.log('Got authenticated user:', currentUser.uid);
 
-        // Get tokens from Firestore
+        // Get tokens from Firestore (service_credentials collection)
         const db = getFirestore(firebaseServerApp);
-        const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
-        const userTokensSnap = await getDoc(userTokensRef);
+        const serviceCredsRef = doc(db, `service_credentials/${currentUser.uid}_drive`);
+        const serviceCredsSnap = await getDoc(serviceCredsRef);
 
-        if (!userTokensSnap.exists()) {
-            console.log('No tokens found for user');
-            return { success: false, error: 'No tokens found for user' };
+        if (!serviceCredsSnap.exists()) {
+            console.log('No Drive credentials found for user');
+            return { success: false, error: 'No Drive credentials found. Please authorize Drive first.' };
         }
-        console.log('Found tokens in Firestore');
+        console.log('Found Drive credentials in Firestore');
 
-        const tokens = userTokensSnap.data();
-        
+        const tokens = serviceCredsSnap.data();
+
         try {
             const accessToken = await decrypt(tokens.accessToken);
-            console.log('[BUMPY_AUTH] queryRecentDriveFiles:', JSON.stringify({ scopes: tokens.authorizedScopes, timestamp: new Date().toISOString() }));
-            const authorizedScopes = tokens.authorizedScopes;
+            console.log('[BUMPY_AUTH] queryRecentDriveFiles:', JSON.stringify({ scopes: tokens.scopes, timestamp: new Date().toISOString() }));
+            const authorizedScopes = tokens.scopes;
 
             // Set up Drive client
             const oauth2Client = new google.auth.OAuth2(
@@ -181,23 +181,23 @@ export async function queryGoogleCalendar(userId, idToken) {
         }
         console.log('Got authenticated user:', currentUser.uid);
 
-        // Get tokens from Firestore
+        // Get tokens from Firestore (service_credentials collection)
         const db = getFirestore(firebaseServerApp);
-        const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
-        const userTokensSnap = await getDoc(userTokensRef);
+        const serviceCredsRef = doc(db, `service_credentials/${currentUser.uid}_calendar`);
+        const serviceCredsSnap = await getDoc(serviceCredsRef);
 
-        if (!userTokensSnap.exists()) {
-            console.log('No tokens found for user');
-            return { success: false, error: 'No tokens found for user' };
+        if (!serviceCredsSnap.exists()) {
+            console.log('No Calendar credentials found for user');
+            return { success: false, error: 'No Calendar credentials found. Please authorize Calendar first.' };
         }
-        console.log('Found tokens in Firestore');
+        console.log('Found Calendar credentials in Firestore');
 
-        const tokens = userTokensSnap.data();
-        
+        const tokens = serviceCredsSnap.data();
+
         try {
             const accessToken = await decrypt(tokens.accessToken);
-            console.log('[BUMPY_AUTH] queryGoogleCalendar:', JSON.stringify({ scopes: tokens.authorizedScopes, timestamp: new Date().toISOString() }));
-            const authorizedScopes = tokens.authorizedScopes;
+            console.log('[BUMPY_AUTH] queryGoogleCalendar:', JSON.stringify({ scopes: tokens.scopes, timestamp: new Date().toISOString() }));
+            const authorizedScopes = tokens.scopes;
 
             // Set up Calendar client
             const oauth2Client = new google.auth.OAuth2(
@@ -265,23 +265,23 @@ export async function sendGmailMessage(idToken, to, subject, body) {
         }
         console.log('Got authenticated user:', currentUser.uid);
 
-        // Get tokens from Firestore
+        // Get tokens from Firestore (service_credentials collection)
         const db = getFirestore(firebaseServerApp);
-        const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
-        const userTokensSnap = await getDoc(userTokensRef);
+        const serviceCredsRef = doc(db, `service_credentials/${currentUser.uid}_gmail`);
+        const serviceCredsSnap = await getDoc(serviceCredsRef);
 
-        if (!userTokensSnap.exists()) {
-            console.log('No tokens found for user');
-            return { success: false, error: 'No tokens found for user' };
+        if (!serviceCredsSnap.exists()) {
+            console.log('No Gmail credentials found for user');
+            return { success: false, error: 'No Gmail credentials found. Please authorize Gmail first.' };
         }
-        console.log('Found tokens in Firestore');
+        console.log('Found Gmail credentials in Firestore');
 
-        const tokens = userTokensSnap.data();
+        const tokens = serviceCredsSnap.data();
 
         try {
             const accessToken = await decrypt(tokens.accessToken);
             console.log('[BUMPY_AUTH] sendGmailMessage:', JSON.stringify({
-                scopes: tokens.authorizedScopes,
+                scopes: tokens.scopes,
                 timestamp: new Date().toISOString()
             }));
 
@@ -357,25 +357,21 @@ export async function demoGmailToken(idToken) {
 
         console.log('Got authenticated user:', currentUser.uid);
 
-        // Get tokens from Firestore
-        const db = getFirestore(firebaseServerApp);
-        const userTokensRef = doc(db, 'user_tokens', currentUser.uid);
-        const userTokensSnap = await getDoc(userTokensRef);
+        // Get Gmail access token using new service-specific system
+        const { getServiceToken } = await import('./auth-actions');
+        const tokenResult = await getServiceToken('gmail', idToken);
 
-        if (!userTokensSnap.exists()) {
-            const msg = 'No tokens found for user';
-            console.log(msg);
+        if (!tokenResult.success) {
+            const msg = `Error: ${tokenResult.error}`;
+            console.error('❌ [demoGmailToken]', msg);
             results.push(msg);
             return results;
         }
 
-        const tokens = userTokensSnap.data();
+        const accessToken = tokenResult.accessToken;
+        console.log('✅ [demoGmailToken] Got Gmail access token');
 
         try {
-            const accessToken = await decrypt(tokens.accessToken);
-            const authorizedScopes = tokens.authorizedScopes;
-            console.log('[BUMPY_AUTH] demoGmailToken:', JSON.stringify({ scopes: authorizedScopes, timestamp: new Date().toISOString() }));
-
             // Set up Gmail client
             const oauth2Client = new google.auth.OAuth2(
                 process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,

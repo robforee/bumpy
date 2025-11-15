@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useUser } from '@/src/contexts/UserProvider';
 import Link from 'next/link';
 
+import ServiceAuthCard from '@/src/components/ServiceAuthCard';
 import GmailInbox from '@/src/components/GmailInbox';
 import DriveFiles from '@/src/components/GoogleDriveFiles';
 import GoogleCalendar from '@/src/components/GoogleCalendar';
@@ -140,6 +141,21 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Welcome, {user.displayName}!</h1>
+
+      {/* Service Authorization Section */}
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-4">Connect Your Google Services</h2>
+        <p className="text-gray-600 mb-4">
+          Authorize access to your Google services to use their features in this application.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <ServiceAuthCard serviceName="gmail" />
+          <ServiceAuthCard serviceName="drive" />
+          <ServiceAuthCard serviceName="calendar" />
+          <ServiceAuthCard serviceName="messenger" />
+        </div>
+      </div>
+
       <div className="bg-white shadow-md rounded p-4 mb-4">
         <h2 className="text-xl font-semibold mb-2">Your Account</h2>
         <p>Email: {user.email}</p>
@@ -149,7 +165,7 @@ export default function DashboardPage() {
           </Link>
         )}
       </div>
-      
+
 
       <div className="mt-4">
         <button

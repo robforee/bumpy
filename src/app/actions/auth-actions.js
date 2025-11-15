@@ -6,8 +6,6 @@ import moment from 'moment-timezone';
 import crypto from 'crypto';
 import { headers } from "next/headers";
 
-import { getIdToken } from "firebase/auth";
-import { auth } from "@/src/lib/firebase/clientApp";
 import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';  
 import { getTokenTimestamps, getScopeTimestamps } from '@/src/lib/utils/token-utils';
 import { google } from 'googleapis';
@@ -399,5 +397,168 @@ export async function exchangeCodeForTokens(code) {
       success: false,
       error: error.message
     };
+  }
+}
+
+/**
+ * Store service-specific tokens (Gmail, Drive, Calendar, Messenger)
+ * @param {string} service - Service name ('gmail', 'drive', 'calendar', 'messenger')
+ * @param {Object} tokens - Token object {accessToken, refreshToken, scopes}
+ * @param {string} idToken - Firebase ID token for authentication
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function storeServiceTokens(service, tokens, uid) {
+  'use server'
+
+  try {
+    console.log(`🔐 [storeServiceTokens] Storing ${service} tokens:`, {
+      service,
+      uid,
+      hasAccessToken: !!tokens.accessToken,
+      hasRefreshToken: !!tokens.refreshToken,
+      scopes: tokens.scopes,
+      timestamp: new Date().toISOString()
+    });
+
+    if (!uid) {
+      return { success: false, error: 'User ID required' };
+    }
+
+    // Use client-side Firebase for Firestore access
+    const { getFirestore, doc, setDoc } = await import('firebase/firestore');
+    const db = getFirestore();
+    const serviceCredsRef = doc(db, `service_credentials/${uid}_${service}`);
+
+    // Encrypt tokens
+    const encryptedAccessToken = await encrypt(tokens.accessToken);
+    const encryptedRefreshToken = tokens.refreshToken ? await encrypt(tokens.refreshToken) : null;
+
+    const now = Date.now();
+    const credentialData = {
+      accessToken: encryptedAccessToken,
+      refreshToken: encryptedRefreshToken,
+      scopes: tokens.scopes || [],
+      grantedAt: now,
+      lastRefreshed: now,
+      expiresAt: now + 3600000 // 1 hour from now
+    };
+
+    await setDoc(serviceCredsRef, credentialData);
+
+    console.log(`✅ [storeServiceTokens] Successfully stored ${service} tokens for user ${uid}`);
+
+    return { success: true };
+  } catch (error) {
+    console.error(`❌ [storeServiceTokens] Error storing ${service} tokens:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Get service-specific token (with auto-refresh if needed)
+ * @param {string} service - Service name ('gmail', 'drive', 'calendar', 'messenger')
+ * @param {string} idToken - Firebase ID token for authentication
+ * @returns {Promise<{success: boolean, accessToken?: string, error?: string}>}
+ */
+export async function getServiceToken(service, idToken) {
+  try {
+    const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
+    if (!currentUser?.uid) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    const db = getFirestore(firebaseServerApp);
+    const serviceCredsRef = doc(db, 'service_credentials', currentUser.uid, service);
+    const serviceCredsSnap = await getDoc(serviceCredsRef);
+
+    if (!serviceCredsSnap.exists()) {
+      console.log(`⚠️ [getServiceToken] No ${service} credentials found for user ${currentUser.uid}`);
+      return { success: false, error: `No ${service} authorization found. Please connect ${service} first.` };
+    }
+
+    const creds = serviceCredsSnap.data();
+    const now = Date.now();
+
+    // Check if token is expired
+    if (creds.expiresAt && creds.expiresAt < now) {
+      console.log(`🔄 [getServiceToken] ${service} token expired, refreshing...`);
+
+      // Refresh token
+      if (!creds.refreshToken) {
+        return { success: false, error: `${service} refresh token not found. Please re-authorize.` };
+      }
+
+      const oauth2Client = new google.auth.OAuth2(
+        process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI
+      );
+
+      const decryptedRefreshToken = await decrypt(creds.refreshToken);
+      oauth2Client.setCredentials({ refresh_token: decryptedRefreshToken });
+
+      const { credentials } = await oauth2Client.refreshAccessToken();
+
+      // Update stored credentials
+      const encryptedAccessToken = await encrypt(credentials.access_token);
+      await setDoc(serviceCredsRef, {
+        accessToken: encryptedAccessToken,
+        lastRefreshed: now,
+        expiresAt: now + (credentials.expiry_date || 3600000)
+      }, { merge: true });
+
+      console.log(`✅ [getServiceToken] ${service} token refreshed successfully`);
+
+      return {
+        success: true,
+        accessToken: credentials.access_token
+      };
+    }
+
+    // Token is still valid
+    const decryptedAccessToken = await decrypt(creds.accessToken);
+
+    console.log(`✅ [getServiceToken] ${service} token retrieved successfully`);
+
+    return {
+      success: true,
+      accessToken: decryptedAccessToken
+    };
+  } catch (error) {
+    console.error(`❌ [getServiceToken] Error getting ${service} token:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Check if user has authorized a specific service
+ * @param {string} service - Service name ('gmail', 'drive', 'calendar', 'messenger')
+ * @param {string} idToken - Firebase ID token for authentication
+ * @returns {Promise<{success: boolean, authorized: boolean, scopes?: string[], error?: string}>}
+ */
+export async function checkServiceAuth(service, idToken) {
+  try {
+    const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
+    if (!currentUser?.uid) {
+      return { success: false, authorized: false, error: 'User not authenticated' };
+    }
+
+    const db = getFirestore(firebaseServerApp);
+    const serviceCredsRef = doc(db, 'service_credentials', currentUser.uid, service);
+    const serviceCredsSnap = await getDoc(serviceCredsRef);
+
+    if (!serviceCredsSnap.exists()) {
+      return { success: true, authorized: false };
+    }
+
+    const creds = serviceCredsSnap.data();
+    return {
+      success: true,
+      authorized: true,
+      scopes: creds.scopes || []
+    };
+  } catch (error) {
+    console.error(`❌ [checkServiceAuth] Error checking ${service} auth:`, error);
+    return { success: false, authorized: false, error: error.message };
   }
 }

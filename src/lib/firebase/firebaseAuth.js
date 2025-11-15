@@ -16,11 +16,56 @@ export function onAuthStateChanged(cb) {
 }
 
 /**
+ * Simple sign-in with Firebase Auth (no extra Google scopes).
+ * Uses only basic Firebase Authentication - user gets profile, email by default.
+ * For Google API access (Gmail, Drive, etc.), use requestServiceAuth() after sign-in.
+ *
+ * @returns {Promise<{ success: boolean, user?: any, error?: string }>}
+ */
+export async function signInBasic() {
+  console.log('🔑 [signInBasic] Starting basic Firebase sign in:', {
+    timestamp: new Date().toISOString()
+  });
+
+  try {
+    const provider = new GoogleAuthProvider();
+    // No extra scopes - just Firebase defaults (openid, profile, email)
+
+    const result = await signInWithPopup(auth, provider);
+
+    console.log('✅ [signInBasic] Sign in successful:', {
+      uid: result.user.uid,
+      email: result.user.email,
+      displayName: result.user.displayName,
+      timestamp: new Date().toISOString()
+    });
+
+    return {
+      success: true,
+      user: result.user
+    };
+  } catch (error) {
+    console.error('❌ [signInBasic] Sign in error:', {
+      error: error.message,
+      code: error.code,
+      timestamp: new Date().toISOString()
+    });
+
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * OLD FUNCTION - DEPRECATED
  * Signs in with Google using the provided scopes.
- * 
+ *
  * @param {string[]} scopes - The scopes to request from Google.
  * @param {boolean} forceConsent - Whether to force the consent screen.
  * @returns {Promise<{ success: boolean, user: any, tokens: any, scopes: string[] }>} The result of the sign in.
+ * @deprecated Use signInBasic() for login, then requestServiceAuth() for API access
  */
 export async function signInWithGoogle(scopes = [], forceConsent = false) {
   console.log('🔑 [signInWithGoogle] Starting Google Sign In:', {
@@ -117,6 +162,45 @@ export async function getUserIdToken() {
     return user.getIdToken();
   }
   throw new Error('No user is signed in');
+}
+
+/**
+ * Request authorization for a specific Google service (Gmail, Drive, Calendar, Messenger).
+ * This function redirects to Google OAuth consent screen for the requested service scopes.
+ *
+ * @param {string} service - The service name ('gmail', 'drive', 'calendar', 'messenger')
+ * @param {string[]} scopes - Array of Google OAuth scopes for this service
+ * @returns {void} - Redirects to Google OAuth
+ */
+export function requestServiceAuth(service, scopes) {
+  console.log('🔐 [requestServiceAuth] Requesting service authorization:', {
+    service,
+    scopes,
+    timestamp: new Date().toISOString()
+  });
+
+  // Build OAuth2 URL
+  const redirectUri = process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI;
+  const params = new URLSearchParams({
+    client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    access_type: 'offline',
+    prompt: 'consent', // Always show consent to get refresh token
+    scope: scopes.join(' '),
+    state: JSON.stringify({ service }) // Track which service this auth is for
+  });
+
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+
+  console.log('🔗 [requestServiceAuth] Redirecting to Google OAuth:', {
+    service,
+    url: authUrl.substring(0, 100) + '...',
+    timestamp: new Date().toISOString()
+  });
+
+  // Redirect to Google consent screen
+  window.location.href = authUrl;
 }
 
 export async function handleOAuth2Callback(code) {

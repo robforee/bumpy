@@ -3,12 +3,12 @@
 
 import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
-import { getIdToken } from "firebase/auth";
-import { auth } from "@/src/lib/firebase/clientApp";
 import { userService } from '@/src/services/userService';
 
-export async function getUserInfo() {
-  const idToken = await getIdToken(auth.currentUser);
+export async function getUserInfo(idToken) {
+  if (!idToken) {
+    throw new Error('idToken is required');
+  }
   const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
   if (!currentUser) {
     return {success:false, error:'not logged in'}; 

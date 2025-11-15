@@ -1,24 +1,22 @@
 // app/actions/topic-actions.js
 'use server'
 
-import { 
+import {
   getFirestore,
-  collection, 
-  doc, 
-  getDoc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
+  collection,
+  doc,
+  getDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
   getDocs,
   serverTimestamp, Timestamp,
   arrayUnion,
   arrayRemove
 } from 'firebase/firestore';
 
-import { getIdToken } from "firebase/auth";
-import { auth } from "@/src/lib/firebase/clientApp";
 import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';
 
 export async function createTopic(parentId, topicData, idToken) {

@@ -4,15 +4,15 @@ service cloud.firestore {
   // Determine if the value of the field "key" is the same
   // before and after the request.
   function unchanged(key) {
-    return (key in resource.data)
-      && (key in request.resource.data)
+    return (key in resource.data) 
+      && (key in request.resource.data) 
       && (resource.data[key] == request.resource.data[key]);
   }
 
   // Helper function to check if user is admin
   function isAdmin() {
-    return request.auth != null &&
-           (request.auth.token.admin == true ||
+    return request.auth != null && 
+           (request.auth.token.admin == true || 
             request.auth.uid == 'CtAyzps80VXRzna32Kdy0NHYcPe2');
   }
 
@@ -37,7 +37,7 @@ service cloud.firestore {
     match /admin_data/{document=**} {
       allow read, write: if isAdmin();
     }
-
+    
     // Public data collection - anyone can read, only admins can write
     match /public_data/{document=**} {
       allow read: if true;
@@ -49,7 +49,7 @@ service cloud.firestore {
     //   - Authenticated users can write (placeholder - refine for production)
     match /business/{businessId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if request.auth != null; 
     }
 
     // Body Shop Navigator: People Collection
@@ -60,31 +60,31 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
-
+    
     match /jobs/{jobId} {
       allow read, write: if request.auth.token.admin == true;
-    }
+    }  
 
     // Users:
     //   - Authenticated user can read and write their own document
     //   - Admin can access all documents
     match /users/{userId} {
-      allow read, write: if request.auth != null &&
+      allow read, write: if request.auth != null && 
         (request.auth.uid == userId || isAdmin());
     }
 
     // User Tokens:
     match /user_tokens/{userId} {
       // Full access for authenticated user's own document or admin
-      allow read, write, delete: if request.auth != null &&
+      allow read, write, delete: if request.auth != null && 
         (request.auth.uid == userId || isAdmin());
 
       // Public can only read authorizedScopes and userEmail for login
-      allow read: if
-        request.query.limit <= 1 &&
+      allow read: if 
+        request.query.limit <= 1 && 
         request.query.orderBy == "userEmail" &&
         resource.data.keys().hasOnly(["authorizedScopes", "userEmail"]);
-    }
+    }    
 
     // Auth Logs:
     match /auth_logs/{logId} {
@@ -94,8 +94,8 @@ service cloud.firestore {
       allow read, delete: if isAdmin();
       // No updates allowed - logs are immutable
       allow update: if false;
-    }
-
+    }    
+    
     // Restaurants:
     //   - Authenticated user can read
     //   - Authenticated user can create/update (for demo purposes only)
@@ -106,7 +106,7 @@ service cloud.firestore {
       allow create: if request.auth != null;
       allow update: if request.auth != null
                     && unchanged("name");
-
+      
       // Ratings:
       //   - Authenticated user can read
       //   - Authenticated user can create if userId matches
@@ -122,7 +122,7 @@ service cloud.firestore {
         allow create: if request.auth != null;
         allow update: if request.auth != null
                       && request.resource.data.userId == request.auth.uid;
-      }
+      }      
     }
 
     // Authorized scopes:
@@ -130,15 +130,15 @@ service cloud.firestore {
     //   - Only owner or admin can write
     match /authorized_scopes/{userId} {
       allow read: if true;
-      allow write: if request.auth != null &&
+      allow write: if request.auth != null && 
         (request.auth.uid == userId || isAdmin());
-    }
-
+    }    
+    
     // User scopes:
     match /user_scopes/{userId} {
       allow read: if true;  // Allow public read access
-      allow write: if request.auth != null &&
-                  (request.auth.uid == userId ||
+      allow write: if request.auth != null && 
+                  (request.auth.uid == userId || 
                    request.auth.uid == 'default' ||
                    isAdmin());
     }
@@ -146,19 +146,19 @@ service cloud.firestore {
     // User profiles:
     match /user_profiles/{userId} {
       allow read: if true;
-      allow write: if request.auth != null &&
+      allow write: if request.auth != null && 
         (request.auth.uid == userId || isAdmin());
     }
 
     match /logs/{logId} {
-      allow read, write, delete: if request.auth != null &&
+      allow read, write, delete: if request.auth != null && 
         (request.resource.data.userId == request.auth.uid || isAdmin());
-    }
+    }        
 
     match /adminData/{userId} {
-      allow read, write, delete: if request.auth != null &&
+      allow read, write, delete: if request.auth != null && 
         (request.auth.uid == userId || userId == 'default' || isAdmin());
-    }
+    }    
 
     match /topics/{topicId} {
       allow read: if request.auth != null;
@@ -170,17 +170,8 @@ service cloud.firestore {
     // Allows any client to write (for test_gmaps_route.mjs)
     // Allows any client to read (server-side script will use admin SDK, but good for client debugging)
     match /defined_corridors/{corridorId} {
-      allow read, write: if true;
-    }
-
-    // Service Credentials (NEW - for separated OAuth service authorization):
-    //   - Document ID format: {userId}_{serviceName} (e.g., "CtAyzps80VXRzna32Kdy0NHYcPe2_gmail")
-    //   - Stores encrypted access/refresh tokens for individual Google services
-    //   - Only the authenticated user can read/write their own service credentials
-    //   - Admin can access all service credentials
-    match /service_credentials/{credentialId} {
-      allow read, write: if request.auth != null &&
-        (credentialId.matches(request.auth.uid + '_.*') || isAdmin());
+      allow read, write: if true; 
     }
   }
 }
+

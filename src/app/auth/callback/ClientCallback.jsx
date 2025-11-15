@@ -76,8 +76,14 @@ export default function ClientCallback({ result, service }) {
             scopes: result.tokens.scopes || [],
             grantedAt: now,
             lastRefreshed: now,
-            expiresAt: now + 3600000 // 1 hour from now
+            expiresAt: result.tokens.expiresAt || (now + 3600000) // Use Google's expiry or default 1 hour
           };
+
+          console.log(`🔐 [ClientCallback] Storing ${service} credentials:`, {
+            expiresAt: new Date(credentialData.expiresAt).toISOString(),
+            hasRefreshToken: !!encryptedRefreshToken,
+            scopeCount: credentialData.scopes.length
+          });
 
           await setDoc(serviceCredsRef, credentialData);
 

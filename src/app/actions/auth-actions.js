@@ -380,6 +380,7 @@ export async function exchangeCodeForTokens(code) {
     console.log('Token exchange response:', JSON.stringify({
       hasAccessToken: !!tokens.access_token,
       hasRefreshToken: !!tokens.refresh_token,
+      expiryDate: tokens.expiry_date,
       scope: tokens.scope
     }, null, 2));
 
@@ -388,6 +389,7 @@ export async function exchangeCodeForTokens(code) {
       tokens: {
         accessToken: tokens.access_token,
         refreshToken: tokens.refresh_token,
+        expiresAt: tokens.expiry_date, // Include actual expiry from Google
         scopes: tokens.scope.split(' ')
       }
     };

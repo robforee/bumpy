@@ -3,8 +3,68 @@
 
 import { google } from 'googleapis';
 import { getAuthenticatedAppForUser } from '@/src/lib/firebase/serverApp';
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
-import { decrypt } from './auth-actions';
+import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
+import { decrypt, encrypt } from './auth-actions';
+
+/**
+ * Helper function to get valid access token, refreshing if needed
+ */
+async function getValidAccessToken(db, currentUser, service, tokens) {
+    const now = Date.now();
+    const isExpired = tokens.expiresAt && tokens.expiresAt < now;
+
+    console.log(`🔑 [getValidAccessToken] Token status for ${service}:`, {
+        isExpired,
+        expiresAt: tokens.expiresAt ? new Date(tokens.expiresAt).toISOString() : 'unknown',
+        hasRefreshToken: !!tokens.refreshToken
+    });
+
+    if (!isExpired) {
+        // Token is still valid
+        const accessToken = await decrypt(tokens.accessToken);
+        return { accessToken, refreshed: false };
+    }
+
+    // Token expired - need to refresh
+    if (!tokens.refreshToken) {
+        throw new Error('Access token expired and no refresh token available. Please reconnect.');
+    }
+
+    console.log(`🔄 [getValidAccessToken] Refreshing ${service} token...`);
+
+    const refreshToken = await decrypt(tokens.refreshToken);
+    const oauth2Client = new google.auth.OAuth2(
+        process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        process.env.GOOGLE_REDIRECT_URI
+    );
+
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+    try {
+        const { credentials } = await oauth2Client.refreshAccessToken();
+        const newAccessToken = credentials.access_token;
+        const newExpiresAt = credentials.expiry_date || (now + 3600000); // 1 hour default
+
+        // Encrypt and store new access token
+        const encryptedAccessToken = await encrypt(newAccessToken);
+        const serviceCredsRef = doc(db, `service_credentials/${currentUser.uid}_${service}`);
+
+        await setDoc(serviceCredsRef, {
+            ...tokens,
+            accessToken: encryptedAccessToken,
+            expiresAt: newExpiresAt,
+            lastRefreshed: now
+        });
+
+        console.log(`✅ [getValidAccessToken] ${service} token refreshed successfully`);
+
+        return { accessToken: newAccessToken, refreshed: true };
+    } catch (error) {
+        console.error(`❌ [getValidAccessToken] Token refresh failed:`, error);
+        throw new Error(`Token refresh failed: ${error.message}. Please reconnect.`);
+    }
+}
 
 export async function queryGmailInbox(userId, idToken) {
     try {
@@ -29,11 +89,16 @@ export async function queryGmailInbox(userId, idToken) {
         console.log('Found Gmail credentials in Firestore');
 
         const tokens = serviceCredsSnap.data();
-        
+
         try {
-            const accessToken = await decrypt(tokens.accessToken);
+            // Get valid access token (will refresh if expired)
+            const { accessToken, refreshed } = await getValidAccessToken(db, currentUser, 'gmail', tokens);
+
+            if (refreshed) {
+                console.log('📧 [queryGmailInbox] Using refreshed access token');
+            }
+
             console.log('[BUMPY_AUTH] queryGmailInbox:', JSON.stringify({ scopes: tokens.scopes, timestamp: new Date().toISOString() }));
-            const authorizedScopes = tokens.scopes;
 
             // Set up Gmail client
             const oauth2Client = new google.auth.OAuth2(

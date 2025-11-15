@@ -549,10 +549,17 @@ export async function checkServiceAuth(service, idToken) {
     const serviceCredsSnap = await getDoc(serviceCredsRef);
 
     if (!serviceCredsSnap.exists()) {
+      console.log(`🔍 [checkServiceAuth] No credentials found for ${service}`);
       return { success: true, isAuthorized: false };
     }
 
     const creds = serviceCredsSnap.data();
+    console.log(`✅ [checkServiceAuth] Found credentials for ${service}`, {
+      scopes: creds.scopes?.length || 0,
+      hasAccessToken: !!creds.accessToken,
+      hasRefreshToken: !!creds.refreshToken
+    });
+
     return {
       success: true,
       isAuthorized: true,

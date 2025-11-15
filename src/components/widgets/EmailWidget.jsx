@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, ExternalLink, Star } from 'lucide-react';
 import { checkServiceAuth } from '@/src/app/actions/auth-actions';
+import { queryGmailInbox } from '@/src/app/actions/google-actions';
 import { requestServiceAuth } from '@/src/lib/firebase/firebaseAuth';
 import { useUser } from '@/src/contexts/UserProvider';
 import { getIdToken } from 'firebase/auth';
@@ -27,25 +28,28 @@ const EmailWidget = ({ onItemClick }) => {
       setIsAuthorized(result.isAuthorized);
 
       if (result.isAuthorized) {
-        // TODO: Fetch recent emails from Gmail API
-        setEmails([
-          {
-            id: '1',
-            from: 'john@example.com',
-            subject: 'Project Update',
-            snippet: 'Here is the latest update on the project...',
-            timestamp: new Date().toISOString(),
-            unread: true
-          },
-          {
-            id: '2',
-            from: 'sarah@example.com',
-            subject: 'Meeting Notes',
-            snippet: 'Thanks for joining the meeting today...',
-            timestamp: new Date(Date.now() - 3600000).toISOString(),
-            unread: false
-          },
-        ]);
+        // Fetch real emails from Gmail API
+        console.log('📧 [EmailWidget] Fetching Gmail messages...');
+        const gmailResult = await queryGmailInbox(user.uid, idToken);
+
+        if (gmailResult.success && gmailResult.messages) {
+          console.log(`📧 [EmailWidget] Loaded ${gmailResult.messages.length} messages`);
+
+          // Transform Gmail API response to widget format
+          const transformedEmails = gmailResult.messages.map(msg => ({
+            id: msg.id,
+            from: msg.from,
+            subject: msg.subject,
+            snippet: msg.snippet,
+            timestamp: new Date(msg.date).toISOString(),
+            unread: false // Gmail API doesn't provide unread status in basic list
+          }));
+
+          setEmails(transformedEmails);
+        } else {
+          console.error('❌ [EmailWidget] Failed to fetch emails:', gmailResult.error);
+          setEmails([]);
+        }
       }
     } catch (error) {
       console.error('Error checking email auth:', error);

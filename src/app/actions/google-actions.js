@@ -332,6 +332,108 @@ export async function queryDriveFiles(userId, idToken, maxResults = 10) {
     }
 }
 
+/**
+ * Fetch Google Chat spaces and recent messages
+ */
+export async function queryChatSpaces(userId, idToken, maxResults = 10) {
+    try {
+        console.log('Starting Chat spaces query for user:', userId);
+        const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
+
+        if (!currentUser) {
+            console.log('User not authenticated');
+            return { success: false, error: 'User not authenticated' };
+        }
+
+        // Get tokens from Firestore
+        const db = getFirestore(firebaseServerApp);
+        const serviceCredsRef = doc(db, `service_credentials/${currentUser.uid}_messenger`);
+        const serviceCredsSnap = await getDoc(serviceCredsRef);
+
+        if (!serviceCredsSnap.exists()) {
+            console.log('No Chat credentials found for user');
+            return { success: false, error: 'No Chat credentials found. Please authorize Chat first.' };
+        }
+
+        const tokens = serviceCredsSnap.data();
+
+        try {
+            // Get valid access token (will refresh if expired)
+            const { accessToken, refreshed } = await getValidAccessToken(db, currentUser, 'messenger', tokens);
+
+            if (refreshed) {
+                console.log('💬 [queryChatSpaces] Using refreshed access token');
+            }
+
+            // Set up Chat client
+            const oauth2Client = new google.auth.OAuth2(
+                process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+                process.env.GOOGLE_CLIENT_SECRET,
+                process.env.GOOGLE_REDIRECT_URI
+            );
+            oauth2Client.setCredentials({ access_token: accessToken });
+            const chat = google.chat({ version: 'v1', auth: oauth2Client });
+
+            // Get spaces (rooms/DMs)
+            console.log('Fetching Chat spaces...');
+            const spacesResponse = await chat.spaces.list({
+                pageSize: maxResults
+            });
+
+            const spaces = spacesResponse.data.spaces || [];
+            console.log(`Found ${spaces.length} Chat spaces`);
+
+            // For each space, get recent messages
+            const spacesWithMessages = [];
+            for (const space of spaces.slice(0, 5)) { // Limit to 5 spaces
+                try {
+                    const messagesResponse = await chat.spaces.messages.list({
+                        parent: space.name,
+                        pageSize: 3,
+                        orderBy: 'create_time desc'
+                    });
+
+                    const messages = messagesResponse.data.messages || [];
+
+                    spacesWithMessages.push({
+                        id: space.name,
+                        displayName: space.displayName || 'Direct Message',
+                        spaceType: space.spaceType,
+                        messages: messages.map(msg => ({
+                            id: msg.name,
+                            text: msg.text,
+                            sender: {
+                                displayName: msg.sender?.displayName || 'Unknown',
+                                avatarUrl: msg.sender?.avatarUrl
+                            },
+                            createTime: msg.createTime
+                        }))
+                    });
+                } catch (msgError) {
+                    console.error(`Error fetching messages for space ${space.name}:`, msgError);
+                    // Continue with other spaces
+                }
+            }
+
+            return {
+                success: true,
+                spaces: spacesWithMessages
+            };
+
+        } catch (error) {
+            console.error('Chat API error:', error);
+            if (error.message.includes('invalid_grant')) {
+                return { success: false, error: 'Token needs refresh' };
+            }
+            return { success: false, error: `Chat API error: ${error.message}` };
+        }
+
+    } catch (error) {
+        console.error('Error in queryChatSpaces:', error);
+        return { success: false, error: `Error in queryChatSpaces: ${error.message}` };
+    }
+}
+
 export async function queryRecentDriveFiles(userId, idToken) {
     try {
         console.log('Starting Drive files query for user:', userId);

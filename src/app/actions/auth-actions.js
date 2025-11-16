@@ -572,3 +572,35 @@ export async function checkServiceAuth(service, idToken) {
     return { success: false, isAuthorized: false, error: error.message };
   }
 }
+
+/**
+ * Disconnect/revoke a service authorization
+ * Deletes the service_credentials document from Firestore
+ * @param {string} service - Service name ('gmail', 'drive', 'calendar', 'messenger')
+ * @param {string} idToken - Firebase ID token for authentication
+ * @returns {Promise<{success: boolean, error?: string}>}
+ */
+export async function disconnectService(service, idToken) {
+  try {
+    const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
+    if (!currentUser?.uid) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    const { getFirestore, doc, deleteDoc } = await import('firebase/firestore');
+    const db = getFirestore(firebaseServerApp);
+    const serviceCredsRef = doc(db, `service_credentials/${currentUser.uid}_${service}`);
+
+    console.log(`🔓 [disconnectService] Disconnecting ${service} for user ${currentUser.uid}`);
+
+    // Delete the service credentials document
+    await deleteDoc(serviceCredsRef);
+
+    console.log(`✅ [disconnectService] Successfully disconnected ${service}`);
+
+    return { success: true };
+  } catch (error) {
+    console.error(`❌ [disconnectService] Error disconnecting ${service}:`, error);
+    return { success: false, error: error.message };
+  }
+}

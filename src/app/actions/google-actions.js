@@ -167,6 +167,171 @@ export async function queryGmailInbox(userId, idToken) {
     }
 }
 
+/**
+ * Fetch upcoming calendar events
+ */
+export async function queryCalendarEvents(userId, idToken, maxResults = 10) {
+    try {
+        console.log('Starting Calendar events query for user:', userId);
+        const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
+
+        if (!currentUser) {
+            console.log('User not authenticated');
+            return { success: false, error: 'User not authenticated' };
+        }
+
+        // Get tokens from Firestore
+        const db = getFirestore(firebaseServerApp);
+        const serviceCredsRef = doc(db, `service_credentials/${currentUser.uid}_calendar`);
+        const serviceCredsSnap = await getDoc(serviceCredsRef);
+
+        if (!serviceCredsSnap.exists()) {
+            console.log('No Calendar credentials found for user');
+            return { success: false, error: 'No Calendar credentials found. Please authorize Calendar first.' };
+        }
+
+        const tokens = serviceCredsSnap.data();
+
+        try {
+            // Get valid access token (will refresh if expired)
+            const { accessToken, refreshed } = await getValidAccessToken(db, currentUser, 'calendar', tokens);
+
+            if (refreshed) {
+                console.log('📅 [queryCalendarEvents] Using refreshed access token');
+            }
+
+            // Set up Calendar client
+            const oauth2Client = new google.auth.OAuth2(
+                process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+                process.env.GOOGLE_CLIENT_SECRET,
+                process.env.GOOGLE_REDIRECT_URI
+            );
+            oauth2Client.setCredentials({ access_token: accessToken });
+            const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+            // Get upcoming events
+            console.log('Fetching upcoming calendar events...');
+            const now = new Date().toISOString();
+            const response = await calendar.events.list({
+                calendarId: 'primary',
+                timeMin: now,
+                maxResults: maxResults,
+                singleEvents: true,
+                orderBy: 'startTime'
+            });
+
+            const events = response.data.items || [];
+            console.log(`Found ${events.length} upcoming events`);
+
+            return {
+                success: true,
+                events: events.map(event => ({
+                    id: event.id,
+                    summary: event.summary || '(No title)',
+                    description: event.description || '',
+                    start: event.start?.dateTime || event.start?.date,
+                    end: event.end?.dateTime || event.end?.date,
+                    location: event.location || '',
+                    attendees: event.attendees?.map(a => a.email) || [],
+                    htmlLink: event.htmlLink
+                }))
+            };
+
+        } catch (error) {
+            console.error('Calendar API error:', error);
+            if (error.message.includes('invalid_grant')) {
+                return { success: false, error: 'Token needs refresh' };
+            }
+            return { success: false, error: `Calendar API error: ${error.message}` };
+        }
+
+    } catch (error) {
+        console.error('Error in queryCalendarEvents:', error);
+        return { success: false, error: `Error in queryCalendarEvents: ${error.message}` };
+    }
+}
+
+/**
+ * Fetch recent Drive files
+ */
+export async function queryDriveFiles(userId, idToken, maxResults = 10) {
+    try {
+        console.log('Starting Drive files query for user:', userId);
+        const { firebaseServerApp, currentUser } = await getAuthenticatedAppForUser(idToken);
+
+        if (!currentUser) {
+            console.log('User not authenticated');
+            return { success: false, error: 'User not authenticated' };
+        }
+
+        // Get tokens from Firestore
+        const db = getFirestore(firebaseServerApp);
+        const serviceCredsRef = doc(db, `service_credentials/${currentUser.uid}_drive`);
+        const serviceCredsSnap = await getDoc(serviceCredsRef);
+
+        if (!serviceCredsSnap.exists()) {
+            console.log('No Drive credentials found for user');
+            return { success: false, error: 'No Drive credentials found. Please authorize Drive first.' };
+        }
+
+        const tokens = serviceCredsSnap.data();
+
+        try {
+            // Get valid access token (will refresh if expired)
+            const { accessToken, refreshed } = await getValidAccessToken(db, currentUser, 'drive', tokens);
+
+            if (refreshed) {
+                console.log('📁 [queryDriveFiles] Using refreshed access token');
+            }
+
+            // Set up Drive client
+            const oauth2Client = new google.auth.OAuth2(
+                process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+                process.env.GOOGLE_CLIENT_SECRET,
+                process.env.GOOGLE_REDIRECT_URI
+            );
+            oauth2Client.setCredentials({ access_token: accessToken });
+            const drive = google.drive({ version: 'v3', auth: oauth2Client });
+
+            // Get recent files
+            console.log('Fetching recent Drive files...');
+            const response = await drive.files.list({
+                pageSize: maxResults,
+                fields: 'files(id, name, mimeType, modifiedTime, webViewLink, iconLink, thumbnailLink, size)',
+                orderBy: 'modifiedTime desc'
+            });
+
+            const files = response.data.files || [];
+            console.log(`Found ${files.length} recent files`);
+
+            return {
+                success: true,
+                files: files.map(file => ({
+                    id: file.id,
+                    name: file.name,
+                    mimeType: file.mimeType,
+                    modifiedTime: file.modifiedTime,
+                    webViewLink: file.webViewLink,
+                    iconLink: file.iconLink,
+                    thumbnailLink: file.thumbnailLink,
+                    size: file.size
+                }))
+            };
+
+        } catch (error) {
+            console.error('Drive API error:', error);
+            if (error.message.includes('invalid_grant')) {
+                return { success: false, error: 'Token needs refresh' };
+            }
+            return { success: false, error: `Drive API error: ${error.message}` };
+        }
+
+    } catch (error) {
+        console.error('Error in queryDriveFiles:', error);
+        return { success: false, error: `Error in queryDriveFiles: ${error.message}` };
+    }
+}
+
 export async function queryRecentDriveFiles(userId, idToken) {
     try {
         console.log('Starting Drive files query for user:', userId);

@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { FolderOpen, ExternalLink, FileText, Image, File } from 'lucide-react';
 import { checkServiceAuth } from '@/src/app/actions/auth-actions';
+import { queryDriveFiles } from '@/src/app/actions/google-actions';
 import { requestServiceAuth } from '@/src/lib/firebase/firebaseAuth';
 import { useUser } from '@/src/contexts/UserProvider';
 import { getIdToken } from 'firebase/auth';
@@ -27,27 +28,14 @@ const DriveWidget = ({ onItemClick }) => {
       setIsAuthorized(result.isAuthorized);
 
       if (result.isAuthorized) {
-        // TODO: Fetch recent Drive files
-        setFiles([
-          {
-            id: '1',
-            name: 'Q4 Report.pdf',
-            mimeType: 'application/pdf',
-            modifiedTime: new Date().toISOString(),
-          },
-          {
-            id: '2',
-            name: 'Team Photo.jpg',
-            mimeType: 'image/jpeg',
-            modifiedTime: new Date(Date.now() - 86400000).toISOString(),
-          },
-          {
-            id: '3',
-            name: 'Project Plan.docx',
-            mimeType: 'application/vnd.google-apps.document',
-            modifiedTime: new Date(Date.now() - 172800000).toISOString(),
-          },
-        ]);
+        // Fetch real Drive files
+        const filesResult = await queryDriveFiles(user.uid, idToken, 5);
+        if (filesResult.success) {
+          setFiles(filesResult.files);
+        } else {
+          console.error('Error fetching drive files:', filesResult.error);
+          setFiles([]);
+        }
       }
     } catch (error) {
       console.error('Error checking drive auth:', error);

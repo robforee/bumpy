@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, ExternalLink } from 'lucide-react';
 import { checkServiceAuth } from '@/src/app/actions/auth-actions';
+import { queryCalendarEvents } from '@/src/app/actions/google-actions';
 import { requestServiceAuth } from '@/src/lib/firebase/firebaseAuth';
 import { useUser } from '@/src/contexts/UserProvider';
 import { getIdToken } from 'firebase/auth';
@@ -27,11 +28,14 @@ const CalendarWidget = ({ onItemClick }) => {
       setIsAuthorized(result.isAuthorized);
 
       if (result.isAuthorized) {
-        // TODO: Fetch calendar events
-        setEvents([
-          { id: '1', summary: 'Team Meeting', start: '2025-11-14T10:00:00', end: '2025-11-14T11:00:00' },
-          { id: '2', summary: 'Project Review', start: '2025-11-14T14:00:00', end: '2025-11-14T15:00:00' },
-        ]);
+        // Fetch real calendar events
+        const eventsResult = await queryCalendarEvents(user.uid, idToken, 5);
+        if (eventsResult.success) {
+          setEvents(eventsResult.events);
+        } else {
+          console.error('Error fetching calendar events:', eventsResult.error);
+          setEvents([]);
+        }
       }
     } catch (error) {
       console.error('Error checking calendar auth:', error);

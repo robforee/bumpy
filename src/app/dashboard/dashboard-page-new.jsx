@@ -8,6 +8,7 @@ import CalendarWidget from '@/src/components/widgets/CalendarWidget';
 import EmailWidget from '@/src/components/widgets/EmailWidget';
 import BigQueryWidget from '@/src/components/widgets/BigQueryWidget';
 import DriveWidget from '@/src/components/widgets/DriveWidget';
+import MessengerWidget from '@/src/components/widgets/MessengerWidget';
 import ItemDetailModal from '@/src/components/ItemDetailModal';
 
 export default function DashboardPageNew() {
@@ -60,6 +61,9 @@ export default function DashboardPageNew() {
 
         {/* Calendar Widget */}
         <CalendarWidget onItemClick={handleItemClick} />
+
+        {/* Chat Widget */}
+        <MessengerWidget onItemClick={handleItemClick} />
 
         {/* Drive Widget */}
         <div className="lg:col-span-2">

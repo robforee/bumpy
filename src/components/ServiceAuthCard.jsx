@@ -47,6 +47,7 @@ const SERVICE_CONFIG = {
     description: 'Send and receive messages',
     scopes: [
       'https://www.googleapis.com/auth/chat.messages',
+      'https://www.googleapis.com/auth/chat.messages.create',
       'https://www.googleapis.com/auth/chat.spaces'
     ],
     color: 'bg-purple-500'

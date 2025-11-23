@@ -15,6 +15,7 @@ const CalendarWidget = ({ onItemClick }) => {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [needsReauth, setNeedsReauth] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -31,10 +32,19 @@ const CalendarWidget = ({ onItemClick }) => {
         // Fetch real calendar events
         const eventsResult = await queryCalendarEvents(user.uid, idToken, 5);
         if (eventsResult.success) {
-          setEvents(eventsResult.events);
+          setEvents(eventsResult.events || []);
+          setNeedsReauth(false);
         } else {
           console.error('Error fetching calendar events:', eventsResult.error);
           setEvents([]);
+
+          // Check if token needs refresh - prompt user to re-authenticate
+          if (eventsResult.error === 'Token needs refresh' ||
+              eventsResult.error?.includes('invalid_grant') ||
+              eventsResult.error?.includes('Token')) {
+            console.log('🔄 [CalendarWidget] Token expired, prompting re-authentication');
+            setNeedsReauth(true);
+          }
         }
       }
     } catch (error) {
@@ -77,6 +87,28 @@ const CalendarWidget = ({ onItemClick }) => {
           className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
         >
           Connect Calendar
+        </button>
+      </div>
+    );
+  }
+
+  // Token expired - show reconnect prompt
+  if (needsReauth) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-2">
+            <Calendar className="h-5 w-5 text-orange-500" />
+            <h3 className="text-lg font-semibold">Calendar</h3>
+          </div>
+          <span className="text-xs text-orange-600 font-medium">Needs Reconnection</span>
+        </div>
+        <p className="text-sm text-gray-600 mb-4">Your Calendar connection has expired. Please reconnect to continue viewing events.</p>
+        <button
+          onClick={handleConnect}
+          className="bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+        >
+          Reconnect Calendar
         </button>
       </div>
     );

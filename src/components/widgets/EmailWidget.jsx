@@ -15,6 +15,7 @@ const EmailWidget = ({ onItemClick }) => {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [emails, setEmails] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [needsReauth, setNeedsReauth] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -46,9 +47,18 @@ const EmailWidget = ({ onItemClick }) => {
           }));
 
           setEmails(transformedEmails);
+          setNeedsReauth(false);
         } else {
           console.error('❌ [EmailWidget] Failed to fetch emails:', gmailResult.error);
           setEmails([]);
+
+          // Check if token needs refresh - prompt user to re-authenticate
+          if (gmailResult.error === 'Token needs refresh' ||
+              gmailResult.error?.includes('invalid_grant') ||
+              gmailResult.error?.includes('Token')) {
+            console.log('🔄 [EmailWidget] Token expired, prompting re-authentication');
+            setNeedsReauth(true);
+          }
         }
       }
     } catch (error) {
@@ -92,6 +102,28 @@ const EmailWidget = ({ onItemClick }) => {
           className="bg-purple-500 hover:bg-purple-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
         >
           Connect Gmail
+        </button>
+      </div>
+    );
+  }
+
+  // Token expired - show reconnect prompt
+  if (needsReauth) {
+    return (
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-2">
+            <Mail className="h-5 w-5 text-orange-500" />
+            <h3 className="text-lg font-semibold">Email</h3>
+          </div>
+          <span className="text-xs text-orange-600 font-medium">Needs Reconnection</span>
+        </div>
+        <p className="text-sm text-gray-600 mb-4">Your Gmail connection has expired. Please reconnect to continue viewing emails.</p>
+        <button
+          onClick={handleConnect}
+          className="bg-orange-500 hover:bg-orange-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+        >
+          Reconnect Gmail
         </button>
       </div>
     );
